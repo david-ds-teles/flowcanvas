@@ -1,0 +1,1121 @@
+---
+name: 001-initial-architecture-plan
+description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all seven phases.
+status: active
+tags: [plan, implementation, phases, canvas]
+links: [001-initial-architecture-design.md]
+---
+
+# 001-initial-architecture — Flowcanvas Implementation Plan
+
+- Delivers Flowcanvas v0.1: a standalone Next.js canvas that renders flowcode markdown as nodes, connects them, embeds images, takes comments, and round-trips the board to/from an AI agent as one JSON.
+- Phases: 7 — Bootstrap, Schema & Empty Canvas, Persistence & Resolve API, Content Nodes, Edges, Comments, Agent Round-Trip & Polish.
+- Status active; dated 2026-06-25.
+- Upstream design: `001-initial-architecture-design.md` (read it for the full schema, API contracts, and the agent contract this plan implements).
+- **All seven phases are authored to full implementation depth** (production-ready snippets, a diagram, a worked example, acceptance criteria, named gates) — by author's direction, overriding the usual stub-later-phases convention.
+- Per-phase quality gates: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npx vitest run` for the pure modules.
+
+---
+
+## Objective
+
+Ship the Flowcanvas v0.1 standalone app specified in `001-initial-architecture-design.md`: an extended-JSONCanvas board (React Flow) over flowcode markdown files, with `links:`-derived + manual edges, inline images, pinned comments, and a bidirectional human↔agent JSON loop, persisted to a `.canvas` file.
+
+---
+
+## Phases Catalog
+
+1. **Project Bootstrap & Dark Visual Foundation** — scaffold the Next.js 15 app, install deps, lay down Geist fonts + the dark dot-grid token system.
+2. **Schema, Adapter & Empty Canvas** — the extended-JSONCanvas types, the `FlowcanvasDoc ↔ React Flow` adapter, and an empty pan/zoom canvas with background/controls/minimap.
+3. **Persistence & Resolve API** — guarded fs routes (canvas read/write, batch frontmatter+body resolve, image streaming) and store load/save.
+4. **Content Nodes** — markdown (frontmatter table + collapsible body), image, link, and note node components.
+5. **Edges** — manual drawing + `links:`-frontmatter derivation + reconciliation + origin-styled labeled edges.
+6. **Comments Layer** — node/canvas-anchored pins, flat threads, reply + resolve.
+7. **Agent Round-Trip & Polish** — DesignBrief export, AgentResponse import + idempotent merge, generated-file writes, the agent-contract doc, reader drawer, save/fit-view/empty states.
+
+> **Execution record:** this file is the spec. Per-phase execution history belongs in a sibling `001-initial-architecture-log.md` (one entry per phase end + plan end) — not inlined here.
+>
+> **Project note:** Flowcanvas is greenfield and not a flowcode-managed host, so phases name a **Subsystem** instead of `.flowcode/project/modules/*` files, and gates are concrete npm/vitest commands rather than the framework gate registry.
+
+---
+
+## Phase 1 — Project Bootstrap & Dark Visual Foundation
+
+**Goal:** A running Next.js 15 app on a dark, dot-grid-ready shell with Geist fonts and the design-system tokens, so every later phase has a styled canvas to render into.
+
+**Phase Status:** pending
+
+**Evaluation:** user
+
+**Subsystem:** app shell / tooling
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `package.json` | create | deps + scripts (via `create-next-app`, then add canvas deps) |
+| `app/layout.tsx` | create | Geist Sans/Mono fonts, `<html class="dark">`, base body styles |
+| `app/globals.css` | create | Tailwind v4 import + `@theme` token block + React Flow var overrides |
+| `app/page.tsx` | create | client page that dynamic-imports the canvas shell (`ssr:false`) |
+| `next.config.ts` | create | base config |
+| `postcss.config.mjs` | create | `@tailwindcss/postcss` adapter |
+| `lib/utils.ts` | create | `cn()` (clsx + tailwind-merge) |
+| `vitest.config.ts` | create | unit-test runner for pure modules |
+
+**Implementation steps:**
+
+- [ ] `npx create-next-app@latest flowcanvas --ts --app --tailwind --eslint --no-src-dir --import-alias "@/*"` (run so files land in this folder).
+- [ ] Add deps: `npm i @xyflow/react react-markdown remark-gfm gray-matter zustand next-themes geist clsx tailwind-merge uuid unified remark-parse remark-rehype rehype-shiki rehype-stringify rehype-sanitize`.
+- [ ] Add dev deps: `npm i -D vitest @types/uuid`.
+- [ ] Write `app/globals.css` with the `@theme` tokens from design § Design System and the `.react-flow` var overrides.
+- [ ] Wire Geist fonts in `app/layout.tsx`; force dark via `class="dark"` on `<html>`.
+- [ ] Make `app/page.tsx` a client component that `dynamic`-imports `CanvasShell` with `{ ssr: false }` (placeholder shell until Phase 2).
+- [ ] Add `lib/utils.ts` `cn()`.
+
+**Code & examples:**
+
+`package.json` (key fields after scaffolding):
+
+```jsonc
+{
+  "scripts": { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "test": "vitest run" },
+  "dependencies": {
+    "next": "^15", "react": "^19", "react-dom": "^19",
+    "@xyflow/react": "^12", "react-markdown": "^9", "remark-gfm": "^4",
+    "gray-matter": "^4", "zustand": "^5", "next-themes": "^0.4", "geist": "^1",
+    "clsx": "^2", "tailwind-merge": "^2", "uuid": "^11",
+    "unified": "^11", "remark-parse": "^11", "remark-rehype": "^11",
+    "rehype-shiki": "^0.1", "rehype-stringify": "^10", "rehype-sanitize": "^6"
+  },
+  "devDependencies": { "tailwindcss": "^4", "@tailwindcss/postcss": "^4", "vitest": "^2", "typescript": "^5" }
+}
+```
+
+`app/layout.tsx`:
+
+```tsx
+import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import './globals.css'
+
+export const metadata: Metadata = { title: 'Flowcanvas', description: 'Design systems from markdown, with an agent.' }
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body style={{ margin: 0, background: 'var(--color-canvas-bg)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-geist-sans)' }}>
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+`app/page.tsx`:
+
+```tsx
+'use client'
+import dynamic from 'next/dynamic'
+
+// React Flow touches window → must not SSR. dynamic(ssr:false) is only valid inside a Client Component.
+const CanvasShell = dynamic(() => import('@/components/canvas/canvas-shell').then((m) => m.CanvasShell), { ssr: false })
+
+export default function Page() {
+  return <CanvasShell />
+}
+```
+
+`lib/utils.ts`:
+
+```typescript
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+export const cn = (...i: ClassValue[]) => twMerge(clsx(i))
+```
+
+`app/globals.css` — see design § Design System for the full `@theme` block; it is created verbatim here plus:
+
+```css
+.fc-node { background: var(--color-node-bg); border: 1px solid var(--color-node-border); border-radius: var(--radius-node); color: var(--color-text-primary); font-size: 13px; transition: border-color .1s ease, background-color .1s ease; }
+.fc-node:hover { border-color: var(--color-node-border-hover); background: var(--color-node-bg-hover); }
+```
+
+**Diagram:** shell composition.
+
+```text
+app/layout.tsx (dark, Geist)
+└── app/page.tsx  ('use client', dynamic ssr:false)
+    └── components/canvas/canvas-shell.tsx  (Phase 2: ReactFlow + Background + Controls + MiniMap)
+```
+
+**Acceptance criteria:**
+- [ ] `npm run dev` serves a dark page at `localhost:3000` (canvas-bg `#0d0d0d`), Geist font applied.
+- [ ] No hydration warnings; the shell import is `ssr:false`.
+- [ ] `npx tsc --noEmit`, `npm run lint`, `npm run build` all exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run lint`, `npm run build`.
+
+> **Quality gate:** code-review of the scaffold (config correctness, token completeness) before Phase 2.
+
+---
+
+## Phase 2 — Schema, Adapter & Empty Canvas
+
+**Goal:** The typed schema and a working React Flow canvas (pan/zoom/dot-grid/minimap) that renders nodes produced by the adapter from a `FlowcanvasDoc`.
+
+**Phase Status:** pending
+
+**Evaluation:** review-agent
+
+**Subsystem:** canvas-schema / adapter
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `lib/canvas/jsoncanvas.ts` | create | All schema types + `nodeKind`/`isFileNode` (design § Data Models, verbatim) |
+| `lib/canvas/adapter.ts` | create | `toReactFlow`, `toJSONCanvas`, `colorVar` |
+| `lib/canvas/adapter.test.ts` | create | unit test: worked-example JSON → RF nodes/edges and back |
+| `components/canvas/canvas-shell.tsx` | create | `ReactFlowProvider` + `ReactFlow` + `Background`/`Controls`/`MiniMap` |
+
+**Implementation steps:**
+
+- [ ] Create `lib/canvas/jsoncanvas.ts` exactly per design § Data Models (types + `nodeKind` + `isFileNode`).
+- [ ] Implement `colorVar` (preset "1".."6" + hex → CSS color) and `toReactFlow` / `toJSONCanvas` in `adapter.ts`.
+- [ ] Build `canvas-shell.tsx`: provider, dot-grid background, controls, minimap; seed 2 static nodes via `toReactFlow` for now.
+- [ ] Write `adapter.test.ts` round-tripping the design's worked-example JSON.
+
+**Code & examples:**
+
+`lib/canvas/adapter.ts`:
+
+```typescript
+import { MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, Side } from './jsoncanvas'
+import { nodeKind } from './jsoncanvas'
+
+const PRESET: Record<string, string> = { '1': '#ff5555', '2': '#f59f00', '3': '#e3b341', '4': '#3ecf8e', '5': '#22d3ee', '6': '#a371f7' }
+export const colorVar = (c?: CanvasColor): string | undefined => (!c ? undefined : c.startsWith('#') ? c : PRESET[c])
+
+export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdge[] } {
+  const nodes = doc.nodes.map<RFNode>((n) => ({
+    id: n.id,
+    type: nodeKind(n),                                   // 'markdown'|'image'|'link'|'note'|'group'
+    position: { x: n.x, y: n.y },
+    width: n.width, height: n.height,
+    data: { node: n },
+    style: n.color ? ({ ['--node-accent' as string]: colorVar(n.color) } as React.CSSProperties) : undefined,
+  }))
+  const edges = doc.edges.map<RFEdge>((e) => ({
+    id: e.id, source: e.fromNode, target: e.toNode,
+    sourceHandle: e.fromSide, targetHandle: e.toSide,
+    type: 'labeled', label: e.label,
+    data: { origin: e.meta?.origin ?? 'user' },
+    markerEnd: (e.toEnd ?? 'arrow') !== 'none' ? { type: MarkerType.ArrowClosed } : undefined,
+  }))
+  return { nodes, edges }
+}
+
+/** Map React Flow geometry back onto the prior doc, preserving meta/type/comments/session. */
+export function toJSONCanvas(rfNodes: RFNode[], rfEdges: RFEdge[], prev: FlowcanvasDoc): FlowcanvasDoc {
+  const prevById = new Map(prev.nodes.map((n) => [n.id, n]))
+  const nodes: CanvasNode[] = rfNodes.map((rn) => {
+    const base = prevById.get(rn.id)
+    if (!base) throw new Error(`unknown node in RF state: ${rn.id}`)
+    return { ...base, x: rn.position.x, y: rn.position.y, width: rn.width ?? base.width, height: rn.height ?? base.height }
+  })
+  const edges: CanvasEdge[] = rfEdges.map((re) => ({
+    id: re.id, fromNode: re.source, toNode: re.target,
+    fromSide: re.sourceHandle as Side | undefined, toSide: re.targetHandle as Side | undefined,
+    label: typeof re.label === 'string' ? re.label : undefined,
+    toEnd: 'arrow', meta: { origin: (re.data as { origin?: CanvasEdge['meta'] })?.origin as never },
+  }))
+  return { ...prev, nodes, edges }
+}
+```
+
+`components/canvas/canvas-shell.tsx`:
+
+```tsx
+'use client'
+import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls, MiniMap, ConnectionMode, type NodeTypes, type EdgeTypes } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+
+const nodeTypes: NodeTypes = {}   // populated in Phase 4
+const edgeTypes: EdgeTypes = {}   // populated in Phase 5
+
+export function CanvasShell() {
+  return (
+    <ReactFlowProvider>
+      <div style={{ width: '100vw', height: '100vh' }}>
+        <ReactFlow
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          connectionMode={ConnectionMode.Loose}
+          fitView
+          minZoom={0.2}
+          maxZoom={2}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} color="var(--color-canvas-grid)" />
+          <Controls />
+          <MiniMap nodeColor="#1a1a1a" maskColor="rgba(0,0,0,0.7)" pannable zoomable />
+          {/* React Flow attribution is kept (MIT terms); subscribers may hide it via proOptions */}
+        </ReactFlow>
+      </div>
+    </ReactFlowProvider>
+  )
+}
+```
+
+**Worked example** — the design's worked-example JSON, through `toReactFlow`, yields:
+
+```text
+node n-design → { id:'n-design', type:'markdown', position:{x:-480,y:-200}, width:380, height:320, data:{node:…} }
+node n-arch-img → { id:'n-arch-img', type:'image',  position:{x:40,y:200},  width:380, height:240, data:{node:…} }
+edge lk:n-design->n-plan → { id:'lk:n-design->n-plan', source:'n-design', target:'n-plan', type:'labeled', label:'links', data:{origin:'links'}, markerEnd:{type:'arrowclosed'} }
+```
+
+**Diagram:** adapter data flow.
+
+```mermaid
+flowchart LR
+  FS[(.canvas file)] --> Doc[FlowcanvasDoc]
+  Doc -- toReactFlow --> RF[React Flow nodes/edges]
+  RF -- user drags / edits --> RF
+  RF -- toJSONCanvas(prev) --> Doc
+  Doc --> Save[(POST /api/canvas)]
+```
+
+**Acceptance criteria:**
+- [ ] Empty canvas pans, zooms, fits; dot grid renders on `#0d0d0d`; minimap + controls visible.
+- [ ] Two seeded nodes appear via `toReactFlow` (proves the adapter end-to-end).
+- [ ] `adapter.test.ts`: `toJSONCanvas(toReactFlow(doc)…)` preserves node ids, positions, and `meta`.
+- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npx vitest run`, `npm run build`.
+
+> **Quality gate:** code-review sub-agent on the schema + adapter (type soundness, round-trip fidelity).
+
+---
+
+## Phase 3 — Persistence & Resolve API
+
+**Goal:** Read/write the `.canvas` file, batch-resolve markdown frontmatter+body, and stream images — all guarded — and wire the store's `load`/`save`.
+
+**Phase Status:** pending
+
+**Evaluation:** review-agent
+
+**Subsystem:** canvas-api / fs
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `lib/fs-guard.ts` | create | `ROOT`, `guardPath`, `GuardError` |
+| `lib/canvas/frontmatter.ts` | create | `gray-matter` wrapper + `BODY_CAP` |
+| `app/api/canvas/route.ts` | create | GET read / POST write the doc (bumps revision) |
+| `app/api/canvas/resolve/route.ts` | create | POST `{paths[]}` → frontmatter+body+truncated |
+| `app/api/asset/route.ts` | create | GET image bytes (ext allowlist) |
+| `app/api/file/route.ts` | create | POST write `.md` (agent-generated files) |
+| `app/api/files/route.ts` | create | GET directory listing (add-node file picker) |
+| `lib/api.ts` | create | typed fetch wrappers + `assetUrl` |
+| `lib/canvas/store.ts` | create | `useCanvasStore` with `load`/`save` (+ `bodies` cache) |
+
+**Implementation steps:**
+
+- [ ] `lib/fs-guard.ts`: resolve `FLOWCANVAS_ROOT` (default cwd); `guardPath` rejects escapes.
+- [ ] `lib/canvas/frontmatter.ts`: `parseFile(raw)` → `{frontmatter, body, truncated}` capped at `BODY_CAP`.
+- [ ] The five routes per design § API Contracts (canvas GET/POST, resolve, asset, file POST, files GET), each catching `GuardError` → 400 and `ENOENT` → 404.
+- [ ] `lib/api.ts`: `getCanvas`, `saveCanvas`, `resolvePaths`, `writeFileApi`, `listDir`, `assetUrl`.
+- [ ] `store.ts`: `load(path)` fetches doc, resolves md/image paths, hydrates `meta.frontmatter` + a transient `bodies` map; `save()` POSTs and syncs revision.
+
+**Code & examples:**
+
+`lib/fs-guard.ts`:
+
+```typescript
+import path from 'node:path'
+export class GuardError extends Error {}
+export const ROOT = path.resolve(process.env.FLOWCANVAS_ROOT ?? process.cwd())
+export function guardPath(rel: string): string {
+  const abs = path.resolve(ROOT, rel)
+  if (abs !== ROOT && !abs.startsWith(ROOT + path.sep)) throw new GuardError(`path escapes root: ${rel}`)
+  return abs
+}
+```
+
+`lib/canvas/frontmatter.ts`:
+
+```typescript
+import matter from 'gray-matter'
+export const BODY_CAP = 40_000
+export function parseFile(raw: string) {
+  const { data, content } = matter(raw)
+  const truncated = content.length > BODY_CAP
+  return { frontmatter: data as Record<string, unknown>, body: truncated ? content.slice(0, BODY_CAP) : content, truncated }
+}
+```
+
+`app/api/canvas/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { readFile, writeFile } from 'node:fs/promises'
+import { guardPath, GuardError } from '@/lib/fs-guard'
+import type { FlowcanvasDoc } from '@/lib/canvas/jsoncanvas'
+
+const isCanvas = (rel: string) => /\.(canvas|json)$/.test(rel)
+
+export async function GET(req: NextRequest) {
+  const rel = req.nextUrl.searchParams.get('path') ?? ''
+  if (!isCanvas(rel)) return NextResponse.json({ error: 'not a .canvas' }, { status: 400 })
+  try {
+    const doc = JSON.parse(await readFile(guardPath(rel), 'utf8')) as FlowcanvasDoc
+    return NextResponse.json({ doc })
+  } catch (e) {
+    if (e instanceof GuardError) return NextResponse.json({ error: e.message }, { status: 400 })
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return NextResponse.json({ error: 'not found' }, { status: 404 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const { path: rel, doc } = (await req.json()) as { path: string; doc: FlowcanvasDoc }
+  if (!isCanvas(rel) || !doc?.nodes || !doc?.flowcanvas?.session) return NextResponse.json({ error: 'invalid' }, { status: 400 })
+  try {
+    doc.flowcanvas.session.revision += 1
+    doc.flowcanvas.session.updatedAt = new Date().toISOString()
+    await writeFile(guardPath(rel), JSON.stringify(doc, null, 2), 'utf8')
+    return NextResponse.json({ ok: true, revision: doc.flowcanvas.session.revision })
+  } catch (e) {
+    if (e instanceof GuardError) return NextResponse.json({ error: e.message }, { status: 400 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+```
+
+`app/api/canvas/resolve/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { readFile } from 'node:fs/promises'
+import { guardPath, GuardError } from '@/lib/fs-guard'
+import { parseFile } from '@/lib/canvas/frontmatter'
+
+const MD = /\.mdx?$/
+export async function POST(req: NextRequest) {
+  const { paths } = (await req.json()) as { paths: string[] }
+  const resolved = await Promise.all(paths.map(async (rel) => {
+    try {
+      const raw = await readFile(guardPath(rel), 'utf8')
+      return MD.test(rel) ? { path: rel, exists: true, ...parseFile(raw) } : { path: rel, exists: true }
+    } catch (e) {
+      if (e instanceof GuardError) return { path: rel, exists: false, error: e.message }
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { path: rel, exists: false }
+      return { path: rel, exists: false, error: String(e) }
+    }
+  }))
+  return NextResponse.json({ resolved })
+}
+```
+
+`app/api/asset/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { readFile } from 'node:fs/promises'
+import { guardPath, GuardError } from '@/lib/fs-guard'
+
+const TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.avif': 'image/avif' }
+export async function GET(req: NextRequest) {
+  const rel = req.nextUrl.searchParams.get('path') ?? ''
+  const type = TYPES[rel.slice(rel.lastIndexOf('.')).toLowerCase()]
+  if (!type) return NextResponse.json({ error: 'not an allowed image' }, { status: 400 })
+  try {
+    const buf = await readFile(guardPath(rel))
+    return new NextResponse(new Uint8Array(buf), { headers: { 'Content-Type': type, 'Cache-Control': 'no-store' } })
+  } catch (e) {
+    if (e instanceof GuardError) return NextResponse.json({ error: e.message }, { status: 400 })
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return NextResponse.json({ error: 'not found' }, { status: 404 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+```
+
+`app/api/files/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { readdir } from 'node:fs/promises'
+import path from 'node:path'
+import { guardPath, GuardError } from '@/lib/fs-guard'
+
+export async function GET(req: NextRequest) {
+  const rel = req.nextUrl.searchParams.get('path') ?? '.'
+  try {
+    const ents = await readdir(guardPath(rel), { withFileTypes: true })
+    const entries = ents.map((d) => ({
+      name: d.name, path: path.posix.join(rel, d.name),
+      type: d.isDirectory() ? 'directory' : 'file',
+      ext: d.isFile() ? d.name.slice(d.name.lastIndexOf('.')) : undefined,
+    }))
+    return NextResponse.json({ entries })
+  } catch (e) {
+    if (e instanceof GuardError) return NextResponse.json({ error: e.message }, { status: 400 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+```
+
+`lib/canvas/store.ts` (load/save + caches; extended in later phases):
+
+```typescript
+import { create } from 'zustand'
+import type { FlowcanvasDoc } from './jsoncanvas'
+import { isFileNode, nodeKind } from './jsoncanvas'
+import * as api from '../api'
+
+interface CanvasState {
+  path: string | null
+  doc: FlowcanvasDoc | null
+  bodies: Record<string, string>     // transient: nodeId → resolved markdown body (not persisted)
+  dirty: boolean
+  load: (path: string) => Promise<void>
+  save: () => Promise<void>
+  bodyFor: (id: string) => string | undefined
+}
+
+export const useCanvasStore = create<CanvasState>((set, get) => ({
+  path: null, doc: null, bodies: {}, dirty: false,
+  bodyFor: (id) => get().bodies[id],
+  async load(path) {
+    const doc = await api.getCanvas(path)
+    const files = doc.nodes.filter(isFileNode)
+    const resolved = await api.resolvePaths(files.map((n) => n.file))
+    const byPath = new Map(resolved.map((r) => [r.path, r]))
+    const bodies: Record<string, string> = {}
+    for (const n of files) {
+      const r = byPath.get(n.file)
+      if (nodeKind(n) === 'markdown' && r) { n.meta = { ...n.meta, frontmatter: r.frontmatter }; if (r.body) bodies[n.id] = r.body }
+    }
+    set({ path, doc, bodies, dirty: false })
+  },
+  async save() {
+    const { path, doc } = get()
+    if (!path || !doc) return
+    doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
+    set({ dirty: false })
+  },
+}))
+```
+
+**Worked example** — `POST /api/canvas/resolve`:
+
+```text
+request : { "paths": ["mdview/001-initial-architecture-design.md", "docs/architecture.png"] }
+response: { "resolved": [
+  { "path": "mdview/001-initial-architecture-design.md", "exists": true,
+    "frontmatter": { "name": "001-initial-architecture-design", "status": "approved", "links": ["mdview/001-initial-architecture-plan.md"] },
+    "body": "## Problem Statement\n…", "truncated": false },
+  { "path": "docs/architecture.png", "exists": true } ] }
+```
+
+**Diagram:** see design § Sequence Diagrams (load → resolve → hydrate).
+
+**Acceptance criteria:**
+- [ ] `GET`→`POST` `/api/canvas` round-trips the worked-example doc (ignoring revision bump).
+- [ ] `/api/canvas/resolve` returns parsed frontmatter + body for a real `.md`; image paths return `{exists:true}` with no body.
+- [ ] `/api/asset` serves a `.png` with `Content-Type: image/png`; a non-image path and a `../` traversal each return 400.
+- [ ] `/api/files` lists a directory's entries (name, path, type, ext); a `../` traversal returns 400.
+- [ ] `store.load()` populates `doc` + `bodies` from a real `.canvas` on disk.
+- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run build`; manual `curl` checks for the three guard cases (200/400/404).
+
+> **Quality gate:** code-review sub-agent focused on the traversal guard (every route) and error mapping.
+
+---
+
+## Phase 4 — Content Nodes
+
+**Goal:** Real content on the canvas — markdown cards (frontmatter table + collapsible rendered body), inline images, link chips, and note cards.
+
+**Phase Status:** pending
+
+**Evaluation:** user
+
+**Subsystem:** canvas-nodes
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `components/canvas/canvas-markdown.tsx` | create | client `react-markdown` + `remark-gfm` (no shiki) |
+| `components/canvas/nodes/markdown-node.tsx` | create | frontmatter table + collapsible body + handles |
+| `components/canvas/nodes/image-node.tsx` | create | inline `<img>` via `assetUrl` |
+| `components/canvas/nodes/link-node.tsx` | create | external-link / non-md-file chip |
+| `components/canvas/nodes/note-node.tsx` | create | renders `text` markdown |
+| `lib/canvas/store.ts` | modify | add `toggleCollapsed(id)` |
+| `components/canvas/canvas-shell.tsx` | modify | register `nodeTypes`; render store doc via `toReactFlow` |
+
+**Implementation steps:**
+
+- [ ] `canvas-markdown.tsx`: thin client renderer used by markdown + note nodes.
+- [ ] `markdown-node.tsx`: title from `frontmatter.name` (fallback filename); compact mono table for `status`/`tags`/`description`; collapsible body from `bodyFor(id)`; 4 handles (Loose mode).
+- [ ] `image-node.tsx`, `link-node.tsx`, `note-node.tsx`.
+- [ ] `toggleCollapsed` writes `node.meta.collapsed` and marks dirty.
+- [ ] Register `nodeTypes={{markdown,image,link,note}}`; shell renders `toReactFlow(doc)`.
+
+**Code & examples:**
+
+`components/canvas/canvas-markdown.tsx`:
+
+```tsx
+'use client'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+export const CanvasMarkdown = ({ children }: { children: string }) => (
+  <div className="fc-prose"><ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown></div>
+)
+```
+
+`components/canvas/nodes/markdown-node.tsx`:
+
+```tsx
+'use client'
+import { memo } from 'react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
+import type { FileNode } from '@/lib/canvas/jsoncanvas'
+import { useCanvasStore } from '@/lib/canvas/store'
+import { CanvasMarkdown } from '../canvas-markdown'
+
+const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
+const FM_KEYS = ['status', 'tags', 'description'] as const
+
+function Inner({ id, data }: NodeProps) {
+  const node = (data as { node: FileNode }).node
+  const fm = node.meta?.frontmatter ?? {}
+  const collapsed = node.meta?.collapsed ?? false
+  const body = useCanvasStore((s) => s.bodyFor(node.id))
+  const toggle = useCanvasStore((s) => s.toggleCollapsed)
+  const title = String(fm.name ?? node.file.split('/').pop())
+  return (
+    <div className="fc-node fc-node--md" style={{ width: '100%', height: '100%' }}>
+      <header className="fc-node__head">
+        <span className="fc-node__title">{title}</span>
+        <button className="fc-node__collapse" onClick={() => toggle(id)} aria-label="collapse">{collapsed ? '+' : '–'}</button>
+      </header>
+      <table className="fc-fm"><tbody>
+        {FM_KEYS.filter((k) => k in fm).map((k) => (
+          <tr key={k}><td className="fc-fm__k">{k}</td>
+            <td className="fc-fm__v">{Array.isArray(fm[k]) ? (fm[k] as unknown[]).join(', ') : String(fm[k])}</td></tr>
+        ))}
+      </tbody></table>
+      {!collapsed && <div className="fc-node__body"><CanvasMarkdown>{body ?? '_resolving…_'}</CanvasMarkdown></div>}
+      {SIDES.map((p) => <Handle key={p} type="source" position={p} id={p} />)}
+    </div>
+  )
+}
+export const MarkdownNode = memo(Inner)
+```
+
+`components/canvas/nodes/image-node.tsx`:
+
+```tsx
+'use client'
+import { memo } from 'react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
+import type { FileNode } from '@/lib/canvas/jsoncanvas'
+import { assetUrl } from '@/lib/api'
+function Inner({ data }: NodeProps) {
+  const node = (data as { node: FileNode }).node
+  const name = node.file.split('/').pop() ?? node.file
+  return (
+    <div className="fc-node fc-node--img" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={assetUrl(node.file)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      <span className="fc-node__caption">{name}</span>
+      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((p) => <Handle key={p} type="source" position={p} id={p} />)}
+    </div>
+  )
+}
+export const ImageNode = memo(Inner)
+```
+
+`components/canvas/nodes/note-node.tsx` and `link-node.tsx` follow the same shell (note renders `node.text` via `CanvasMarkdown`; link renders an anchor/chip with `node.url` or the non-md file path + an extension glyph), each with the 4 handles.
+
+**Diagram:** markdown-node anatomy.
+
+```text
+┌─────────────────────────────────────┐
+│ name…                            [–] │  ← header (Geist 500/13px)
+├─────────────────────────────────────┤
+│ status  active                       │  ← frontmatter table (Geist Mono)
+│ tags    canvas, schema               │
+├─────────────────────────────────────┤
+│ ## Problem Statement                 │  ← rendered body (collapsible)
+│ Designing a system out of markdown…  │
+└─────────────────────────────────────┘
+   ▲      ▲          ▲        ▲   handles (4 sides, Loose mode)
+```
+
+**Worked example:** open the design's worked-example `.canvas` → `n-design` shows title `001-initial-architecture-design`, a table with `status: approved`, and the rendered Problem Statement; `n-arch-img` shows `architecture.png` inline.
+
+**Acceptance criteria:**
+- [ ] A real `.canvas` (2 md + 1 image + 1 note) renders frontmatter tables, rendered bodies, and an inline image.
+- [ ] Collapse toggle hides/shows the body and persists across reload (`meta.collapsed`).
+- [ ] Long bodies clamp to the node box (overflow hidden / fade); node stays within its bounds.
+- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run build`; visual check against the worked-example board.
+
+> **Quality gate:** code-review sub-agent on the node components (render safety, key usage, handle setup).
+
+---
+
+## Phase 5 — Edges: manual + links-derived
+
+**Goal:** Draw labeled edges by dragging handles, and auto-derive edges from each file's `links:` frontmatter with provenance, reconciliation, and distinct styling.
+
+**Phase Status:** pending
+
+**Evaluation:** review-agent
+
+**Subsystem:** canvas-edges
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `lib/canvas/edges.ts` | create | `deriveLinkEdges`, `reconcileEdges` |
+| `lib/canvas/edges.test.ts` | create | unit tests for derive + reconcile |
+| `components/canvas/edges/labeled-edge.tsx` | create | bezier + label, styled by `origin` |
+| `lib/canvas/store.ts` | modify | `onConnect`; run derive+reconcile on load and after writes |
+| `components/canvas/canvas-shell.tsx` | modify | register `edgeTypes`; wire `onConnect`, `onNodesChange` |
+
+**Implementation steps:**
+
+- [ ] `edges.ts` per design § Decision 6 (deterministic `lk:` ids; resolve `links` paths to node ids; reconcile keeps user/agent, drops stale/dupe derived).
+- [ ] `labeled-edge.tsx`: bezier path + `EdgeLabelRenderer`; `links`=dashed+lock, `user`=solid, `agent`=accent.
+- [ ] `store.onConnect` mints a `user` edge (label prompt).
+- [ ] In `store.load` (and after any file write): `doc.edges = reconcileEdges(doc.edges, deriveLinkEdges(doc.nodes))`.
+- [ ] Editing a derived edge's label flips its `meta.origin` to `user` (promotion).
+
+**Code & examples:**
+
+`lib/canvas/edges.ts`:
+
+```typescript
+import type { CanvasNode, CanvasEdge } from './jsoncanvas'
+import { isFileNode } from './jsoncanvas'
+const norm = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
+
+export function deriveLinkEdges(nodes: CanvasNode[]): CanvasEdge[] {
+  const byPath = new Map<string, string>()
+  for (const n of nodes) if (isFileNode(n)) byPath.set(norm(n.file), n.id)
+  const out: CanvasEdge[] = []
+  for (const n of nodes) {
+    if (!isFileNode(n)) continue
+    const links = (n.meta?.frontmatter?.links as string[] | undefined) ?? []
+    for (const link of links) {
+      const to = byPath.get(norm(link))
+      if (!to || to === n.id) continue                       // unresolved (e.g. agent-tools/*) or self
+      out.push({ id: `lk:${n.id}->${to}`, fromNode: n.id, toNode: to, toEnd: 'arrow', label: 'links', color: '6', meta: { origin: 'links' } })
+    }
+  }
+  return out
+}
+
+export function reconcileEdges(existing: CanvasEdge[], derived: CanvasEdge[]): CanvasEdge[] {
+  const keep = existing.filter((e) => e.meta?.origin !== 'links')                 // user + agent untouched
+  const pairs = new Set(keep.map((e) => `${e.fromNode}>${e.toNode}`))
+  const fresh = derived.filter((e) => !pairs.has(`${e.fromNode}>${e.toNode}`))    // drop dupes of manual
+  return [...keep, ...fresh]                                                      // stale 'links' dropped
+}
+```
+
+`components/canvas/edges/labeled-edge.tsx`:
+
+```tsx
+'use client'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+export function LabeledEdge(p: EdgeProps) {
+  const [path, lx, ly] = getBezierPath(p)
+  const origin = (p.data as { origin?: string })?.origin ?? 'user'
+  const stroke = origin === 'agent' ? 'var(--color-accent)' : 'var(--color-edge)'
+  return (
+    <>
+      <BaseEdge id={p.id} path={path} markerEnd={p.markerEnd} style={{ stroke, strokeWidth: 1.5, strokeDasharray: origin === 'links' ? '4 4' : undefined }} />
+      {p.label && (
+        <EdgeLabelRenderer>
+          <div className="fc-edge-label" style={{ transform: `translate(-50%,-50%) translate(${lx}px,${ly}px)` }}>
+            {origin === 'links' && <span className="fc-edge-label__lock">🔒 </span>}{p.label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  )
+}
+```
+
+`store.onConnect` (added to the store, wired in the shell):
+
+```typescript
+import type { Connection } from '@xyflow/react'
+// inside create():
+onConnect(conn: Connection) {
+  const doc = get().doc; if (!doc || !conn.source || !conn.target) return
+  const label = window.prompt('Edge label?')?.trim() ?? ''
+  doc.edges.push({ id: `e-${crypto.randomUUID().slice(0, 8)}`, fromNode: conn.source, toNode: conn.target,
+    fromSide: conn.sourceHandle as never, toSide: conn.targetHandle as never, label, toEnd: 'arrow', meta: { origin: 'user' } })
+  set({ doc: { ...doc }, dirty: true })
+}
+```
+
+**Worked example:** `n-design.meta.frontmatter.links = ["mdview/001-initial-architecture-plan.md"]` and a node `n-plan` with `file` = that path ⇒ `deriveLinkEdges` emits `{ id:'lk:n-design->n-plan', label:'links', meta:{origin:'links'} }`. Remove the link from frontmatter and reload ⇒ the edge disappears; a manually drawn `n-plan→n-arch-img` edge is untouched.
+
+**Diagram:** reconciliation.
+
+```mermaid
+flowchart TD
+  L[deriveLinkEdges from frontmatter.links] --> R{reconcileEdges}
+  E[existing edges] --> R
+  R -->|keep origin user/agent| K[user + agent edges]
+  R -->|drop stale + dupes| D[fresh links edges]
+  K --> Out[edges]
+  D --> Out
+```
+
+**Acceptance criteria:**
+- [ ] Dragging handle→handle creates a labeled `user` edge that persists across reload.
+- [ ] `links` edges auto-appear, render dashed + lock, and self-heal when frontmatter `links` change.
+- [ ] A derived edge duplicating a manual pair is suppressed; user/agent edges are never auto-removed.
+- [ ] `edges.test.ts` covers: derive from links, dedup vs manual, stale removal.
+- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npx vitest run`, `npm run build`.
+
+> **Quality gate:** code-review sub-agent on derivation determinism + reconciliation correctness.
+
+---
+
+## Phase 6 — Comments Layer
+
+**Goal:** Pin comments to a node or to canvas coordinates; flat threads with reply and resolve; persisted under `flowcanvas.comments`.
+
+**Phase Status:** pending
+
+**Evaluation:** user
+
+**Subsystem:** canvas-comments
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `components/canvas/comment-layer.tsx` | create | pin overlay; place-on-click; projects anchors to screen |
+| `components/canvas/comment-thread.tsx` | create | root + replies; reply box; resolve toggle |
+| `lib/canvas/store.ts` | modify | `addComment`, `replyComment`, `resolveComment`, `commentMode` |
+| `components/canvas/canvas-shell.tsx` | modify | mount `<CommentLayer/>`; toggle comment mode |
+
+**Implementation steps:**
+
+- [ ] Store actions: `addComment(anchor,text,author)` (root, sequential `badge`); `replyComment(rootId,text,author)`; `resolveComment(rootId)`.
+- [ ] `comment-layer.tsx`: in comment mode, click a node → `{kind:'node',nodeId,offsetX,offsetY}` (fractions); click empty canvas → `{kind:'canvas',x,y}`. Render root pins projected to screen; re-render on viewport change.
+- [ ] `comment-thread.tsx`: open on pin click; show root + replies; reply box; resolve.
+
+**Code & examples:**
+
+Store actions:
+
+```typescript
+import { v4 as uuid } from 'uuid'
+import type { Comment, CommentAnchor } from './jsoncanvas'
+// inside create():
+addComment(anchor: CommentAnchor, text: string, author: string) {
+  const doc = get().doc; if (!doc) return
+  const badge = doc.flowcanvas.comments.filter((c) => c.parentId === null).length + 1
+  const c: Comment = { id: `c-${uuid().slice(0, 8)}`, anchor, parentId: null, author, text, createdAt: new Date().toISOString(), resolvedAt: null, badge }
+  doc.flowcanvas.comments.push(c); set({ doc: { ...doc }, dirty: true })
+},
+replyComment(rootId, text, author) {
+  const doc = get().doc; if (!doc) return
+  const root = doc.flowcanvas.comments.find((c) => c.id === rootId); if (!root) return
+  doc.flowcanvas.comments.push({ id: `c-${uuid().slice(0, 8)}`, anchor: root.anchor, parentId: rootId, author, text, createdAt: new Date().toISOString() })
+  set({ doc: { ...doc }, dirty: true })
+},
+resolveComment(rootId) {
+  const doc = get().doc; if (!doc) return
+  const root = doc.flowcanvas.comments.find((c) => c.id === rootId); if (root) root.resolvedAt = new Date().toISOString()
+  set({ doc: { ...doc }, dirty: true })
+}
+```
+
+`components/canvas/comment-layer.tsx` (anchor projection):
+
+```tsx
+'use client'
+import { useReactFlow, useViewport } from '@xyflow/react'
+import { useCanvasStore } from '@/lib/canvas/store'
+import type { Comment } from '@/lib/canvas/jsoncanvas'
+
+export function CommentLayer() {
+  const { flowToScreenPosition } = useReactFlow()
+  useViewport()                                   // re-render on pan/zoom
+  const doc = useCanvasStore((s) => s.doc)
+  if (!doc) return null
+  const nodes = new Map(doc.nodes.map((n) => [n.id, n]))
+  const roots = doc.flowcanvas.comments.filter((c) => c.parentId === null)
+  const pos = (c: Comment) => {
+    if (c.anchor.kind === 'canvas') return flowToScreenPosition({ x: c.anchor.x, y: c.anchor.y })
+    const n = nodes.get(c.anchor.nodeId); if (!n) return null
+    return flowToScreenPosition({ x: n.x + c.anchor.offsetX * n.width, y: n.y + c.anchor.offsetY * n.height })
+  }
+  return (
+    <div className="fc-comment-layer">
+      {roots.map((c) => { const p = pos(c); return p && (
+        <button key={c.id} className="fc-pin" data-resolved={!!c.resolvedAt} style={{ left: p.x, top: p.y }}>{c.badge}</button>
+      )})}
+    </div>
+  )
+}
+```
+
+**Worked example:** add a comment on `n-plan` at its bottom-center → `{ kind:'node', nodeId:'n-plan', offsetX:0.5, offsetY:0.9 }`, `badge:1`; an agent reply sets `parentId:'c-1'`. Drag `n-plan` → the pin tracks it (projection recomputes from node x/y).
+
+**Diagram:** anchor + thread model.
+
+```text
+anchor:
+  node   → { nodeId, offsetX:0..1, offsetY:0..1 }   (tracks + scales with the node)
+  canvas → { x, y }                                  (fixed in canvas space)
+thread (flat):
+  c-1 (parentId:null, badge:1) ─┬─ c-1-r1 (parentId:c-1)
+                                └─ c-1-r2 (parentId:c-1)
+```
+
+**Acceptance criteria:**
+- [ ] Add a comment on a node and on empty canvas; both persist across reload.
+- [ ] Replies render flat under the root; resolve toggles state and dims the pin.
+- [ ] Node-anchored pins follow the node as it moves and on pan/zoom.
+- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run build`; visual check of pin tracking.
+
+> **Quality gate:** code-review sub-agent on anchor math + thread integrity.
+
+---
+
+## Phase 7 — Agent Round-Trip & Polish
+
+**Goal:** Export a self-contained `DesignBrief`, import an `AgentResponse` and merge it idempotently (write generated files, upsert nodes/edges, attach replies), re-derive + persist; plus the reader drawer, Cmd+S save, fit-view, and empty/error states.
+
+**Phase Status:** pending
+
+**Evaluation:** user
+
+**Subsystem:** agent-protocol / polish
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `lib/canvas/brief.ts` | create | `buildBrief`, `applyResponse` (8-step merge), `AGENT_CONTRACT` |
+| `lib/canvas/brief.test.ts` | create | unit: build shape + idempotent apply |
+| `components/canvas/export-panel.tsx` | create | Submit (copy/download brief) · Import (paste/upload → apply) |
+| `lib/canvas/store.ts` | modify | `buildBrief()`, `applyResponse()` orchestration (write files, re-resolve, re-derive, persist) |
+| `lib/render-md.ts` | create | server unified pipeline (`remark-gfm` + `rehype-shiki`) → HTML |
+| `app/api/render/route.ts` | create | GET `?path=` → `{ html }` (guarded) for the reader |
+| `components/canvas/reader-drawer.tsx` | create | full-fidelity read-only drawer (shiki HTML) + node thread |
+| `components/canvas/canvas-toolbar.tsx` | create | add-node, save (Cmd+S), export, import, fit-view, dirty dot |
+| `docs/flowcanvas-agent-contract.md` | create | the agent output contract (mirrors `AGENT_CONTRACT`) |
+| `app/page.tsx` | modify | empty-state (no `?path`) + error boundary |
+
+**Implementation steps:**
+
+- [ ] `brief.ts`: `buildBrief` (embed frontmatter+body+path per design) and `applyResponse` (the 8-step pure merge returning `{next, report}`); export `AGENT_CONTRACT` string.
+- [ ] Store `buildBrief()`: resolve all md, build the brief, stamp `briefId` → `session.lastBriefId`, return it.
+- [ ] Store `applyResponse(resp)`: call pure merge → `POST /api/file` each `report.generatedFiles` → re-resolve new md → `reconcileEdges(deriveLinkEdges)` → `set` → `save()`.
+- [ ] `export-panel.tsx`: Submit copies + downloads brief JSON; Import parses + validates `responseVersion`/`briefId`, calls `applyResponse`, surfaces `report` (stale/conflicts) as a toast.
+- [ ] `render-md.ts` + `/api/render`: server shiki pipeline; `reader-drawer.tsx` fetches `{html}` and renders sanitized, with the node's comment thread beside it.
+- [ ] `canvas-toolbar.tsx`: Cmd+S → `save()`; fit-view; add-node menu (md via file picker, note, image, link). Empty/error states in `page.tsx`.
+
+**Code & examples:**
+
+`lib/canvas/brief.ts` — `buildBrief`:
+
+```typescript
+import type { FlowcanvasDoc, NodeKind } from './jsoncanvas'
+import { nodeKind } from './jsoncanvas'
+import type { DesignBrief, BriefNode, BriefEdge, BriefComment } from './brief'   // types from design § Data Models
+
+export const AGENT_CONTRACT = `Return exactly one JSON object matching AgentResponse — no prose, no code fence.
+Echo briefId. Mint new ids with the "ag-" prefix; reuse a brief id to update that item.
+To add a markdown file: include it in generatedFiles (full content incl. YAML frontmatter) AND an upsertNodes entry {type:"file", file:"<same path>"}.
+Reply to a comment by setting parentId to its id and copying its anchor.
+Prefer frontmatter links: over manual edges for structural relationships; never link to a node/file that doesn't exist or isn't generated.
+Keep coordinates on a 20px grid; place new nodes in empty regions.`
+
+export function buildBrief(
+  doc: FlowcanvasDoc, canvasRef: string,
+  resolved: Map<string, { frontmatter?: Record<string, unknown>; body?: string; truncated?: boolean }>,
+  briefId: string, generatedAt: string,
+): DesignBrief {
+  const nodes: BriefNode[] = doc.nodes.map((n) => {
+    const kind: NodeKind = nodeKind(n)
+    const position = { x: n.x, y: n.y, width: n.width, height: n.height }
+    if (n.type === 'file') { const r = resolved.get(n.file); return { id: n.id, kind, position, path: n.file, frontmatter: r?.frontmatter, body: r?.body, truncated: r?.truncated } }
+    if (n.type === 'link') return { id: n.id, kind, position, url: n.url }
+    if (n.type === 'text') return { id: n.id, kind, position, text: n.text }
+    return { id: n.id, kind, position }
+  })
+  const edges: BriefEdge[] = doc.edges.map((e) => ({ id: e.id, from: e.fromNode, to: e.toNode, label: e.label, origin: e.meta?.origin ?? 'user' }))
+  const comments: BriefComment[] = doc.flowcanvas.comments.map((c) => ({
+    id: c.id, threadId: c.parentId ?? c.id, anchorNodeId: c.anchor.kind === 'node' ? c.anchor.nodeId : undefined,
+    author: c.author, text: c.text, createdAt: c.createdAt, resolved: !!c.resolvedAt,
+  }))
+  return { briefVersion: '0.1', briefId, canvasRef, baseRevision: doc.flowcanvas.session.revision, generatedAt, intent: doc.flowcanvas.session.intent ?? '', nodes, edges, comments, responseContract: AGENT_CONTRACT }
+}
+```
+
+`lib/canvas/brief.ts` — `applyResponse` (the 8-step pure merge):
+
+```typescript
+import type { CanvasNode, CanvasEdge, Comment } from './jsoncanvas'
+import type { AgentResponse, MergeReport } from './brief'
+
+export function applyResponse(
+  prev: FlowcanvasDoc, resp: AgentResponse, mintId: (p: string) => string, now: string,
+): { next: FlowcanvasDoc; report: MergeReport } {
+  const report: MergeReport = { stale: resp.briefId !== prev.flowcanvas.session.lastBriefId, generatedFiles: (resp.generatedFiles ?? []).map((g) => g.path), created: { nodes: 0, edges: 0, comments: 0 }, updated: { nodes: 0, edges: 0 }, removed: { nodes: 0, edges: 0 }, conflicts: [] }
+
+  // (3) upsert nodes
+  const nodes = prev.nodes.map((n) => ({ ...n })); const nById = new Map(nodes.map((n) => [n.id, n]))
+  for (const an of resp.upsertNodes ?? []) {
+    const id = an.id && nById.has(an.id) ? an.id : an.id ?? mintId('ag-')
+    const ex = nById.get(id)
+    const merged = { ...(ex ?? {}), id, type: an.type, x: an.x, y: an.y, width: an.width, height: an.height, color: an.color, file: an.file, url: an.url, text: an.text, meta: { ...ex?.meta, origin: 'agent' as const } } as CanvasNode
+    if (ex) { Object.assign(ex, merged); report.updated.nodes++ } else { nodes.push(merged); nById.set(id, merged); report.created.nodes++ }
+  }
+  // (5) upsert edges
+  const edges = prev.edges.map((e) => ({ ...e })); const eById = new Map(edges.map((e) => [e.id, e]))
+  for (const ae of resp.upsertEdges ?? []) {
+    const id = ae.id ?? mintId('ag-')
+    const e: CanvasEdge = { id, fromNode: ae.fromNode, toNode: ae.toNode, fromSide: ae.fromSide, toSide: ae.toSide, label: ae.label, toEnd: 'arrow', meta: { origin: 'agent' } }
+    if (eById.has(id)) { Object.assign(eById.get(id)!, e); report.updated.edges++ } else { edges.push(e); eById.set(id, e); report.created.edges++ }
+  }
+  // (6) comments
+  const comments: Comment[] = prev.flowcanvas.comments.map((c) => ({ ...c }))
+  for (const ac of resp.comments ?? []) {
+    const id = ac.id ?? mintId('ag-'); if (comments.some((c) => c.id === id)) continue
+    const badge = ac.parentId === null ? comments.filter((c) => c.parentId === null).length + 1 : undefined
+    comments.push({ id, anchor: ac.anchor, parentId: ac.parentId, author: ac.author, text: ac.text, createdAt: ac.createdAt ?? now, resolvedAt: null, badge })
+    report.created.comments++
+  }
+  // (7) removals (never remove origin:'user' unless explicit)
+  const rmN = new Set(resp.removeNodeIds ?? []), rmE = new Set(resp.removeEdgeIds ?? [])
+  const nextNodes = nodes.filter((n) => !rmN.has(n.id)); const nextEdges = edges.filter((e) => !rmE.has(e.id))
+  report.removed.nodes = nodes.length - nextNodes.length; report.removed.edges = edges.length - nextEdges.length
+  // (8) bump
+  const next: FlowcanvasDoc = { nodes: nextNodes, edges: nextEdges, flowcanvas: { ...prev.flowcanvas, comments, session: { ...prev.flowcanvas.session, revision: prev.flowcanvas.session.revision + 1, updatedAt: now } } }
+  return { next, report }
+}
+```
+
+> Steps (2) generated-file writes and (4) re-resolve + re-derive happen in the **store** wrapper around this pure function (the merge stays pure/testable):
+
+```typescript
+// store.applyResponse(resp)
+async applyResponse(resp: AgentResponse) {
+  const prev = get().doc!; const { next, report } = applyResponse(prev, resp, (p) => p + crypto.randomUUID().slice(0, 8), new Date().toISOString())
+  for (const g of resp.generatedFiles ?? []) await api.writeFileApi(g.path, g.content)   // (2)
+  const files = next.nodes.filter(isFileNode); const r = await api.resolvePaths(files.map((n) => n.file))  // (4)
+  const byPath = new Map(r.map((x) => [x.path, x])); const bodies = { ...get().bodies }
+  for (const n of files) { const got = byPath.get(n.file); if (nodeKind(n) === 'markdown' && got) { n.meta = { ...n.meta, frontmatter: got.frontmatter }; if (got.body) bodies[n.id] = got.body } }
+  next.edges = reconcileEdges(next.edges, deriveLinkEdges(next.nodes))
+  set({ doc: next, bodies, dirty: true }); await get().save()
+  return report
+}
+```
+
+`components/canvas/canvas-toolbar.tsx` — Cmd+S:
+
+```tsx
+'use client'
+import { useEffect } from 'react'
+import { useCanvasStore } from '@/lib/canvas/store'
+export function useSaveShortcut() {
+  const save = useCanvasStore((s) => s.save)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); void save() } }
+    window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
+  }, [save])
+}
+```
+
+**Worked example** — round-trip:
+
+```text
+Submit → DesignBrief: { briefId:"brief-77a1", intent:"…", nodes:[{id:"n-design",kind:"markdown",path:"…",frontmatter:{…},body:"…"}],
+                        comments:[{id:"c-1",threadId:"c-1",anchorNodeId:"n-plan",text:"reuse file API?",resolved:false}], responseContract:"…" }
+
+Agent → AgentResponse: { responseVersion:"0.1", briefId:"brief-77a1", summary:"Added a tests node + reply",
+  upsertNodes:[{id:"ag-tests",type:"file",file:"mdview/001-…-test-notes.md",x:460,y:-200,width:380,height:320}],
+  generatedFiles:[{path:"mdview/001-…-test-notes.md",content:"---\nname: 001-…-test-notes\n…"}],
+  comments:[{parentId:"c-1",anchor:{kind:"node",nodeId:"n-plan",offsetX:0.5,offsetY:0.9},author:"agent:opus-4.8",text:"Yes — reused verbatim."}] }
+
+Import → writes test-notes.md, adds node ag-tests (resolves its frontmatter), attaches the reply to c-1, persists (revision++).
+Re-import the same JSON → no new nodes/edges/comments (idempotent by id).
+```
+
+**Diagram:** see design § Sequence Diagrams (Submit → agent → Import → merge → persist).
+
+**Acceptance criteria:**
+- [ ] Submit yields a valid `DesignBrief` with embedded `frontmatter`+`body`, edges (with `origin`), comments by id, and `intent`.
+- [ ] Importing a sample `AgentResponse` creates the node, writes the generated `.md`, and attaches a reply to `c-1`.
+- [ ] Re-importing the same response is a no-op (idempotent); a mismatched `briefId` shows a stale warning.
+- [ ] Clicking a node opens the reader drawer with shiki-highlighted code; Cmd+S saves and clears the dirty dot.
+- [ ] Empty state (no `?path`) and an fs-error state render without console errors.
+- [ ] `brief.test.ts` covers build shape + double-apply idempotency.
+- [ ] `npx tsc --noEmit`, `npm run lint`, `npm run build` exit 0.
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npx vitest run`, `npm run lint`, `npm run build`.
+
+> **Quality gate:** code-review sub-agent on merge idempotency, the traversal guard for `/api/file` + `/api/render`, and brief/response validation.
+
+---
+
+## Post-Execution Artifacts
+
+After all phases complete:
+1. Code Explorer audit of the implementation against this plan.
+2. `001-initial-architecture-technical-overview.md` — generated from the audit (architecture as built, module map, deviations).
+3. `001-initial-architecture-qa-report.md` — requires all gates (`tsc`, `lint`, `build`, `vitest`) green.
+4. Parallel finalization: `001-initial-architecture-changelog.md` (per-phase sections appended during the plan) and `001-initial-architecture-test-notes.md`.
+
+Then flip this plan's frontmatter `status: active → complete`.
+
+---
+
+## Dependencies
+
+| Dependency | Type | Notes |
+|------------|------|-------|
+| `001-initial-architecture-design.md` | upstream artifact | Approved design; full schema, API contracts, and agent contract this plan implements |
+| `@xyflow/react` | external (MIT) | Canvas engine |
+| `react-markdown` + `remark-gfm` | external | Node-body + reader markdown |
+| `gray-matter` | external | Frontmatter parsing (server) |
+| `unified` + `rehype-shiki` | external | Reader full-fidelity render pipeline |
+| `zustand` | external | Canvas store |
+| `geist` | external | Geist Sans/Mono fonts |
+| Node `fs` runtime | platform | All routes run on the Node runtime (not Edge) |
+
+---
+
+## Revision History
+
+| Date | Change | Reason |
+|------|--------|--------|
+| 2026-06-25 | Plan created | Initial full-depth draft (all 7 phases) for Flowcanvas v0.1 |
