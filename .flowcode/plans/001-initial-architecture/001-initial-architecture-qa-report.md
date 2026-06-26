@@ -19,6 +19,134 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ---
 
+## Check 2026-06-26 — Phase 5 (Edges: manual + links-derived)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 5 — `lib/canvas/edges.ts`, `lib/canvas/edges.test.ts`, `lib/canvas/store.test.ts`, `components/canvas/edges/labeled-edge.tsx`, `lib/canvas/store.ts` (onConnect, relabelEdge, setNodePosition, load reconcile), `components/canvas/canvas-shell.tsx` (edgeTypes, onConnect, onNodeDragStop, onEdgeDoubleClick), `app/globals.css` (fc-edge-label + origin variants)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `window.prompt` DOM access in `lib/canvas/store.ts:64` violates `project-overview.md § Code Style & Conventions` "no DOM" rule for `lib/canvas/*` modules
+**Gate outcome:** PASS
+**Summary:** All four Phase 5 gates pass (tsc 0 · lint 0 · build ok · vitest 25/25; dev 200 CDP-verified). Derivation is deterministic — `lk:<from>-><to>` ids are stable, `readLinks` handles scalar/absent/non-string entries, per-source dedup is correct. Reconcile correctly keeps user/agent, drops stale links edges, and suppresses a derived edge that duplicates a kept directed pair (including the reverse-direction case). The controlled-state sync loop (`rfNodes/rfEdges → setNodes/setEdges` effects) has no double-add — RF does not auto-add edges on `onConnect`; the store adds to doc and the effect syncs RF state. No drag/position race: `onNodeDragStop` writes the final position to the store once per drop, and `rfNodes` recomputes with the correct coordinates. One medium finding: React Flow's default `deleteKeyCode='Backspace'` is active and `useEdgesState`/`useNodesState` apply `type:'remove'` changes locally, but neither `onEdgesChange` nor `onNodesChange` propagates removals to the store — so keyboard-deleted edges/nodes reappear on the next store update, producing misleading visual reverts. Four low findings (DOM access in lib, missing `memo` on `LabeledEdge`, user-edge color deviates from design spec, `relabelEdge` agent-origin case untested) and four info findings.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 (reported) |
+| Lint | pass | `npm run lint` — exit 0 (reported) |
+| Build | pass | `npm run build` — exit 0 (reported) |
+| Unit | pass | `npx vitest run` — 25/25 (reported; 11 derive/reconcile + 5 store-action + pre-existing adapter suite) |
+| Dev boot | pass | `npm run dev` — GET / 200, derived edge CDP-verified dashed indigo + lock label (reported) |
+| Integration | n/a | Phase 5 scope |
+| Coverage | n/a | Phase 5 scope |
+| E2E | n/a | Phase 5 scope |
+
+### Review Findings
+
+#### Finding 1 — [medium] Keyboard deletion applies to RF local state only and reverts on next store update
+
+**Files:** `components/canvas/canvas-shell.tsx:96-115`
+
+React Flow's default `deleteKeyCode` is `'Backspace'`. Both `useNodesState` and `useEdgesState` return `onNodesChange`/`onEdgesChange` handlers that process all change types from React Flow, including `{type:'remove'}`. When the user selects a node or edge and presses Backspace, React Flow dispatches a `type:'remove'` change; the `useNodesState`/`useEdgesState` hooks apply it to local React Flow state — the element disappears. However, neither handler writes the removal back to the Zustand store. On the next store mutation (any `toggleCollapsed`, `onConnect`, `setNodePosition`, or `relabelEdge` call), `doc` changes, `rfNodes`/`rfEdges` recompute from the store, and the `useEffect` sync calls `setNodes(rfNodes)` / `setEdges(rfEdges)`, restoring the deleted element. The element visually disappears, then silently reappears — a misleading state.
+
+The `<ReactFlow>` component at `canvas-shell.tsx:96` does not set `deleteKeyCode={false}` or `deleteKeyCode={null}` to opt out of this behavior.
+
+**Suggested fix:** Add `deleteKeyCode={false}` (or `deleteKeyCode={null}`) to the `<ReactFlow>` props in `canvas-shell.tsx` until deletion is properly implemented in the store (Phase 7 polish scope). This is a one-line addition that prevents the misleading visual revert without blocking any Phase 5 functionality.
+
+**Resolution:** fixed — `deleteKeyCode={null}` added to `<ReactFlow>` in `canvas-shell.tsx` (`false` is not a valid `KeyCode`; `null` is the type-correct opt-out). Store-level deletion stays Phase 7.
+
+---
+
+#### Finding 2 — [low] `window.prompt` DOM access in `lib/canvas/store.ts` violates the lib/canvas "no DOM" project convention
+
+**Files:** `lib/canvas/store.ts:64`
+
+`project-overview.md § Code Style & Conventions` (Pure vs. impure split) states: "`lib/canvas/*` modules are pure TypeScript (no DOM, no React) — they accept typed inputs and return typed outputs. All React + DOM work lives in `components/`." The only explicit exception is `adapter.ts`. `store.ts:64` calls `window.prompt('Edge label?')`, which is a blocking synchronous DOM API, directly in the Zustand store. This forces the store test to stub `globalThis.window` to run in the vitest `node` environment, and couples a lib module to the browser global.
+
+The canonical pattern is to keep the store action pure — accept `label: string` as a parameter — and move the `window.prompt` call to the component layer (`canvas-shell.tsx`'s `onConnect` handler). The shell already has a parallel in `onEdgeDoubleClick`, which calls `window.prompt` and passes the result to `relabelEdge`.
+
+**Suggested fix:** Rename store `onConnect` to `addEdge(fromNode, toNode, fromSide, toSide, label)` (or keep the name but accept `label` as a parameter). Move `window.prompt` to `canvas-shell.tsx`'s `onConnect` handler: call `window.prompt`, then call `store.onConnect(conn, label)`. This restores the lib/canvas purity invariant and removes the `globalThis.window` stub from the store test.
+
+**Resolution:** fixed — `store.onConnect(conn, label)` now takes the label as a parameter; the `window.prompt` lives in the shell's `onConnect` handler (mirrors `onEdgeDoubleClick`). `store.ts` is DOM-free again and `store.test.ts` dropped the `globalThis.window` stub.
+
+---
+
+#### Finding 3 — [low] `LabeledEdge` is not wrapped in `memo`
+
+**Files:** `components/canvas/edges/labeled-edge.tsx:13`
+
+Every node component in Phase 4 (`MarkdownNode`, `ImageNode`, `LinkChipNode`, `NoteNode`, `FallbackNode`) is explicitly wrapped with `React.memo` per the project convention and to prevent unnecessary re-renders. `LabeledEdge` is exported as a plain function with no `memo`. Because the `useEffect([rfEdges, setEdges])` sync fires on every doc change (any store update), `setEdges(rfEdges)` is called frequently. Without `memo`, every `LabeledEdge` instance re-renders on every doc update even if that edge's props haven't changed. On boards with many derived edges this is measurable.
+
+**Suggested fix:** Wrap the export: `export const LabeledEdge = memo(function LabeledEdge({ id, ... }: EdgeProps) { ... })`. Add `import { memo } from 'react'`.
+
+**Resolution:** fixed — `LabeledEdge` is now `memo(function LabeledEdge(...))` with `import { memo } from 'react'`, matching the Phase-4 node-component convention.
+
+---
+
+#### Finding 4 — [low] `user` edge stroke uses neutral gray; design spec says "user solid indigo"
+
+**Files:** `components/canvas/edges/labeled-edge.tsx:10`, `.flowcode/plans/001-initial-architecture/001-initial-architecture-design.md § Design System`
+
+The design system principles (design § Design System) state: "Edges — `links` muted+dashed with a lock glyph, **`user` solid indigo**, `agent` neon (cyan→violet) glow." The `STROKE` record in `labeled-edge.tsx:10` sets `user: 'var(--color-outline)'` — which resolves to `#908fa0`, a neutral gray — instead of an indigo token (`--color-primary` #c0c1ff or `--color-primary-cont` #8083ff).
+
+The design intent is that user-drawn edges visually contrast with muted auto-derived `links` edges while staying below the neon `agent` glow. Gray (`--color-outline`) is the same token used for the global `.react-flow__edge-path` fallback, making user edges visually indistinguishable from the base RF edge style.
+
+**Suggested fix:** Change `user: 'var(--color-outline)'` to `user: 'var(--color-primary)'` (or `--color-primary-cont`) to match "solid indigo" per the design spec. Update `.fc-edge-label--user` in `globals.css` with a matching border if one is later added.
+
+**Resolution:** fixed — corrected the full origin→stroke mapping to the design (line 619): `links`→`--color-outline` (muted, dashed+lock), `user`→`--color-primary` (solid indigo), `agent`→`--color-neon-cyan`. Added a `.fc-edge-label--user` label variant. CDP re-verified: the derived edge now strokes `rgb(144,143,160)` (muted), not indigo. My first draft had links/user colors inverted — this finding caught it.
+
+---
+
+#### Finding 5 — [low] `relabelEdge` agent-origin case is untested
+
+**Files:** `lib/canvas/store.test.ts`
+
+`store.test.ts` has two tests for `relabelEdge`: one asserts that a `links`-origin edge is promoted to `user` on relabel, and one asserts that a `user`-origin edge stays `user`. The design contract says user/agent edges are never auto-rewritten by reconcile. The `relabelEdge` logic (`store.ts:84-86`) is: if origin is `'links'` → `'user'`; else keep origin unchanged. For an `agent` edge, the conditional correctly keeps `'agent'`, but this path is not exercised by any test. A regression in the conditional (e.g., changing `=== 'links'` to `!== 'user'`) would silently demote agent edges to undefined origin and pass all existing tests.
+
+**Suggested fix:** Add a third test: seed a doc with an `agent`-origin edge, call `relabelEdge` on it, assert `meta.origin` is still `'agent'`.
+
+**Resolution:** fixed — added `store.test.ts` test "leaves an agent edge origin unchanged on relabel (only links is promoted)". Full suite 26/26.
+
+---
+
+#### Finding 6 — [info] Any store mutation silently clears React Flow selection state
+
+**Files:** `components/canvas/canvas-shell.tsx:73-75`
+
+`useMemo([doc])` always returns new array references for `rfNodes` and `rfEdges` whenever `doc` changes (including nodes-only changes like `toggleCollapsed`). The two sync effects fire on any such reference change and call `setNodes(rfNodes)` / `setEdges(rfEdges)`, which overwrites React Flow's internal state with the store's version. React Flow's local selection state (`selected: true` on nodes/edges) is not stored in the Zustand doc, so it is discarded on every `setNodes`/`setEdges` call. Selecting an edge then dragging a node will clear the edge selection because `onNodeDragStop` → `setNodePosition` → store update → effect fires → `setEdges(rfEdges)` (edges haven't changed in content but the array reference is new).
+
+This is an inherent trade-off of the controlled-state sync pattern (pre-existing from Phase 4 for nodes) now extended to edges. No correctness impact in Phase 5 — edge selection is not used for any workflow — but it will matter when Phase 7 adds a toolbar that acts on the selected edge.
+
+**Suggested fix (deferred):** Separate `rfNodes` and `rfEdges` memos and add a stable-reference guard (e.g., only call `setEdges` if the edge set actually changed by id/origin comparison). Alternatively, move selection state into the store so it survives the sync.
+
+**Resolution:** accepted — deferred to Phase 7 when toolbar actions on selected edges are added.
+
+---
+
+#### Finding 7 — [info] `relabelEdge` marks `dirty: true` unconditionally even when no edge matches the id
+
+**Files:** `lib/canvas/store.ts:88`
+
+`relabelEdge` calls `set({ doc: { ...doc, edges }, dirty: true })` after the map regardless of whether any edge was updated. If `edge.id` is not in the store (impossible via `onEdgeDoubleClick` which uses an RF-rendered edge id, but possible via future direct calls), `edges` is a new array reference with identical content, a new `doc` object is created, both sync effects fire, and `dirty` is set to `true` with no actual change. This is an `info`-level concern since the triggering path does not exist in Phase 5 practice.
+
+**Suggested fix:** Guard: `const changed = edges.some((e, i) => e !== doc.edges[i]); if (changed || edges.length !== doc.edges.length) set({ doc: { ...doc, edges }, dirty: true })`. Or simply: check if the found edge's label actually changed before calling `set`.
+
+**Resolution:** accepted as-is for Phase 5 — the triggering condition does not arise from the wired `onEdgeDoubleClick` path.
+
+---
+
+#### Finding 8 — [info] Project-overview Store module row does not list Phase 5 additions
+
+**Files:** `.flowcode/project/project-overview.md:65`
+
+The Store module row in `project-overview.md` lists store actions as: `load, save, onConnect, toggleCollapsed, addComment, replyComment, resolveComment, buildBrief, applyResponse orchestration`. Phase 5 added `setNodePosition` and `relabelEdge` to the store interface (`store.ts:18-19`). The project-overview row has not been updated to reflect these two actions.
+
+**Suggested fix:** Update the Store module row description to include `setNodePosition` and `relabelEdge`.
+
+**Resolution:** fixed — the project-overview Store row now lists `onConnect`/`relabelEdge`/`setNodePosition` (with the `load` reconcile note); the Edge-component row updated to the implemented provenance styling.
+
+---
+
 ## Check 2026-06-26 18:10 — Phase 4 (content-node design pass)
 
 **Reviewer:** main agent (user design feedback → rework → headless-Chrome + CDP verification)

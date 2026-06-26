@@ -15,6 +15,18 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ---
 
+## [PHASE 5] Edges: manual + links-derived — complete — 2026-06-26
+
+**Dev:** david-ds-teles
+**Started:** 2026-06-26
+**Completed:** 2026-06-26
+**Built:** Manual + links-derived edges. New `lib/canvas/edges.ts` (`deriveLinkEdges` deterministic `lk:` ids from `links:` frontmatter + `reconcileEdges` keep-user/agent / drop-stale-derived / suppress-manual-dupe), a `memo`'d origin-styled `LabeledEdge` (links muted-dashed+🔒, user solid indigo, agent neon cyan), and store wiring: `load` self-heals the links graph each load, `onConnect` mints user edges, `relabelEdge` promotes a derived edge to user on label-edit, `setNodePosition` commits drag positions (resolves the Phase-4 deferred write-back). Shell registers `edgeTypes` and wires onConnect/onNodeDragStop/onEdgeDoubleClick with `deleteKeyCode={null}`.
+**Files:** `lib/canvas/edges.ts`, `lib/canvas/edges.test.ts`, `lib/canvas/store.test.ts`, `components/canvas/edges/labeled-edge.tsx`, `lib/canvas/store.ts`, `components/canvas/canvas-shell.tsx`, `app/globals.css`, `.flowcode/project/project-overview.md`, `001-initial-architecture-ui-design.md` (Phase-5 visual-parity row), `001-initial-architecture-plan.md`, `001-initial-architecture-qa-report.md`, `mockups/captures/phase-5/default-board-edges.png`
+**Gates:** `tsc 0 · lint 0 · build ok · vitest 26/26 (11 edges + 6 store + 9 adapter) · dev 200` — visual-parity **screenshot- + CDP-verified** (headless Chrome): the default board derives 1 edge `lk:n-welcome->n-schema`, dashed `5px,4px`, stroke `rgb(144,143,160)` (muted `--color-outline`), label `🔒links`; 5 nodes, no fallback errors — review: 0 critical/high, 1 medium fixed (deleteKeyCode revert), 4 low fixed (DOM-in-lib, missing memo, user-edge color vs design, agent-relabel test), 3 info (selection-clear→Phase 7 deferred, relabel-dirty accepted, project-overview synced).
+**Deviations:** (1) Position write-back via `onNodeDragStop`→`setNodePosition` rather than the plan's literal "wire onNodesChange" — committing on drop is the correct RF idiom (writing the store per drag-delta fights the controlled-state sync); resolves Phase-4 deferred low. (2) `onConnect` takes `label` as a param + immutable edge append (plan snippet did in-place `push` + `window.prompt` inside the store) — keeps `lib/canvas/*` DOM-free per project-overview conventions (qa Finding 2). (3) `deriveLinkEdges` adds defensive `readLinks` coercion + per-source dedup beyond the plan snippet. (4) Label-edit promotion implemented via `relabelEdge` + `onEdgeDoubleClick`. (5) Added `store.test.ts` (not in the plan file table) to authoritatively cover the manual-edge/promotion/position store actions. (6) qa Finding 1 (medium): RF default Backspace-delete mutated only local RF state and reverted on the next store sync → `deleteKeyCode={null}` opt-out (store-level delete is Phase 7). (7) qa Finding 4 (low): first-draft STROKE map had links/user colors inverted vs design line 619 → corrected (links muted, user indigo) and CDP re-verified. (8) Durable reload-persistence of manual edges rides on the Phase-7 save trigger (same as the Phase-4 `collapsed` flag) — `save()` already POSTs the doc.
+
+---
+
 ## [PHASE 4] Content Nodes — complete — 2026-06-26
 
 **Dev:** david-ds-teles

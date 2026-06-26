@@ -350,6 +350,31 @@ html, body { height: 100%; }
   text-overflow: ellipsis;
 }
 
+/* edges (Phase 5) — provenance carried by stroke (set inline in labeled-edge) + a glass label.
+   links = dashed indigo + lock (auto-derived), user = neutral outline, agent = neon cyan. */
+.fc-edge-label {
+  position: absolute;
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.82);
+  backdrop-filter: blur(8px);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fc-edge-label--links { color: var(--color-text-secondary); border-color: var(--color-outline-variant); }
+.fc-edge-label--user  { color: var(--color-primary);        border-color: rgba(192, 193, 255, 0.4); }
+.fc-edge-label--agent { color: var(--color-neon-cyan);      border-color: rgba(94, 242, 255, 0.4); }
+.fc-edge-label__lock { font-size: 9px; line-height: 1; }
+
 /* handles — small neon dots */
 .react-flow__handle {
   width: 9px;

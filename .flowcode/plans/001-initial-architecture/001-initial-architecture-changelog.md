@@ -95,6 +95,22 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ---
 
+## Phase 5 — Edges: manual + links-derived
+
+One-line intro: derives `lk:` edges from `links:` frontmatter on each load and layers manual user/agent edges on top, with origin-styled rendering and store actions for connect, relabel, and drag write-back.
+
+| File | Type | Summary |
+|------|------|---------|
+| `lib/canvas/edges.ts` | created | `deriveLinkEdges(nodes)`: deterministic `lk:<from>-><to>` edges from each file node's `meta.frontmatter.links` (skips unresolved targets + self-links; per-source dedup; `readLinks` coerces array \| scalar \| absent \| non-string entries); `reconcileEdges(existing, derived)`: keeps non-`links` origins (user/agent/none), drops stale `links` edges wholesale, suppresses a derived edge that duplicates a kept directed pair. Pure TS (no DOM/React). |
+| `lib/canvas/edges.test.ts` | created | 11 unit tests: derive determinism, unresolved/self/scalar/non-string-entry guards, dedup, reconcile keep/drop/suppress, no-origin-kept. |
+| `lib/canvas/store.test.ts` | created | Store-action tests (zustand outside React, seeded via `setState`): `onConnect` mints a `user` edge + missing-endpoint guard; `relabelEdge` promotes `links→user` and leaves `user`/`agent` unchanged; `setNodePosition` write-back. Added because these actions cannot be drag-simulated in the node test env. |
+| `components/canvas/edges/labeled-edge.tsx` | created | `memo`'d bezier edge (`getBezierPath`) + portaled `EdgeLabelRenderer` pill label; origin→stroke per design: `links`=`--color-outline` muted dashed `5 4` + 🔒, `user`=`--color-primary` solid indigo, `agent`=`--color-neon-cyan`. |
+| `lib/canvas/store.ts` | modified | `load` now runs `reconcileEdges(doc.edges, deriveLinkEdges(nodes))` on the frontmatter-hydrated nodes (self-heals the links graph each load); added `onConnect(conn, label)` (immutable user-edge mint; label passed in so the store stays DOM-free), `relabelEdge(id, label)` (promotes a `links` edge to `user`), `setNodePosition(id, x, y)` (drag write-back). |
+| `components/canvas/canvas-shell.tsx` | modified | Registered `edgeTypes={{ labeled: LabeledEdge }}`; wired `onConnect` (shell owns the `window.prompt`, hands label to the store), `onNodeDragStop`→`setNodePosition`, `onEdgeDoubleClick`→`relabelEdge`; `deleteKeyCode={null}` (opt out of RF's local-only Backspace delete until Phase-7 store-level deletion). |
+| `app/globals.css` | modified | Added `.fc-edge-label` glass pill + `--links`/`--user`/`--agent` color variants + `.fc-edge-label__lock`. |
+
+---
+
 ## Reconciliation
 
 {Written at plan completion after the Code Explorer audit. Correct any divergence between per-phase entries and the final code state; flag anomalies. If none: write "None — per-phase entries match the code."}

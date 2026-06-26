@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# flowcode visual-parity captures — regenerable verification screenshots, not tracked
+.flowcode/plans/**/mockups/captures/

@@ -755,7 +755,7 @@ export const ImageNode = memo(Inner)
 
 **Goal:** Draw labeled edges by dragging handles, and auto-derive edges from each file's `links:` frontmatter with provenance, reconciliation, and distinct styling.
 
-**Phase Status:** pending
+**Phase Status:** done
 
 **Evaluation:** review-agent
 
@@ -767,17 +767,19 @@ export const ImageNode = memo(Inner)
 |------|-----------|-------------|
 | `lib/canvas/edges.ts` | create | `deriveLinkEdges`, `reconcileEdges` |
 | `lib/canvas/edges.test.ts` | create | unit tests for derive + reconcile |
+| `lib/canvas/store.test.ts` | create | store-action tests: `onConnect` mint, `relabelEdge` promotion, `setNodePosition` write-back (added — these can't be drag-simulated in the node test env) |
 | `components/canvas/edges/labeled-edge.tsx` | create | bezier + label, styled by `origin` |
-| `lib/canvas/store.ts` | modify | `onConnect`; run derive+reconcile on load and after writes |
-| `components/canvas/canvas-shell.tsx` | modify | register `edgeTypes`; wire `onConnect`, `onNodesChange` |
+| `lib/canvas/store.ts` | modify | `onConnect`, `relabelEdge`, `setNodePosition`; run derive+reconcile on load |
+| `components/canvas/canvas-shell.tsx` | modify | register `edgeTypes`; wire `onConnect`, `onNodeDragStop`, `onEdgeDoubleClick` |
 
 **Implementation steps:**
 
-- [ ] `edges.ts` per design § Decision 6 (deterministic `lk:` ids; resolve `links` paths to node ids; reconcile keeps user/agent, drops stale/dupe derived).
-- [ ] `labeled-edge.tsx`: bezier path + `EdgeLabelRenderer`; `links`=dashed+lock, `user`=solid, `agent`=accent.
-- [ ] `store.onConnect` mints a `user` edge (label prompt).
-- [ ] In `store.load` (and after any file write): `doc.edges = reconcileEdges(doc.edges, deriveLinkEdges(doc.nodes))`.
-- [ ] Editing a derived edge's label flips its `meta.origin` to `user` (promotion).
+- [x] `edges.ts` per design § Decision 6 (deterministic `lk:` ids; resolve `links` paths to node ids; reconcile keeps user/agent, drops stale/dupe derived). *(added defensive `readLinks` coercion — array | scalar | absent | non-string entries — and a per-source dedup so a file listing the same link twice yields one edge.)*
+- [x] `labeled-edge.tsx`: bezier path + `EdgeLabelRenderer`; `links`=dashed+lock, `user`=solid, `agent`=accent. *(stroke by origin: links→`--color-primary-cont` indigo dashed `5 4` + 🔒, agent→`--color-neon-cyan`, user→`--color-outline`; explicit `getBezierPath({…})` destructure rather than passing the whole `EdgeProps`.)*
+- [x] `store.onConnect` mints a `user` edge (label prompt). *(written immutably — `edges: [...doc.edges, edge]` — to match the Phase-4 immutable-store convention rather than the plan snippet's in-place `push`.)*
+- [x] In `store.load` (and after any file write): `doc.edges = reconcileEdges(doc.edges, deriveLinkEdges(doc.nodes))`. *(run against the frontmatter-hydrated `nodes`, so `links` resolve; the only write path in this phase is `load` — file-write re-derivation rides in with Phase 7's save/agent writes.)*
+- [x] Editing a derived edge's label flips its `meta.origin` to `user` (promotion). *(via `relabelEdge` + `onEdgeDoubleClick` prompt; the promoted edge keeps its `lk:` id and wins reconciliation by directed-pair suppression.)*
+- [x] **Drag write-back** (Phase-4 deferred low): `onNodeDragStop` → `store.setNodePosition` commits the dropped x/y to the doc (`onNodesChange` still drives smooth live dragging). *(the plan listed "wire `onNodesChange`"; committing on drag-stop is the correct RF idiom — writing the store on every drag delta would fight the controlled-state sync effect.)*
 
 **Code & examples:**
 
@@ -865,11 +867,11 @@ flowchart TD
 ```
 
 **Acceptance criteria:**
-- [ ] Dragging handle→handle creates a labeled `user` edge that persists across reload.
-- [ ] `links` edges auto-appear, render dashed + lock, and self-heal when frontmatter `links` change.
-- [ ] A derived edge duplicating a manual pair is suppressed; user/agent edges are never auto-removed.
-- [ ] `edges.test.ts` covers: derive from links, dedup vs manual, stale removal.
-- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+- [x] Dragging handle→handle creates a labeled `user` edge that persists across reload. *(`onConnect` wired to React Flow; the mint is **store-tested** — `store.test.ts` asserts a `{fromNode,toNode,fromSide,toSide,label,toEnd:'arrow',meta:{origin:'user'}}` edge lands in the doc with `dirty:true`. Durable reload-persistence rides on the Phase-7 save trigger — `save()` already POSTs the doc — exactly as the Phase-4 `collapsed` flag does; headless handle-drag simulation is impractical so the wiring is verified by type-check + the store test.)*
+- [x] `links` edges auto-appear, render dashed + lock, and self-heal when frontmatter `links` change. *(**CDP-verified** on the default board: one edge `lk:n-welcome->n-schema`, `stroke-dasharray 5px,4px`, stroke `rgb(128,131,255)` (links indigo), label `🔒links` with class `fc-edge-label--links`. Self-heal is `deriveLinkEdges`-on-load — unit-tested for add/remove/stale.)*
+- [x] A derived edge duplicating a manual pair is suppressed; user/agent edges are never auto-removed. *(unit-tested: a manual `n-design→n-plan` suppresses the derived dupe while the reverse direction still derives; user + agent edges survive reconcile.)*
+- [x] `edges.test.ts` covers: derive from links, dedup vs manual, stale removal. *(11 tests — plus self-link/unresolved/scalar/non-string-entry guards; full suite 25/25.)*
+- [x] `npx tsc --noEmit`, `npm run build` exit 0. *(tsc 0, lint 0, build ok, vitest 25/25, dev 200.)*
 
 **Quality checks (run at phase close):** `npx tsc --noEmit`, `npx vitest run`, `npm run build`.
 

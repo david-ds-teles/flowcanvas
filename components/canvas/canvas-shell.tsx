@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -10,6 +10,9 @@ import {
   ConnectionMode,
   useNodesState,
   useEdgesState,
+  type Connection,
+  type Node as RFNode,
+  type Edge as RFEdge,
   type NodeTypes,
   type EdgeTypes,
 } from '@xyflow/react'
@@ -21,6 +24,7 @@ import { ImageNode } from './nodes/image-node'
 import { LinkChipNode } from './nodes/link-node'
 import { NoteNode } from './nodes/note-node'
 import { FallbackNode } from './nodes/fallback-node'
+import { LabeledEdge } from './edges/labeled-edge'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
 // shows content out of the box instead of an empty grid.
@@ -32,7 +36,6 @@ function readPath(): string {
   return new URLSearchParams(window.location.search).get('path') ?? DEFAULT_PATH
 }
 
-// Phase 5 registers the labeled edge type here.
 // `group` + `file` (non-md/non-image) have no dedicated component yet → FallbackNode keeps
 // React Flow from rendering its bare "node type not found" box for those kinds.
 const nodeTypes: NodeTypes = {
@@ -43,11 +46,15 @@ const nodeTypes: NodeTypes = {
   group: FallbackNode,
   file: FallbackNode,
 }
-const edgeTypes: EdgeTypes = {}
+// All edges flow through the single provenance-styled labeled edge (the adapter sets type:'labeled').
+const edgeTypes: EdgeTypes = { labeled: LabeledEdge }
 
 function CanvasFlow() {
   const doc = useCanvasStore((s) => s.doc)
   const load = useCanvasStore((s) => s.load)
+  const connectEdge = useCanvasStore((s) => s.onConnect)
+  const setNodePosition = useCanvasStore((s) => s.setNodePosition)
+  const relabelEdge = useCanvasStore((s) => s.relabelEdge)
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,9 +71,33 @@ function CanvasFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
 
-  // Sync controlled state when store doc changes (e.g. toggleCollapsed, load)
+  // Sync controlled state when store doc changes (e.g. toggleCollapsed, onConnect, load)
   useEffect(() => { setNodes(rfNodes) }, [rfNodes, setNodes])
   useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
+
+  // The store stays DOM-free (project-overview § Conventions): the shell owns the label prompt
+  // and hands the result to the store action, mirroring onEdgeDoubleClick.
+  const onConnect = useCallback(
+    (conn: Connection) => connectEdge(conn, window.prompt('Edge label?')?.trim() ?? ''),
+    [connectEdge],
+  )
+
+  // onNodesChange drives smooth local dragging; commit the final position to the store on drop
+  // (resolves the Phase-4 deferred write-back so node moves survive a save).
+  const onNodeDragStop = useCallback(
+    (_e: MouseEvent | TouchEvent, node: RFNode) => setNodePosition(node.id, node.position.x, node.position.y),
+    [setNodePosition],
+  )
+
+  // Double-click an edge to relabel it; relabeling a derived `links` edge promotes it to `user`.
+  const onEdgeDoubleClick = useCallback(
+    (_e: React.MouseEvent, edge: RFEdge) => {
+      const current = typeof edge.label === 'string' ? edge.label : ''
+      const next = window.prompt('Edge label?', current)
+      if (next !== null) relabelEdge(edge.id, next.trim())
+    },
+    [relabelEdge],
+  )
 
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
@@ -75,9 +106,13 @@ function CanvasFlow() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeDragStop={onNodeDragStop}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
+        deleteKeyCode={null}
         fitView
         minZoom={0.2}
         maxZoom={2}
