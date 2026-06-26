@@ -1,0 +1,102 @@
+// ─────────────────────────── Extended JSONCanvas core ───────────────────────────
+
+export type Side = 'top' | 'right' | 'bottom' | 'left'
+export type EdgeEnd = 'none' | 'arrow'
+/** Hex "#RRGGBB" or JSONCanvas preset "1".."6". */
+export type CanvasColor = string
+
+export type NodeOrigin = 'user' | 'agent' | 'import'
+export type EdgeOrigin = 'links' | 'user' | 'agent'
+
+/** Flowcanvas extension — always safe to drop; re-derivable or UI-only. */
+export interface NodeMeta {
+  origin?: NodeOrigin
+  /** Body hidden (frontmatter-only card). UI state, persisted for convenience. */
+  collapsed?: boolean
+  /**
+   * Parsed YAML frontmatter of a markdown node. CACHE ONLY — the file on disk is
+   * the source of truth; repopulated on every load via /api/canvas/resolve.
+   */
+  frontmatter?: Record<string, unknown>
+}
+
+interface NodeBase {
+  id: string
+  x: number; y: number
+  width: number; height: number
+  color?: CanvasColor
+  meta?: NodeMeta              // Flowcanvas extension
+}
+/** type:"file" → markdown | image | other, discriminated by file extension at render. */
+export interface FileNode  extends NodeBase { type: 'file';  file: string; subpath?: string }
+export interface LinkNode  extends NodeBase { type: 'link';  url: string }
+export interface TextNode  extends NodeBase { type: 'text';  text: string }
+export interface GroupNode extends NodeBase { type: 'group'; label?: string; background?: string; backgroundStyle?: 'cover' | 'ratio' | 'repeat' }
+export type CanvasNode = FileNode | LinkNode | TextNode | GroupNode
+
+export interface CanvasEdge {
+  id: string
+  fromNode: string; toNode: string
+  fromSide?: Side; toSide?: Side
+  fromEnd?: EdgeEnd; toEnd?: EdgeEnd          // default toEnd:"arrow"
+  color?: CanvasColor
+  label?: string
+  meta?: { origin?: EdgeOrigin }              // Flowcanvas extension
+}
+
+// ─────────────────────────── Comments (Flowcanvas extension) ───────────────────────────
+
+export type CommentAnchor =
+  | { kind: 'node';   nodeId: string; offsetX: number; offsetY: number }  // 0..1 fractions of node box
+  | { kind: 'canvas'; x: number; y: number }                             // canvas coordinates
+
+export interface Comment {
+  id: string
+  anchor: CommentAnchor
+  parentId: string | null      // null = root thread; else id of the root it replies to
+  author: string               // "human:<name>" | "agent:<model>"
+  text: string                 // markdown
+  createdAt: string            // ISO 8601
+  resolvedAt?: string | null   // root-only
+  badge?: number               // root-only display number, assigned in creation order
+}
+
+// ─────────────────────────── Session & document ───────────────────────────
+
+export interface SessionMeta {
+  title?: string
+  intent?: string              // the human's high-level goal for the whole board
+  createdAt: string
+  updatedAt: string
+  revision: number             // bumps on every save; optimistic-concurrency token
+  lastBriefId?: string         // id of the most recently exported brief
+}
+
+export interface FlowcanvasExt {
+  schemaVersion: '0.1'
+  session: SessionMeta
+  comments: Comment[]
+}
+
+export interface FlowcanvasDoc {
+  nodes: CanvasNode[]
+  edges: CanvasEdge[]
+  flowcanvas: FlowcanvasExt
+}
+
+// ─────────────────────────── Derived kind ───────────────────────────
+
+export type NodeKind = 'markdown' | 'image' | 'file' | 'link' | 'note' | 'group'
+const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'])
+
+export function nodeKind(n: CanvasNode): NodeKind {
+  if (n.type === 'link')  return 'link'
+  if (n.type === 'text')  return 'note'
+  if (n.type === 'group') return 'group'
+  const ext = n.file.slice(n.file.lastIndexOf('.')).toLowerCase()
+  if (ext === '.md' || ext === '.mdx') return 'markdown'
+  if (IMAGE_EXT.has(ext)) return 'image'
+  return 'file'
+}
+
+export const isFileNode = (n: CanvasNode): n is FileNode => n.type === 'file'

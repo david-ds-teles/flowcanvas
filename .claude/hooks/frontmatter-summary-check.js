@@ -1,0 +1,1 @@
+/Users/davidteles/Projects/2flow/flowcode/agent-tools/hooks/frontmatter-summary-check.js

@@ -1,0 +1,1 @@
+/Users/davidteles/Projects/2flow/flowcode/agent-tools/hooks/plan-artifact-index.js

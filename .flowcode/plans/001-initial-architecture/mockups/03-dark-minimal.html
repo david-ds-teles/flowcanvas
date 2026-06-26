@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flowcanvas v0.1 — Iteration 03 · Premium / Expensive Restraint</title>
+<!--
+  Flowcanvas v0.1 — UI Mockup Iteration 03 ("Premium / Expensive Restraint", Linear/Vercel-grade)
+  Single self-contained file. No external CSS / JS / font / image URLs.
+  Renders the worked-example board from 001-initial-architecture-design.md verbatim.
+  States: 01 empty · 02 loaded · 03 reader-open · 04 comment-mode (stacked, labeled, comparable).
+  Every color resolves to a §2 design-system token. Geist-first stack, system fallback (no remote fetch).
+-->
+<style>
+/* ───────────────────────────── Tokens (design-system §2–§5, §10) ───────────────────────────── */
+:root{
+  /* §2.1 primitives — dark canvas palette */
+  --color-canvas-bg:#0d0d0d;
+  --color-canvas-grid:#242424;
+  --color-node-bg:#141414;
+  --color-node-bg-hover:#1a1a1a;
+  --color-node-border:#2a2a2a;
+  --color-node-border-hover:#3d3d3d;
+  --color-accent:#4f6ef7;                 /* selection / focus / agent edges — NOWHERE ELSE */
+  --color-accent-subtle:rgba(79,110,247,0.12);
+  --color-edge:#363636;
+  --color-edge-label-bg:#1e1e1e;
+  --color-text-primary:#e8e8e8;           /* not pure white — avoids glare */
+  --color-text-secondary:#8b8b8b;
+  --color-text-muted:#4d4d4d;
+  --color-status-green:#3ecf8e;
+  --color-status-amber:#f59f00;
+  --color-status-red:#ff5555;
+  /* §2.4 JSONCanvas color presets (rendering) */
+  --color-preset-1:#ff5555; --color-preset-2:#f59f00; --color-preset-3:#e3b341;
+  --color-preset-4:#3ecf8e; --color-preset-5:#22d3ee; --color-preset-6:#a371f7;
+
+  /* §2.2 semantic aliases — used in components */
+  --bg-canvas:var(--color-canvas-bg);
+  --bg-node:var(--color-node-bg);
+  --bg-node-hover:var(--color-node-bg-hover);
+  --bg-elevated:var(--color-edge-label-bg);   /* #1e1e1e */
+  --border-node:var(--color-node-border);
+  --border-node-hover:var(--color-node-border-hover);
+  --text-primary:var(--color-text-primary);
+  --text-secondary:var(--color-text-secondary);
+  --text-muted:var(--color-text-muted);
+  --accent:var(--color-accent);
+  --accent-tint:var(--color-accent-subtle);
+  --node-cyan:var(--color-preset-5);          /* JSONCanvas "5" — node color tick only */
+  --minimap-mask:rgba(0,0,0,0.7);
+
+  /* §3 typography */
+  --font-geist-sans:'Geist Sans',system-ui,-apple-system,sans-serif;
+  --font-geist-mono:'Geist Mono',ui-monospace,monospace;
+  --font-section-label:11px;
+  --font-caption:12px;
+  --font-body:13px;
+  --font-base:14px;
+  --font-drawer:16px;
+
+  /* §4 spacing scale — 4 · 8 · 12 · 16 · 24 · 32 · 48 only */
+  --space-node-pad:12px;
+  --space-node-gap:8px;
+  --gap:16px;
+  --gap-tight:8px;
+  --space-drawer:24px;
+  --toolbar-height:48px;
+
+  /* §5 borders / radii / shadows */
+  --radius-node:8px;
+  --radius-label:4px;
+  --radius-drawer:12px;
+  --radius-btn:6px;
+  --radius-pill:999px;
+  --shadow-drawer:-4px 0 24px rgba(0,0,0,0.6);   /* elevated overlay only */
+  --shadow-overlay:0 8px 24px rgba(0,0,0,0.5);   /* menus / popovers only */
+
+  /* §10 motion */
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in:cubic-bezier(0.4,0,1,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+  --dur-node:.1s;
+  --dur-drawer:200ms;
+
+  /* a11y touch-target floor (§11) */
+  --hit:44px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-canvas);
+  color:var(--text-primary);
+  font-family:var(--font-geist-sans);
+  font-size:var(--font-base);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:inherit}
+
+/* ───────────────────────────── Doc chrome (mockup scaffold, not the app) ───────────────────────────── */
+.doc-head{max-width:1280px;margin:0 auto;padding:48px 24px 24px}
+.doc-eyebrow{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-secondary);margin:0 0 8px}
+.doc-title{font-size:24px;font-weight:600;letter-spacing:-0.01em;color:var(--text-primary);margin:0 0 12px}
+.doc-sub{font-size:var(--font-base);color:var(--text-secondary);margin:0;max-width:680px}
+.doc-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.doc-legend span{font-family:var(--font-geist-mono);font-size:var(--font-caption);color:var(--text-secondary);
+  border:1px solid var(--border-node);border-radius:var(--radius-label);padding:4px 8px;background:var(--bg-node)}
+
+.frame-block{max-width:1280px;margin:0 auto;padding:24px}
+.frame-label{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.frame-num{font-family:var(--font-geist-mono);font-size:var(--font-caption);color:var(--text-muted)}
+.frame-name{font-size:var(--font-base);font-weight:600;color:var(--text-primary);letter-spacing:0.01em}
+.frame-desc{font-size:var(--font-caption);color:var(--text-secondary)}
+
+/* ───────────────────────────── Canvas frame / shell (§7) ───────────────────────────── */
+.frame{
+  position:relative;
+  width:1280px;height:820px;
+  background:var(--bg-canvas);
+  border:1px solid var(--border-node);
+  border-radius:var(--radius-node);
+  overflow:hidden;
+}
+.dotgrid{
+  position:absolute;inset:0;z-index:0;
+  background-color:var(--bg-canvas);
+  background-image:radial-gradient(circle at center, var(--color-canvas-grid) 1.5px, transparent 1.6px);
+  background-size:20px 20px;
+  background-position:-10px -10px;
+}
+.is-commenting{cursor:crosshair}
+
+/* ───────────────────────────── Top command bar (§7 toolbar) ───────────────────────────── */
+.toolbar{
+  position:absolute;top:0;left:0;right:0;z-index:30;
+  height:var(--toolbar-height);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:var(--bg-elevated);
+  border-bottom:1px solid var(--border-node);
+}
+.tb-left{display:flex;align-items:center;gap:8px}
+.tb-title{display:flex;align-items:center;gap:8px;color:var(--text-secondary)}
+.tb-title svg{width:16px;height:16px}
+.tb-title .name{font-size:var(--font-body);font-weight:500;color:var(--text-primary);letter-spacing:0.01em}
+.tb-right{display:flex;align-items:center;gap:4px}
+.tb-mode{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-secondary);margin-right:8px}
+.tb-divider{width:1px;height:24px;background:var(--border-node);margin:0 8px}
+
+/* Icon-only toolbar button — 32px painted face, ≥44px hit area (§8 + §11) */
+.tbtn{min-width:var(--hit);min-height:var(--hit);display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none}
+.tbtn .face{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:var(--radius-btn);color:var(--text-secondary);
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.tbtn .face svg{width:16px;height:16px}
+.tbtn:hover .face{background:var(--bg-node);border-color:var(--border-node);color:var(--text-primary)}
+.tbtn:active .face{transform:scale(0.97)}
+.tbtn:focus-visible{outline:none}
+.tbtn:focus-visible .face{outline:2px solid var(--accent);outline-offset:2px}
+.tbtn[aria-pressed="true"] .face{background:var(--bg-node-hover);border-color:var(--border-node-hover);color:var(--text-primary)}
+
+/* Text action (export / import / save) — 32px face, ≥44px hit */
+.tbtn-text{min-height:var(--hit);display:inline-flex;align-items:center;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none}
+.tbtn-text .face{height:32px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;
+  border:1px solid var(--border-node);border-radius:var(--radius-btn);background:transparent;
+  color:var(--text-primary);font-family:var(--font-geist-sans);font-size:var(--font-body);
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.tbtn-text .face svg{width:16px;height:16px;color:var(--text-secondary)}
+.tbtn-text:hover .face{background:var(--bg-node);border-color:var(--border-node-hover)}
+.tbtn-text:active .face{transform:scale(0.97)}
+.tbtn-text:focus-visible{outline:none}
+.tbtn-text:focus-visible .face{outline:2px solid var(--accent);outline-offset:2px}
+.dirty-dot{width:6px;height:6px;border-radius:var(--radius-pill);background:var(--color-status-amber);display:inline-block}
+
+/* ───────────────────────────── Edges (SVG, §8 fc-edge) ───────────────────────────── */
+.edges{position:absolute;inset:0;z-index:1;pointer-events:none}
+.edge{fill:none;stroke-width:1.5}
+.edge-links{stroke:var(--color-edge);stroke-dasharray:4 4}   /* links origin: dashed + muted */
+.edge-user{stroke:var(--color-edge)}                          /* user origin: solid muted */
+.edge-agent{stroke:var(--accent)}                             /* agent origin: solid accent */
+#arrow-muted path{fill:var(--color-edge)}
+#arrow-accent path{fill:var(--accent)}
+
+/* Edge label pill (§8 fc-edge-label) */
+.edge-label{position:absolute;z-index:5;transform:translate(-50%,-50%);
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--bg-elevated);border:1px solid var(--border-node);border-radius:var(--radius-label);
+  padding:2px 6px;font-family:var(--font-geist-mono);font-size:var(--font-section-label);
+  color:var(--text-secondary);pointer-events:none;white-space:nowrap}
+.edge-label .lock{width:10px;height:10px;color:var(--text-muted)}
+.edge-label .agent-dot{width:6px;height:6px;border-radius:var(--radius-pill);background:var(--accent)}
+
+/* ───────────────────────────── Canvas node (§8 fc-node) ───────────────────────────── */
+.fc-node{
+  position:absolute;z-index:10;
+  display:flex;flex-direction:column;
+  background:var(--bg-node);
+  border:1px solid var(--border-node);
+  border-radius:var(--radius-node);
+  color:var(--text-primary);
+  font-size:var(--font-body);
+  overflow:hidden;
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease;
+}
+.fc-node:hover{background:var(--bg-node-hover);border-color:var(--border-node-hover)}
+.fc-node.is-selected{box-shadow:0 0 0 2px var(--accent);border-color:transparent}   /* §5 accent ring */
+
+.node-header{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px}
+.node-dot{width:8px;height:8px;border-radius:var(--radius-pill);flex:none}
+.node-dot.cyan{background:var(--node-cyan)}                     /* JSONCanvas "5" tick — not text */
+.node-title{flex:1;font-size:var(--font-body);font-weight:500;color:var(--text-primary);
+  letter-spacing:0.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Collapse toggle — 20px painted face, ≥44px hit */
+.collapse{min-width:var(--hit);min-height:var(--hit);display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;margin:0 -8px 0 0;cursor:pointer;-webkit-appearance:none}
+.collapse .face{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:var(--radius-btn);color:var(--text-secondary);font-size:var(--font-base);line-height:1;
+  transition:background-color var(--dur-node) ease,color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.collapse:hover .face{background:var(--bg-node-hover);color:var(--text-primary)}
+.collapse:active .face{transform:scale(0.97)}
+.collapse:focus-visible{outline:none}
+.collapse:focus-visible .face{outline:2px solid var(--accent);outline-offset:2px}
+
+.node-rule{height:1px;background:var(--border-node);margin:0}
+
+/* Frontmatter table (Geist Mono keys / primary values) */
+.fm{display:flex;flex-direction:column;gap:8px;padding:12px}
+.fm-row{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:baseline}
+.fm-key{font-family:var(--font-geist-mono);font-size:var(--font-body);color:var(--text-secondary)}
+.fm-val{font-size:var(--font-body);color:var(--text-primary)}
+.fm-val .status{display:inline-flex;align-items:center;gap:8px}
+.fm-val .status .glyph{width:6px;height:6px;border-radius:var(--radius-pill);flex:none}
+.glyph-green{background:var(--color-status-green)}
+.glyph-amber{background:var(--color-status-amber)}
+
+/* Node body (markdown), with bottom fade for overflow */
+.node-body{position:relative;padding:12px;overflow:hidden;flex:1}
+.node-body h2{margin:0 0 8px;font-size:var(--font-base);font-weight:600;color:var(--text-primary);letter-spacing:0}
+.node-body p{margin:0 0 8px;font-size:var(--font-body);line-height:1.5;color:var(--text-primary)}
+.node-body p.muted{color:var(--text-secondary)}
+.body-fade{position:absolute;left:0;right:0;bottom:0;height:32px;pointer-events:none;
+  background:linear-gradient(to bottom, transparent, var(--bg-node))}
+
+/* Note (text) node */
+.note-body{padding:16px;display:flex;flex-direction:column;gap:8px}
+.note-body .q-label{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-secondary)}
+.note-body h2{margin:0;font-size:var(--font-base);font-weight:600;color:var(--text-primary)}
+.note-body p{margin:0;font-size:var(--font-body);line-height:1.5;color:var(--text-primary)}
+
+/* Image node */
+.img-canvas{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-canvas);
+  border-bottom:1px solid var(--border-node);overflow:hidden}
+.img-canvas svg{width:100%;height:100%}
+.diagram{color:var(--text-muted)}
+.diagram .lbl{fill:var(--text-secondary);font-family:var(--font-geist-mono);font-size:var(--font-section-label)}
+.diagram .box{stroke:var(--border-node-hover);stroke-width:1.5;fill:none}
+.diagram .flow{stroke:var(--color-edge);stroke-width:1.5;fill:none}
+.img-caption{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;min-height:44px}
+.img-caption .fname{font-family:var(--font-geist-mono);font-size:var(--font-caption);color:var(--text-secondary)}
+.img-caption .dim{font-family:var(--font-geist-mono);font-size:var(--font-section-label);color:var(--text-muted)}
+
+/* Selected-node handles (React Flow, Loose mode) */
+.handle{position:absolute;width:7px;height:7px;border-radius:var(--radius-pill);
+  background:var(--bg-node);border:1px solid var(--border-node-hover);z-index:11}
+.handle.t{top:-4px;left:50%;transform:translateX(-50%)}
+.handle.b{bottom:-4px;left:50%;transform:translateX(-50%)}
+.handle.l{left:-4px;top:50%;transform:translateY(-50%)}
+.handle.r{right:-4px;top:50%;transform:translateY(-50%)}
+
+/* ───────────────────────────── Comment pin (§8 fc-pin) ───────────────────────────── */
+.pin{position:absolute;z-index:20;min-width:var(--hit);min-height:var(--hit);
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none;
+  transform:translate(-50%,-50%)}
+.pin .badge{width:24px;height:24px;border-radius:var(--radius-pill);
+  background:var(--bg-node);border:2px solid var(--border-node-hover);
+  color:var(--text-primary);font-family:var(--font-geist-sans);font-weight:600;font-size:var(--font-caption);
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color var(--dur-node) ease}
+.pin:hover .badge{border-color:var(--text-secondary)}
+.pin.is-active .badge{border-color:var(--accent)}
+.pin.is-resolved{opacity:0.4}
+.pin:focus-visible{outline:none}
+.pin:focus-visible .badge{outline:2px solid var(--accent);outline-offset:2px}
+/* ghost placement affordance */
+.pin-ghost{position:absolute;z-index:19;width:24px;height:24px;border-radius:var(--radius-pill);
+  background:var(--bg-node);border:2px dashed var(--border-node-hover);color:var(--text-secondary);
+  display:flex;align-items:center;justify-content:center;font-size:var(--font-base);
+  transform:translate(-50%,-50%);opacity:0.7;pointer-events:none}
+
+/* ───────────────────────────── MiniMap (§7) ───────────────────────────── */
+.minimap{position:absolute;right:16px;bottom:16px;z-index:30;width:188px;height:124px;
+  background:var(--bg-elevated);border:1px solid var(--border-node);border-radius:var(--radius-node);
+  overflow:hidden}
+.minimap .mask{position:absolute;inset:0;background:var(--minimap-mask)}
+.minimap .mini{position:absolute;background:var(--bg-node-hover);border:1px solid var(--border-node);border-radius:var(--radius-label);z-index:1}
+.minimap .label{position:absolute;left:8px;bottom:8px;z-index:2;font-family:var(--font-geist-mono);
+  font-size:var(--font-section-label);letter-spacing:0.05em;text-transform:uppercase;color:var(--text-muted)}
+
+/* ───────────────────────────── Controls (§7 bottom-left) ───────────────────────────── */
+.controls{position:absolute;left:16px;bottom:16px;z-index:30;display:flex;flex-direction:column;
+  background:var(--bg-elevated);border:1px solid var(--border-node);border-radius:var(--radius-node);overflow:hidden}
+.ctrl{min-width:var(--hit);min-height:var(--hit);display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--text-secondary);-webkit-appearance:none;
+  transition:background-color var(--dur-node) ease,color var(--dur-node) ease}
+.ctrl + .ctrl{border-top:1px solid var(--border-node)}
+.ctrl svg{width:16px;height:16px}
+.ctrl:hover{background:var(--bg-node);color:var(--text-primary)}
+.ctrl:active{transform:scale(0.97)}
+.ctrl:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ───────────────────────────── Empty state (§12 empty) ───────────────────────────── */
+.empty-wrap{position:absolute;inset:var(--toolbar-height) 0 0 0;z-index:10;
+  display:flex;align-items:center;justify-content:center}
+.empty-card{display:flex;flex-direction:column;align-items:center;text-align:center;
+  width:420px;padding:32px;background:var(--bg-node);border:1px solid var(--border-node);
+  border-radius:var(--radius-node)}
+.empty-ico{width:48px;height:48px;border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border-node);background:var(--bg-elevated);color:var(--text-secondary);margin-bottom:24px}
+.empty-ico svg{width:24px;height:24px}
+.empty-eyebrow{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-muted);margin:0 0 8px}
+.empty-card h2{margin:0 0 8px;font-size:18px;font-weight:600;color:var(--text-primary)}
+.empty-card p{margin:0 0 24px;font-size:var(--font-base);color:var(--text-secondary);max-width:320px;line-height:1.5}
+.empty-actions{display:flex;gap:8px}
+.ebtn{min-height:var(--hit);display:inline-flex;align-items:center;gap:8px;padding:0 16px;
+  background:transparent;border:1px solid var(--border-node);border-radius:var(--radius-btn);
+  color:var(--text-primary);font-family:var(--font-geist-sans);font-size:var(--font-base);cursor:pointer;
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.ebtn svg{width:16px;height:16px;color:var(--text-secondary)}
+.ebtn .kbd{font-family:var(--font-geist-mono);font-size:var(--font-section-label);color:var(--text-muted);
+  border:1px solid var(--border-node);border-radius:var(--radius-label);padding:2px 6px;margin-left:4px}
+.ebtn:hover{background:var(--bg-node-hover);border-color:var(--border-node-hover)}
+.ebtn:active{transform:scale(0.97)}
+.ebtn.secondary{color:var(--text-secondary)}
+
+/* ───────────────────────────── Reader drawer (§8) ───────────────────────────── */
+.drawer{position:absolute;top:0;right:0;bottom:0;z-index:40;
+  width:min(40vw,600px);min-width:480px;
+  display:flex;flex-direction:column;
+  background:var(--bg-node);
+  border-top-left-radius:var(--radius-drawer);border-bottom-left-radius:var(--radius-drawer);
+  box-shadow:var(--shadow-drawer);
+  /* enter: 200ms ease-out slide (rendered open here) */
+  transition:transform var(--dur-drawer) var(--ease-out);
+}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  height:var(--toolbar-height);padding:0 16px 0 24px;border-bottom:1px solid var(--border-node);flex:none}
+.drawer-fname{display:flex;align-items:center;gap:8px;min-width:0}
+.drawer-fname svg{width:16px;height:16px;color:var(--text-secondary);flex:none}
+.drawer-fname .t{font-family:var(--font-geist-sans);font-weight:500;font-size:var(--font-base);
+  color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-close{min-width:var(--hit);min-height:var(--hit);display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--text-secondary);-webkit-appearance:none}
+.drawer-close .face{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:var(--radius-btn);
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.drawer-close .face svg{width:20px;height:20px}
+.drawer-close:hover .face{background:var(--bg-node-hover);border-color:var(--border-node);color:var(--text-primary)}
+.drawer-close:active .face{transform:scale(0.97)}
+.drawer-close:focus-visible{outline:none}
+.drawer-close:focus-visible .face{outline:2px solid var(--accent);outline-offset:2px}
+
+.drawer-scroll{flex:1;overflow:auto}
+.drawer-body{padding:24px}
+.prose h2{margin:0 0 12px;font-size:18px;font-weight:600;color:var(--text-primary);letter-spacing:-0.01em}
+.prose p{margin:0 0 16px;font-size:var(--font-drawer);line-height:1.6;color:var(--text-primary)}
+.prose p.lead{color:var(--text-primary)}
+.prose code.inline{font-family:var(--font-geist-mono);font-size:14px;color:var(--node-cyan);
+  background:var(--bg-canvas);border:1px solid var(--border-node);border-radius:var(--radius-label);padding:2px 6px}
+.prose .acc{font-size:var(--font-body);color:var(--text-secondary);margin:0}
+
+/* Code block — simulated shiki tokens (existing tokens only, §2.4 presets) */
+.code-block{background:var(--bg-canvas);border:1px solid var(--border-node);border-radius:var(--radius-node);
+  margin:0 0 16px;overflow:hidden}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+  border-bottom:1px solid var(--border-node)}
+.code-lang{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-muted)}
+.code-dot{width:8px;height:8px;border-radius:var(--radius-pill);background:var(--bg-node-hover)}
+.code-block pre{margin:0;padding:16px;overflow:auto}
+.code-block code{font-family:var(--font-geist-mono);font-size:var(--font-body);line-height:1.6;color:var(--text-primary)}
+.tk-key{color:var(--color-preset-6)}    /* purple — keywords */
+.tk-type{color:var(--color-preset-5)}   /* cyan — types */
+.tk-str{color:var(--color-status-green)}/* green — strings */
+.tk-fn{color:var(--color-preset-3)}     /* yellow — functions */
+.tk-num{color:var(--color-status-amber)}/* amber — numbers */
+.tk-prop{color:var(--text-primary)}     /* properties */
+.tk-punc{color:var(--text-secondary)}   /* punctuation */
+.tk-cmt{color:var(--text-muted);font-style:italic}
+
+/* Comment thread inside drawer (flat; replies indented 16px) */
+.thread{border-top:1px solid var(--border-node);padding:24px;display:flex;flex-direction:column;gap:16px}
+.thread-head{display:flex;align-items:center;gap:8px}
+.thread-head .badge{width:24px;height:24px;border-radius:var(--radius-pill);background:var(--bg-node);
+  border:2px solid var(--border-node-hover);color:var(--text-primary);font-weight:600;font-size:var(--font-caption);
+  display:flex;align-items:center;justify-content:center;flex:none}
+.thread-head .label{font-family:var(--font-geist-mono);font-size:var(--font-section-label);letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--text-secondary)}
+.comment{display:flex;gap:12px}
+.comment.reply{margin-left:16px}
+.avatar{width:24px;height:24px;border-radius:var(--radius-pill);background:var(--border-node-hover);
+  color:var(--text-primary);font-size:var(--font-caption);font-weight:600;flex:none;
+  display:flex;align-items:center;justify-content:center}
+.comment-body{flex:1;min-width:0}
+.comment-meta{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.comment-author{font-family:var(--font-geist-mono);font-size:var(--font-caption);color:var(--text-secondary)}
+.comment-time{font-family:var(--font-geist-mono);font-size:var(--font-section-label);color:var(--text-muted)}
+.comment-text{font-size:var(--font-base);line-height:1.5;color:var(--text-primary);margin:0}
+
+/* ───────────────────────────── Comment-mode thread popover (§5 menu = overlay shadow) ───────────────────────────── */
+.thread-pop{position:absolute;z-index:40;width:320px;
+  background:var(--bg-node);border:1px solid var(--border-node);border-radius:var(--radius-node);
+  box-shadow:var(--shadow-overlay);overflow:hidden;
+  transform-origin:top center;
+  /* origin-aware scale-in from pin (emil): rendered open here */
+  transition:transform var(--dur-node) var(--ease-out),opacity var(--dur-node) var(--ease-out)}
+.pop-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border-node)}
+.pop-head .badge{width:24px;height:24px;border-radius:var(--radius-pill);background:var(--bg-node);
+  border:2px solid var(--accent);color:var(--text-primary);font-weight:600;font-size:var(--font-caption);
+  display:flex;align-items:center;justify-content:center;flex:none}
+.pop-head .ttl{flex:1;font-size:var(--font-body);color:var(--text-secondary);font-family:var(--font-geist-mono)}
+.pop-body{padding:16px;display:flex;flex-direction:column;gap:16px}
+.pop-foot{border-top:1px solid var(--border-node);padding:12px 16px;display:flex;align-items:center;gap:8px}
+.reply-input{flex:1;height:32px;min-height:32px;padding:0 12px;background:var(--bg-canvas);
+  border:1px solid var(--border-node);border-radius:var(--radius-btn);
+  color:var(--text-primary);font-family:var(--font-geist-sans);font-size:var(--font-body);outline:none;
+  transition:border-color var(--dur-node) ease}
+.reply-input::placeholder{color:var(--text-muted)}
+.reply-input:focus-visible{border-color:var(--accent);outline:none}
+.send-btn{min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1px solid var(--border-node);border-radius:var(--radius-btn);
+  color:var(--text-secondary);cursor:pointer;-webkit-appearance:none;
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.send-btn svg{width:16px;height:16px}
+.send-btn:hover{background:var(--bg-node-hover);border-color:var(--border-node-hover);color:var(--text-primary)}
+.send-btn:active{transform:scale(0.97)}
+.send-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.resolve-btn{min-height:32px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;
+  background:transparent;border:1px solid var(--border-node);border-radius:var(--radius-btn);
+  color:var(--text-secondary);font-family:var(--font-geist-sans);font-size:var(--font-body);cursor:pointer;
+  -webkit-appearance:none;
+  transition:background-color var(--dur-node) ease,border-color var(--dur-node) ease,color var(--dur-node) ease,transform var(--dur-node) var(--ease-out)}
+.resolve-btn svg{width:14px;height:14px}
+.resolve-btn:hover{background:var(--bg-node-hover);border-color:var(--color-status-green);color:var(--color-status-green)}
+.resolve-btn:active{transform:scale(0.97)}
+.resolve-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ───────────────────────────── Reduced motion (§10 / §11) ───────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:0.01ms !important;animation-duration:0.01ms !important}
+  .tbtn:active .face,.tbtn-text:active .face,.collapse:active .face,
+  .ctrl:active,.ebtn:active,.send-btn:active,.resolve-btn:active{transform:none}
+  .drawer{transition:opacity var(--dur-node) ease}
+  .thread-pop{transition:opacity var(--dur-node) ease}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+  <p class="doc-eyebrow">Flowcanvas v0.1 · Mockup iteration 03</p>
+  <h1 class="doc-title">Premium / Expensive Restraint</h1>
+  <p class="doc-sub">The calm confidence of Linear / Vercel / Obsidian: a thin top-edge command bar, quiet node cards with precise type, borders over shadows, and a single restrained overlay — with the reader drawer as the centerpiece. Four labeled canvas frames below, comparable side by side.</p>
+  <div class="doc-legend">
+    <span>01 · empty</span><span>02 · loaded</span><span>03 · reader-open</span><span>04 · comment-mode</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     FRAME 01 — EMPTY (§12 empty): no ?path, centered open/create affordance
+     ════════════════════════════════════════════════════════════════════════════ -->
+<section class="frame-block">
+  <div class="frame-label">
+    <span class="frame-num">01</span>
+    <span class="frame-name">empty</span>
+    <span class="frame-desc">no <code>?path</code> — refined prompt to open or create a .canvas; command bar present, dot-grid void</span>
+  </div>
+  <div class="frame">
+    <div class="dotgrid"></div>
+
+    <!-- Top command bar (no board → no dirty dot) -->
+    <div class="toolbar">
+      <div class="tb-left">
+        <div class="tb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="name">No canvas</span>
+        </div>
+      </div>
+      <div class="tb-right">
+        <!-- on click: toggles comment placement mode -->
+        <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="false">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/></svg></span>
+        </button>
+        <!-- on click: adds a new node at viewport center -->
+        <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg></span>
+        </button>
+        <!-- on click: fits all nodes to viewport -->
+        <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span>
+        </button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <!-- on click: opens import (paste/upload AgentResponse) drawer -->
+        <button class="tbtn-text" data-testid="toolbar-import">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Import</span>
+        </button>
+        <!-- on click: builds DesignBrief and opens export drawer -->
+        <button class="tbtn-text" data-testid="toolbar-export">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Export</span>
+        </button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <!-- on click: persists doc (POST /api/canvas) — no changes yet -->
+        <button class="tbtn-text" data-testid="toolbar-save">
+          <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Saved</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Centered empty-state prompt -->
+    <div class="empty-wrap">
+      <div class="empty-card">
+        <div class="empty-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/></svg>
+        </div>
+        <p class="empty-eyebrow">No ?path provided</p>
+        <h2>Open a canvas to begin</h2>
+        <p>Render a flowcode board from a <code class="prose" style="font-family:var(--font-geist-mono);color:var(--text-secondary)">.canvas</code> file — its nodes, edges, and comments — or start a new one.</p>
+        <div class="empty-actions">
+          <!-- on click: opens the file picker scoped to FLOWCANVAS_ROOT -->
+          <button class="ebtn" data-testid="open-file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/></svg>
+            Open .canvas<span class="kbd">⌘O</span>
+          </button>
+          <!-- on click: creates an empty board and writes a new .canvas -->
+          <button class="ebtn secondary" data-testid="new-canvas">New canvas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls present for shell consistency; minimap omitted (nothing to map) -->
+    <div class="controls" role="group" aria-label="Canvas controls">
+      <button class="ctrl" data-testid="controls-zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-fit" aria-label="Fit view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     FRAME 02 — LOADED (§12 loaded): worked-example board, n-design selected
+     ════════════════════════════════════════════════════════════════════════════ -->
+<section class="frame-block">
+  <div class="frame-label">
+    <span class="frame-num">02</span>
+    <span class="frame-name">loaded</span>
+    <span class="frame-desc">worked-example board: design↔plan (links, dashed+lock), realizes, questions, one agent edge; n-design selected</span>
+  </div>
+  <div class="frame">
+    <div class="dotgrid"></div>
+
+    <!-- Top command bar (board dirty → amber dot on Save) -->
+    <div class="toolbar">
+      <div class="tb-left">
+        <div class="tb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="name">mdview 001 architecture map</span>
+        </div>
+      </div>
+      <div class="tb-right">
+        <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <button class="tbtn-text" data-testid="toolbar-import"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Import</span></button>
+        <button class="tbtn-text" data-testid="toolbar-export"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Export</span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <!-- dirty: amber dot signals unsaved changes (§12 dirty) -->
+        <button class="tbtn-text" data-testid="toolbar-save"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Save<span class="dirty-dot" aria-label="unsaved changes"></span></span></button>
+      </div>
+    </div>
+
+    <!-- Edges (drawn behind nodes) -->
+    <svg class="edges" viewBox="0 0 1280 820" width="1280" height="820" aria-hidden="true">
+      <defs>
+        <marker id="arrow-muted" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8 z"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8 z"/></marker>
+      </defs>
+      <!-- lk:n-design->n-plan : links origin, dashed + muted -->
+      <path class="edge edge-links" d="M486 276 C560 276 546 238 620 238" marker-end="url(#arrow-muted)"/>
+      <!-- e-user-1 n-plan->n-arch-img : realizes -->
+      <path class="edge edge-user" d="M788 344 C788 388 788 410 788 452" marker-end="url(#arrow-muted)"/>
+      <!-- e-user-2 n-note->n-design : questions -->
+      <path class="edge edge-user" d="M300 470 C300 446 318 444 318 420" marker-end="url(#arrow-muted)"/>
+      <!-- agent edge (demonstrates third origin) : accent-tinted solid -->
+      <path class="edge edge-agent" d="M620 564 C540 564 530 545 450 545" marker-end="url(#arrow-accent)"/>
+    </svg>
+
+    <!-- Edge labels -->
+    <div class="edge-label" style="left:553px;top:255px"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>links</div>
+    <div class="edge-label" style="left:788px;top:398px">realizes</div>
+    <div class="edge-label" style="left:309px;top:445px">questions</div>
+    <div class="edge-label" style="left:535px;top:554px"><span class="agent-dot" aria-hidden="true"></span>annotates</div>
+
+    <!-- n-design : markdown card, cyan ("5") tick, SELECTED -->
+    <article class="fc-node is-selected" style="left:150px;top:132px;width:336px;height:288px" data-testid="node-n-design" aria-label="001-initial-architecture-design (selected)">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">001-initial-architecture-design</span>
+        <!-- on click: collapse body to frontmatter-only card -->
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm">
+        <div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-green" aria-hidden="true"></span>approved</span></span></div>
+        <div class="fm-row"><span class="fm-key">tags</span><span class="fm-val">design, architecture</span></div>
+      </div>
+      <div class="node-rule"></div>
+      <div class="node-body">
+        <h2>Problem Statement</h2>
+        <p>Designing a system out of markdown today is linear and lossy. Files relate to each other —</p>
+        <p class="muted">a design references its plan; a module references its tests — but those relationships live as paths buried in frontmatter, never seen as a shape.</p>
+        <div class="body-fade"></div>
+      </div>
+      <span class="handle t" aria-hidden="true"></span><span class="handle r" aria-hidden="true"></span>
+      <span class="handle b" aria-hidden="true"></span><span class="handle l" aria-hidden="true"></span>
+    </article>
+
+    <!-- n-plan : markdown card with comment pin "1" -->
+    <article class="fc-node" style="left:620px;top:132px;width:336px;height:212px" data-testid="node-n-plan" aria-label="001-initial-architecture-plan">
+      <div class="node-header">
+        <span class="node-title">001-initial-architecture-plan</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm">
+        <div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-amber" aria-hidden="true"></span>active</span></span></div>
+      </div>
+      <div class="node-rule"></div>
+      <div class="node-body">
+        <h2>Phase 2 — Canvas Shell</h2>
+        <p class="muted">Mount React Flow in a client-only shell; the adapter maps the document onto nodes + edges.</p>
+        <div class="body-fade"></div>
+      </div>
+    </article>
+    <!-- comment pin anchored to n-plan {offsetX:0.5, offsetY:0.9} -->
+    <button class="pin" style="left:788px;top:323px" data-testid="comment-pin" aria-label="Comment thread 1 on plan node"><span class="badge">1</span></button>
+
+    <!-- n-arch-img : image node, inline SVG architecture placeholder -->
+    <article class="fc-node" style="left:620px;top:452px;width:336px;height:224px" data-testid="node-n-arch-img" aria-label="architecture.png">
+      <div class="img-canvas">
+        <svg class="diagram" viewBox="0 0 336 150" fill="none" aria-hidden="true">
+          <rect class="box" x="24" y="30" width="84" height="40" rx="4"/><text class="lbl" x="66" y="54" text-anchor="middle">React Flow</text>
+          <rect class="box" x="126" y="30" width="84" height="40" rx="4"/><text class="lbl" x="168" y="54" text-anchor="middle">Route API</text>
+          <rect class="box" x="228" y="30" width="84" height="40" rx="4"/><text class="lbl" x="270" y="54" text-anchor="middle">fs (ROOT)</text>
+          <path class="flow" d="M108 50 H126"/><path class="flow" d="M210 50 H228"/>
+          <rect class="box" x="126" y="96" width="84" height="34" rx="4"/><text class="lbl" x="168" y="116" text-anchor="middle">.canvas</text>
+          <path class="flow" d="M168 70 V96"/>
+        </svg>
+      </div>
+      <div class="img-caption">
+        <span class="fname">architecture.png</span>
+        <span class="dim">380 × 240</span>
+      </div>
+    </article>
+
+    <!-- n-note : text/note card, cyan accent -->
+    <article class="fc-node" style="left:150px;top:470px;width:300px;height:150px" data-testid="node-n-note" aria-label="Open question note">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">note</span>
+      </div>
+      <div class="node-rule"></div>
+      <div class="note-body">
+        <p class="q-label">Open question</p>
+        <p>Should the canvas store get its own slice?</p>
+      </div>
+    </article>
+
+    <!-- MiniMap (bottom-right) -->
+    <div class="minimap" aria-hidden="true">
+      <div class="mini" style="left:18px;top:24px;width:62px;height:46px"></div>
+      <div class="mini" style="left:108px;top:24px;width:62px;height:34px"></div>
+      <div class="mini" style="left:108px;top:74px;width:62px;height:36px"></div>
+      <div class="mini" style="left:18px;top:78px;width:54px;height:30px"></div>
+      <div class="mask"></div>
+      <span class="label">map</span>
+    </div>
+
+    <!-- Controls (bottom-left) -->
+    <div class="controls" role="group" aria-label="Canvas controls">
+      <button class="ctrl" data-testid="controls-zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-fit" aria-label="Fit view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     FRAME 03 — READER-OPEN (§12 reader-open): drawer for n-plan, the centerpiece
+     ════════════════════════════════════════════════════════════════════════════ -->
+<section class="frame-block">
+  <div class="frame-label">
+    <span class="frame-num">03</span>
+    <span class="frame-name">reader-open</span>
+    <span class="frame-desc">full-fidelity reader drawer (n-plan): immaculate type, syntax-highlighted code block, flat comment thread</span>
+  </div>
+  <div class="frame">
+    <div class="dotgrid"></div>
+
+    <div class="toolbar">
+      <div class="tb-left">
+        <div class="tb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="name">mdview 001 architecture map</span>
+        </div>
+      </div>
+      <div class="tb-right">
+        <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <button class="tbtn-text" data-testid="toolbar-import"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Import</span></button>
+        <button class="tbtn-text" data-testid="toolbar-export"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Export</span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <button class="tbtn-text" data-testid="toolbar-save"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Save<span class="dirty-dot" aria-label="unsaved changes"></span></span></button>
+      </div>
+    </div>
+
+    <!-- Board remains navigable underneath the drawer (left side visible) -->
+    <svg class="edges" viewBox="0 0 1280 820" width="1280" height="820" aria-hidden="true">
+      <defs>
+        <marker id="arrow-muted-3" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path style="fill:var(--color-edge)" d="M0 0 L7 4 L0 8 z"/></marker>
+      </defs>
+      <path class="edge edge-links" d="M486 276 C560 276 546 238 620 238" marker-end="url(#arrow-muted-3)"/>
+      <path class="edge edge-user" d="M300 470 C300 446 318 444 318 420" marker-end="url(#arrow-muted-3)"/>
+    </svg>
+    <div class="edge-label" style="left:553px;top:255px"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>links</div>
+    <div class="edge-label" style="left:309px;top:445px">questions</div>
+
+    <article class="fc-node" style="left:150px;top:132px;width:336px;height:288px" data-testid="node-n-design" aria-label="001-initial-architecture-design">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">001-initial-architecture-design</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm">
+        <div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-green" aria-hidden="true"></span>approved</span></span></div>
+        <div class="fm-row"><span class="fm-key">tags</span><span class="fm-val">design, architecture</span></div>
+      </div>
+      <div class="node-rule"></div>
+      <div class="node-body">
+        <h2>Problem Statement</h2>
+        <p>Designing a system out of markdown today is linear and lossy. Files relate to each other —</p>
+        <p class="muted">a design references its plan; a module references its tests.</p>
+        <div class="body-fade"></div>
+      </div>
+    </article>
+
+    <article class="fc-node" style="left:150px;top:470px;width:300px;height:150px" data-testid="node-n-note" aria-label="Open question note">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">note</span>
+      </div>
+      <div class="node-rule"></div>
+      <div class="note-body">
+        <p class="q-label">Open question</p>
+        <p>Should the canvas store get its own slice?</p>
+      </div>
+    </article>
+
+    <!-- n-plan is the opened node → SELECTED (mostly behind the drawer; its left edge ring shows) -->
+    <article class="fc-node is-selected" style="left:620px;top:132px;width:336px;height:212px" data-testid="node-n-plan" aria-label="001-initial-architecture-plan (open in reader)">
+      <div class="node-header">
+        <span class="node-title">001-initial-architecture-plan</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm"><div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-amber" aria-hidden="true"></span>active</span></span></div></div>
+    </article>
+
+    <div class="controls" role="group" aria-label="Canvas controls">
+      <button class="ctrl" data-testid="controls-zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-fit" aria-label="Fit view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+
+    <!-- Reader drawer — slides from right; enter 200ms ease-out (rendered open) -->
+    <aside class="drawer" role="dialog" aria-label="Reader: 001-initial-architecture-plan.md">
+      <div class="drawer-header">
+        <div class="drawer-fname">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
+          <span class="t">001-initial-architecture-plan.md</span>
+        </div>
+        <!-- on click: closes the drawer (exit 150ms ease-in) -->
+        <button class="drawer-close" data-testid="reader-close" aria-label="Close reader"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></span></button>
+      </div>
+      <div class="drawer-scroll">
+        <div class="drawer-body">
+          <div class="prose">
+            <h2>Phase 2 — Canvas Shell</h2>
+            <p class="lead">Mount React Flow inside a client-only shell. The adapter maps the JSONCanvas document onto <code class="inline">{ nodes, edges }</code>; selection and dirty state live in the Zustand store.</p>
+            <div class="code-block">
+              <div class="code-head"><span class="code-lang">typescript · adapter.ts</span><span class="code-dot" aria-hidden="true"></span></div>
+<pre><code><span class="tk-cmt">// FlowcanvasDoc → React Flow {nodes,edges}</span>
+<span class="tk-key">export</span> <span class="tk-key">function</span> <span class="tk-fn">toReactFlow</span><span class="tk-punc">(</span><span class="tk-prop">doc</span><span class="tk-punc">:</span> <span class="tk-type">FlowcanvasDoc</span><span class="tk-punc">)</span> <span class="tk-punc">{</span>
+  <span class="tk-key">const</span> <span class="tk-prop">nodes</span> <span class="tk-punc">=</span> <span class="tk-prop">doc</span><span class="tk-punc">.</span><span class="tk-prop">nodes</span><span class="tk-punc">.</span><span class="tk-fn">map</span><span class="tk-punc">(</span><span class="tk-fn">adaptNode</span><span class="tk-punc">)</span>
+  <span class="tk-key">const</span> <span class="tk-prop">edges</span> <span class="tk-punc">=</span> <span class="tk-fn">reconcileEdges</span><span class="tk-punc">(</span>
+    <span class="tk-fn">deriveLinkEdges</span><span class="tk-punc">(</span><span class="tk-prop">doc</span><span class="tk-punc">.</span><span class="tk-prop">nodes</span><span class="tk-punc">),</span>
+    <span class="tk-prop">doc</span><span class="tk-punc">.</span><span class="tk-prop">edges</span><span class="tk-punc">,</span>
+  <span class="tk-punc">)</span>
+  <span class="tk-key">return</span> <span class="tk-punc">{</span> <span class="tk-prop">nodes</span><span class="tk-punc">,</span> <span class="tk-prop">edges</span> <span class="tk-punc">}</span>
+<span class="tk-punc">}</span></code></pre>
+            </div>
+            <p>Derived <code class="inline">links:</code> edges get deterministic ids (<code class="inline">lk:&lt;from&gt;-&gt;&lt;to&gt;</code>) so every load replaces the whole derived set without touching user or agent edges.</p>
+            <p class="acc">Acceptance — board renders from <code class="inline">?path</code>; minimap + controls visible; no SSR error (<code class="inline">ssr:false</code>).</p>
+          </div>
+        </div>
+        <!-- Flat comment thread for this node (replies indented 16px) -->
+        <div class="thread">
+          <div class="thread-head">
+            <span class="badge">1</span>
+            <span class="label">1 thread · open</span>
+          </div>
+          <div class="comment">
+            <span class="avatar" aria-hidden="true">D</span>
+            <div class="comment-body">
+              <div class="comment-meta"><span class="comment-author">human:david</span><span class="comment-time">10:20</span></div>
+              <p class="comment-text">Can the file API be reused verbatim for canvas persistence?</p>
+            </div>
+          </div>
+          <div class="comment reply">
+            <span class="avatar" aria-hidden="true">O</span>
+            <div class="comment-body">
+              <div class="comment-meta"><span class="comment-author">agent:opus-4.8</span><span class="comment-time">10:41</span></div>
+              <p class="comment-text">Yes — guardPath + the POST handler are reused; canvas adds <code class="inline">/api/canvas</code> + <code class="inline">/api/asset</code> only.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     FRAME 04 — COMMENT-MODE (§12 comment-mode): toggle active, open thread c-1
+     ════════════════════════════════════════════════════════════════════════════ -->
+<section class="frame-block">
+  <div class="frame-label">
+    <span class="frame-num">04</span>
+    <span class="frame-name">comment-mode</span>
+    <span class="frame-desc">comment toggle active, pin-placement affordance, open flat thread (root + reply + input + resolve), one resolved pin at 0.4</span>
+  </div>
+  <div class="frame is-commenting">
+    <div class="dotgrid"></div>
+
+    <div class="toolbar">
+      <div class="tb-left">
+        <div class="tb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="name">mdview 001 architecture map</span>
+        </div>
+        <!-- active-state is also announced textually, not by color alone -->
+        <span class="tb-mode">Comment mode</span>
+      </div>
+      <div class="tb-right">
+        <!-- comment-mode ON: aria-pressed=true + filled face (no accent — accent is reserved) -->
+        <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="true"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg></span></button>
+        <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <button class="tbtn-text" data-testid="toolbar-import"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Import</span></button>
+        <button class="tbtn-text" data-testid="toolbar-export"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Export</span></button>
+        <span class="tb-divider" aria-hidden="true"></span>
+        <button class="tbtn-text" data-testid="toolbar-save"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Save<span class="dirty-dot" aria-label="unsaved changes"></span></span></button>
+      </div>
+    </div>
+
+    <svg class="edges" viewBox="0 0 1280 820" width="1280" height="820" aria-hidden="true">
+      <defs>
+        <marker id="arrow-muted-4" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path style="fill:var(--color-edge)" d="M0 0 L7 4 L0 8 z"/></marker>
+        <marker id="arrow-accent-4" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path style="fill:var(--accent)" d="M0 0 L7 4 L0 8 z"/></marker>
+      </defs>
+      <path class="edge edge-links" d="M486 276 C560 276 546 238 620 238" marker-end="url(#arrow-muted-4)"/>
+      <path class="edge edge-user" d="M788 344 C788 388 788 410 788 452" marker-end="url(#arrow-muted-4)"/>
+      <path class="edge edge-user" d="M300 470 C300 446 318 444 318 420" marker-end="url(#arrow-muted-4)"/>
+      <path class="edge edge-agent" d="M620 564 C540 564 530 545 450 545" marker-end="url(#arrow-accent-4)"/>
+    </svg>
+    <div class="edge-label" style="left:553px;top:255px"><svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>links</div>
+    <div class="edge-label" style="left:788px;top:398px">realizes</div>
+    <div class="edge-label" style="left:309px;top:445px">questions</div>
+    <div class="edge-label" style="left:535px;top:554px"><span class="agent-dot" aria-hidden="true"></span>annotates</div>
+
+    <article class="fc-node" style="left:150px;top:132px;width:336px;height:288px" data-testid="node-n-design" aria-label="001-initial-architecture-design">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">001-initial-architecture-design</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm">
+        <div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-green" aria-hidden="true"></span>approved</span></span></div>
+        <div class="fm-row"><span class="fm-key">tags</span><span class="fm-val">design, architecture</span></div>
+      </div>
+      <div class="node-rule"></div>
+      <div class="node-body">
+        <h2>Problem Statement</h2>
+        <p>Designing a system out of markdown today is linear and lossy. Files relate to each other —</p>
+        <p class="muted">a design references its plan; a module references its tests.</p>
+        <div class="body-fade"></div>
+      </div>
+    </article>
+    <!-- a resolved comment pin: opacity 0.4 (shown for contrast against the open thread) -->
+    <button class="pin is-resolved" style="left:470px;top:280px" data-testid="comment-pin" aria-label="Comment thread 2 (resolved)"><span class="badge">2</span></button>
+
+    <article class="fc-node" style="left:620px;top:132px;width:336px;height:212px" data-testid="node-n-plan" aria-label="001-initial-architecture-plan">
+      <div class="node-header">
+        <span class="node-title">001-initial-architecture-plan</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><span class="face">–</span></button>
+      </div>
+      <div class="node-rule"></div>
+      <div class="fm"><div class="fm-row"><span class="fm-key">status</span><span class="fm-val"><span class="status"><span class="glyph glyph-amber" aria-hidden="true"></span>active</span></span></div></div>
+      <div class="node-rule"></div>
+      <div class="node-body">
+        <h2>Phase 2 — Canvas Shell</h2>
+        <p class="muted">Mount React Flow in a client-only shell.</p>
+        <div class="body-fade"></div>
+      </div>
+    </article>
+    <!-- active pin (open thread below) — accent ring marks the active pin -->
+    <button class="pin is-active" style="left:788px;top:323px" data-testid="comment-pin" aria-label="Comment thread 1 (active)"><span class="badge">1</span></button>
+
+    <article class="fc-node" style="left:620px;top:452px;width:336px;height:224px" data-testid="node-n-arch-img" aria-label="architecture.png">
+      <div class="img-canvas">
+        <svg class="diagram" viewBox="0 0 336 150" fill="none" aria-hidden="true">
+          <rect class="box" x="24" y="30" width="84" height="40" rx="4"/><text class="lbl" x="66" y="54" text-anchor="middle">React Flow</text>
+          <rect class="box" x="126" y="30" width="84" height="40" rx="4"/><text class="lbl" x="168" y="54" text-anchor="middle">Route API</text>
+          <rect class="box" x="228" y="30" width="84" height="40" rx="4"/><text class="lbl" x="270" y="54" text-anchor="middle">fs (ROOT)</text>
+          <path class="flow" d="M108 50 H126"/><path class="flow" d="M210 50 H228"/>
+          <rect class="box" x="126" y="96" width="84" height="34" rx="4"/><text class="lbl" x="168" y="116" text-anchor="middle">.canvas</text>
+          <path class="flow" d="M168 70 V96"/>
+        </svg>
+      </div>
+      <div class="img-caption"><span class="fname">architecture.png</span><span class="dim">380 × 240</span></div>
+    </article>
+
+    <article class="fc-node" style="left:150px;top:470px;width:300px;height:150px" data-testid="node-n-note" aria-label="Open question note">
+      <div class="node-header">
+        <span class="node-dot cyan" aria-hidden="true"></span>
+        <span class="node-title">note</span>
+      </div>
+      <div class="node-rule"></div>
+      <div class="note-body">
+        <p class="q-label">Open question</p>
+        <p>Should the canvas store get its own slice?</p>
+      </div>
+    </article>
+
+    <!-- pin-placement affordance: ghost pin tracks the cursor; click on canvas drops a thread -->
+    <div class="pin-ghost" style="left:545px;top:402px" aria-hidden="true">+</div>
+
+    <!-- Open flat thread popover for c-1 (origin-aware scale-in from active pin) -->
+    <div class="thread-pop" style="left:632px;top:360px" role="dialog" aria-label="Comment thread 1">
+      <div class="pop-head">
+        <span class="badge">1</span>
+        <span class="ttl">n-plan · open</span>
+        <!-- on click: marks thread resolved (sets resolvedAt; pin → 0.4 opacity) -->
+        <button class="resolve-btn" data-testid="comment-resolve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m22 4-10 10-3-3"/></svg>Resolve</button>
+      </div>
+      <div class="pop-body">
+        <div class="comment">
+          <span class="avatar" aria-hidden="true">D</span>
+          <div class="comment-body">
+            <div class="comment-meta"><span class="comment-author">human:david</span><span class="comment-time">10:20</span></div>
+            <p class="comment-text">Can the file API be reused verbatim for canvas persistence?</p>
+          </div>
+        </div>
+        <div class="comment reply">
+          <span class="avatar" aria-hidden="true">O</span>
+          <div class="comment-body">
+            <div class="comment-meta"><span class="comment-author">agent:opus-4.8</span><span class="comment-time">10:41</span></div>
+            <p class="comment-text">Yes — guardPath + the POST handler are reused; canvas adds <code class="inline">/api/canvas</code> + <code class="inline">/api/asset</code> only.</p>
+          </div>
+        </div>
+      </div>
+      <div class="pop-foot">
+        <!-- on Enter: appends a reply (parentId = c-1) -->
+        <input class="reply-input" data-testid="comment-reply-input" type="text" placeholder="Reply…" aria-label="Reply to thread 1" />
+        <button class="send-btn" data-testid="comment-reply-send" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </div>
+
+    <div class="minimap" aria-hidden="true">
+      <div class="mini" style="left:18px;top:24px;width:62px;height:46px"></div>
+      <div class="mini" style="left:108px;top:24px;width:62px;height:34px"></div>
+      <div class="mini" style="left:108px;top:74px;width:62px;height:36px"></div>
+      <div class="mini" style="left:18px;top:78px;width:54px;height:30px"></div>
+      <div class="mask"></div>
+      <span class="label">map</span>
+    </div>
+
+    <div class="controls" role="group" aria-label="Canvas controls">
+      <button class="ctrl" data-testid="controls-zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></button>
+      <button class="ctrl" data-testid="controls-fit" aria-label="Fit view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

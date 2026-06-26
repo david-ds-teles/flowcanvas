@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas — Nyx Futuristic-Neon (04)</title>
+<!--
+  Flowcanvas v0.1 — design exploration 04 — "nyx" futuristic-neon glass.
+  Ground truth: references/DESIGN.md (Glassmorphic-Minimalist, deep obsidian/indigo void).
+  Board = the 001 plan's OWN real artifacts (dogfood), rendered from verbatim flowcode frontmatter.
+  Mirrors the PLAN's full UI: node/shape tools, connect/draw edges, link + image nodes,
+  drag-drop upload, comments, reader, and the agent export/import round-trip.
+  Self-contained (no external URLs). Review modes via the top nav.
+-->
+<style>
+  :root{
+    --bg:#0b1326; --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33;
+    --c-high:#222a3d; --c-highest:#2d3449; --bright:#31394d;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --on-primary:#1000a9;
+    --secondary:#ddb7ff; --secondary-cont:#6f00be;
+    --tertiary:#ffb2b7; --tertiary-cont:#ff516a; --error:#ffb4ab;
+    --neon-cyan:#5ef2ff; --neon-lime:#b6f36a; --neon-rose:#ff8fb0;
+    --glass-fill:rgba(23,31,51,.55); --glass-fill-2:rgba(34,42,61,.62);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    --r-lg:16px; --r-md:8px; --r-sm:4px; --r-full:999px; --u:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui); color:var(--on); background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%), var(--bg);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;}
+
+  /* ───── state nav ───── */
+  .statebar{position:sticky;top:0;z-index:80;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:9px 16px;background:rgba(6,14,32,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .statebar .brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--on-var);margin-right:auto;display:flex;gap:8px;align-items:center}
+  .statebar .brand b{color:var(--primary);font-weight:600}
+  .statebar button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:7px 11px;min-height:34px;border-radius:var(--r-md);cursor:pointer;
+    transition:border-color .14s ease,color .14s ease,box-shadow .14s ease}
+  .statebar button:hover{color:var(--on);box-shadow:var(--glow-indigo)}
+  .statebar button[aria-current="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);box-shadow:var(--glow-indigo)}
+  .statebar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ───── app shell ───── */
+  .app{position:relative;height:calc(100vh - 56px);overflow:hidden}
+  .stage{position:relative;width:100%;height:100%;overflow:auto}
+
+  /* ───── toolbar ───── */
+  .toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:6px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .toolbar .ttitle{font-family:var(--mono);font-size:12px;color:var(--on-var);margin-right:8px;letter-spacing:.05em;display:flex;gap:8px;align-items:center;white-space:nowrap}
+  .toolbar .ttitle .dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .tdiv{width:1px;height:26px;background:var(--outline-var);margin:0 4px;flex:0 0 auto}
+  .tspring{margin-left:auto}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 10px;
+    border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .tbtn .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px}
+  .tbtn.primary{background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .tbtn[aria-pressed="true"]{border-color:transparent;color:#fff;background:linear-gradient(135deg,rgba(128,131,255,.9),rgba(94,242,255,.5));box-shadow:0 0 18px -2px rgba(94,242,255,.5)}
+  .save-dot{width:8px;height:8px;border-radius:var(--r-full);background:var(--tertiary-cont);box-shadow:0 0 10px var(--tertiary-cont)}
+  /* segmented mode group */
+  .seg{display:flex;border:1px solid var(--outline-var);border-radius:var(--r-md);overflow:hidden;flex:0 0 auto}
+  .seg .tbtn{border:0;border-radius:0;background:transparent;height:36px;min-width:40px;padding:0 11px}
+  .seg .tbtn + .tbtn{border-left:1px solid var(--outline-var)}
+  /* add-node menu */
+  .menu-wrap{position:relative}
+  .menu{position:absolute;top:46px;left:0;z-index:60;min-width:208px;padding:6px;display:none;border:1px solid transparent;border-radius:var(--r-md);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px)}
+  .app[data-menu="open"] .menu{display:block}
+  .menu button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--on);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .menu button:hover{background:rgba(255,255,255,.06)}
+  .menu button svg{width:15px;height:15px;stroke:var(--primary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .menu button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.04em}
+  .menu button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+
+  /* ───── board ───── */
+  .board{position:absolute;left:50%;top:56px;transform:translateX(-50%);width:1280px;height:744px;
+    background-image:radial-gradient(rgba(146,143,160,.16) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+  .app[data-state="reader"] .board, .app[data-state="comment"] .board, .app[data-overlay="agent"] .board{filter:saturate(.9) brightness(.82)}
+  .app[data-state="empty"] .board > :not(.empty){display:none}
+
+  .edges{position:absolute;inset:0;width:1280px;height:744px;pointer-events:none;z-index:5}
+  .ghost-edge{display:none}
+  .app[data-overlay="connect"] .ghost-edge{display:block}
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--on-var);
+    padding:3px 7px;border-radius:var(--r-full);white-space:nowrap;background:rgba(13,21,40,.85);border:1px solid var(--outline-var);display:flex;gap:5px;align-items:center}
+  .elabel.user{color:#e7e7ff;border-color:rgba(128,131,255,.5)}
+  .elabel.agent{color:#062a30;background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-color:transparent;box-shadow:0 0 16px -3px rgba(94,242,255,.6)}
+  .elabel .lock{font-size:9px;opacity:.85}
+
+  .group{position:absolute;border-radius:var(--r-lg);border:1px dashed rgba(128,131,255,.4);background:linear-gradient(180deg,rgba(128,131,255,.07),rgba(94,242,255,.03));z-index:2}
+  .group > .glabel{position:absolute;top:-13px;left:18px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);
+    padding:3px 10px;border-radius:var(--r-full);background:rgba(11,19,38,.92);border:1px solid rgba(128,131,255,.45);display:flex;gap:7px;align-items:center}
+  .group > .glabel svg{width:12px;height:12px;stroke:var(--primary);fill:none;stroke-width:1.6}
+
+  /* node base (glass) */
+  .node{position:absolute;z-index:10;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    transition:box-shadow .14s ease,border-color .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node.selected{box-shadow:0 0 0 2px var(--primary),0 0 26px -4px rgba(192,193,255,.6)}
+  .node .hd{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--outline-var)}
+  .node .name{font-size:13px;font-weight:600;color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto}
+  .node .collapse{flex:0 0 auto;width:24px;height:24px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);cursor:pointer;font-size:14px;line-height:1;transition:color .14s ease,border-color .14s ease}
+  .node .collapse:hover{color:var(--on);border-color:var(--primary)}
+  .node .collapse:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .fm{font-family:var(--mono);font-size:11px;border-collapse:collapse;width:100%}
+  .fm td{padding:5px 12px;vertical-align:top}
+  .fm .k{color:var(--on-var);width:54px;letter-spacing:.04em}
+  .fm .v{color:var(--on)}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:var(--r-full);background:rgba(221,183,255,.14);color:var(--secondary);letter-spacing:.03em}
+  .chip.ok{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .chip.act{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;margin:1px 2px 1px 0;border-radius:var(--r-sm);background:rgba(221,183,255,.12);color:var(--secondary)}
+
+  /* rendered markdown — node body */
+  .body{padding:6px 12px 12px;overflow:hidden;position:relative;flex:1}
+  .body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(transparent,var(--c))}
+  .body h1,.body h2,.body h3{margin:2px 0 5px;font-family:var(--mono);font-weight:600;color:var(--neon-cyan);letter-spacing:.01em}
+  .body h1{font-size:13px}.body h2,.body h3{font-size:12px}
+  .body p{margin:0 0 6px;font-size:12px;line-height:1.5;color:var(--on-var)}
+  .body p:last-child{margin-bottom:0}
+  .body strong{color:var(--on);font-weight:600}.body em{color:var(--secondary);font-style:italic}
+  .body ul{margin:0 0 6px;padding:0;list-style:none}
+  .body li{position:relative;padding-left:14px;font-size:11.5px;line-height:1.45;color:var(--on-var);margin-bottom:3px}
+  .body li::before{content:"";position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:1px;background:var(--neon-cyan);box-shadow:0 0 6px -1px var(--neon-cyan)}
+  .body code{font-family:var(--mono);font-size:11px;color:var(--neon-cyan);background:rgba(94,242,255,.1);padding:0 4px;border-radius:3px;border:1px solid rgba(94,242,255,.16)}
+  .node.collapsed .body{display:none}
+
+  /* image node */
+  .node.img .imgwrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(6,14,32,.5);overflow:hidden}
+  .node.img .imgwrap svg{width:84%;height:84%}
+  .node.img:hover .imgwrap::after{content:"drop to replace";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--neon-cyan);background:rgba(6,14,32,.55);border:1px dashed var(--neon-cyan);border-radius:var(--r-md)}
+
+  /* handles */
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-full);background:var(--c-highest);border:1px solid var(--primary);z-index:11;transition:box-shadow .14s ease,background-color .14s ease}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+  .app[data-overlay="connect"] .handle{background:var(--neon-cyan);border-color:#fff;box-shadow:0 0 12px var(--neon-cyan);animation:hpulse 1.4s ease-in-out infinite}
+  @keyframes hpulse{0%,100%{box-shadow:0 0 7px var(--neon-cyan)}50%{box-shadow:0 0 16px var(--neon-cyan)}}
+
+  /* text + link nodes */
+  .text-node{position:absolute;z-index:10;border-radius:var(--r-lg);padding:14px 16px;backdrop-filter:blur(16px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.5),rgba(13,21,40,.5)),linear-gradient(135deg,rgba(94,242,255,.4),rgba(128,131,255,.12));background-origin:border-box;background-clip:padding-box,border-box}
+  .text-node .nt{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--neon-cyan)}
+  .text-node h3{margin:6px 0 4px;font-family:var(--mono);font-size:13px;color:var(--on)}
+  .text-node p{margin:0;font-size:12px;line-height:1.5;color:var(--on-var)}
+  .link-node{position:absolute;z-index:10;display:flex;gap:10px;align-items:center;border-radius:var(--r-md);padding:0 14px;text-decoration:none;color:var(--on);
+    backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);transition:box-shadow .14s ease}
+  .link-node:hover{box-shadow:var(--glow-indigo)}
+  .link-node:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .link-node svg{width:16px;height:16px;stroke:var(--secondary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .link-node .u{font-family:var(--mono);font-size:12px;color:var(--secondary)}
+  .link-node small{display:block;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.08em;text-transform:uppercase}
+
+  /* comment pin */
+  .pin{position:absolute;z-index:20;width:26px;height:26px;cursor:pointer;border:0;background:transparent;padding:0}
+  .pin i{position:absolute;inset:0;border-radius:var(--r-full) var(--r-full) 2px var(--r-full);background:linear-gradient(135deg,var(--tertiary-cont),#ff7a9c);
+    box-shadow:0 0 16px -2px rgba(255,81,106,.7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;font-style:normal}
+  .pin:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r-full)}
+  .pin.resolved i{background:var(--c-highest);box-shadow:none;color:var(--on-var);opacity:.45}
+  .pin::after{content:"";position:absolute;left:50%;bottom:-4px;width:0;height:0;margin-left:-4px;border:5px solid transparent;border-top-color:#ff7a9c}
+
+  /* chrome */
+  .minimap{position:absolute;z-index:30;border-radius:var(--r-md);backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);overflow:hidden}
+  .minimap .mm-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:14px 14px}
+  .minimap b{position:absolute;border-radius:3px;display:block}
+  .controls{position:absolute;z-index:30;display:flex;flex-direction:column;gap:6px}
+  .controls button{width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.55);backdrop-filter:blur(16px);color:var(--on);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:box-shadow .14s ease}
+  .controls button:hover{box-shadow:var(--glow-indigo)}
+  .controls button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .legend{position:absolute;z-index:30;display:flex;gap:16px;align-items:center;height:36px;padding:0 14px;border-radius:var(--r-full);backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--on-var)}
+  .legend i{display:inline-block;width:22px;height:0;margin-right:7px;vertical-align:middle}
+  .legend .lk{border-top:2px dashed var(--outline)}.legend .us{border-top:2px solid var(--primary)}.legend .ag{border-top:2px solid var(--neon-cyan);box-shadow:0 0 8px var(--neon-cyan)}
+  .legend .note{color:var(--outline);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+
+  /* ───── empty ───── */
+  .empty{position:absolute;inset:0;z-index:15;display:none;align-items:center;justify-content:center}
+  .app[data-state="empty"] .empty{display:flex}
+  .empty .card{width:440px;text-align:center;padding:40px 32px;border-radius:var(--r-lg);backdrop-filter:blur(24px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.6),rgba(13,21,40,.6)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .empty .orb{width:64px;height:64px;margin:0 auto 18px;border-radius:var(--r-full);background:radial-gradient(circle at 35% 30%,var(--neon-cyan),var(--primary-cont) 55%,#3a0d8c);box-shadow:0 0 40px -6px rgba(128,131,255,.7)}
+  .empty h2{margin:0 0 8px;font-size:22px;letter-spacing:-.01em}
+  .empty p{margin:0 0 22px;color:var(--on-var);font-size:13px;line-height:1.5}
+  .empty code{font-family:var(--mono);font-size:12px;color:var(--neon-cyan)}
+  .empty .actions{display:flex;gap:10px;justify-content:center}
+
+  /* ───── reader drawer + flawless prose ───── */
+  .reader{position:absolute;top:56px;right:0;bottom:0;width:min(46vw,600px);z-index:45;transform:translateX(100%);transition:transform .22s cubic-bezier(.23,1,.32,1);
+    border-left:1px solid transparent;background-image:linear-gradient(rgba(11,19,38,.86),rgba(11,19,38,.86)),linear-gradient(200deg,rgba(128,131,255,.4),rgba(255,255,255,.03));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:-30px 0 80px -30px rgba(0,0,0,.75);display:flex;flex-direction:column}
+  .app[data-state="reader"] .reader{transform:translateX(0)}
+  .reader .rhd{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--outline-var)}
+  .reader .rhd .fn{font-size:14px;font-weight:600}.reader .rhd .fp{font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .x{margin-left:auto;width:34px;height:34px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer;font-size:16px}
+  .x:hover{box-shadow:var(--glow-indigo)} .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .rbody{padding:26px 30px;overflow:auto;font-size:16px;line-height:1.66;color:var(--on);max-width:760px}
+  .rbody > :first-child{margin-top:0}
+  .rbody h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px}
+  .rbody .lede{color:var(--on-var);font-size:14.5px;line-height:1.55;margin:0 0 22px}
+  .rbody h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--primary);margin:28px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--outline-var)}
+  .rbody h3{font-size:16px;margin:20px 0 8px;color:var(--on)}
+  .rbody p{color:var(--on-var);margin:0 0 14px}
+  .rbody strong{color:var(--on);font-weight:600}.rbody em{color:var(--secondary);font-style:italic}
+  .rbody a{color:var(--secondary);text-decoration:underline;text-underline-offset:2px}
+  .rbody ul,.rbody ol{margin:0 0 16px;padding:0;list-style:none}
+  .rbody li{position:relative;padding-left:24px;margin:0 0 9px;color:var(--on-var)}
+  .rbody ul li::before{content:"";position:absolute;left:5px;top:10px;width:6px;height:6px;border-radius:2px;background:linear-gradient(135deg,var(--neon-cyan),var(--primary));box-shadow:0 0 8px -1px var(--neon-cyan)}
+  .rbody ol{counter-reset:li}.rbody ol li::before{counter-increment:li;content:counter(li);position:absolute;left:0;top:1px;font-family:var(--mono);font-size:12px;color:var(--primary)}
+  .rbody code{font-family:var(--mono);font-size:13px;background:rgba(94,242,255,.1);color:var(--neon-cyan);padding:1px 6px;border-radius:var(--r-sm);border:1px solid rgba(94,242,255,.18)}
+  .rbody pre.code{margin:2px 0 18px}.rbody pre.code code{background:none;border:0;padding:0;color:inherit;font-size:12.5px}
+  .rbody blockquote{margin:0 0 16px;padding:10px 16px;border-left:2px solid var(--primary);background:rgba(128,131,255,.08);border-radius:0 var(--r-md) var(--r-md) 0;color:var(--on-var)}
+  .rbody blockquote p{margin:0;font-style:italic}
+  .code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:rgba(6,14,32,.7);border:1px solid var(--outline-var);border-radius:var(--r-md);padding:14px 16px;overflow:auto;margin:0 0 16px}
+  .code .kw{color:var(--neon-cyan)}.code .st{color:var(--neon-lime)}.code .nm{color:var(--neon-rose)}.code .cm{color:var(--outline)}.code .fn{color:var(--secondary)}
+  .thread{border-top:1px solid var(--outline-var);padding:18px 24px}
+  .thread .th-h{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);margin-bottom:12px}
+
+  /* comment bits */
+  .cmt{display:flex;gap:10px;margin-bottom:14px}
+  .cmt .av{flex:0 0 auto;width:26px;height:26px;border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0b1326}
+  .cmt .av.h{background:linear-gradient(135deg,var(--neon-cyan),var(--primary))}.cmt .av.a{background:linear-gradient(135deg,var(--secondary),var(--tertiary-cont))}
+  .cmt .who{font-family:var(--mono);font-size:11px;color:var(--on);display:flex;gap:8px;align-items:center}
+  .cmt .who .badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);border:1px solid rgba(221,183,255,.4);border-radius:var(--r-sm);padding:0 5px}
+  .cmt .tx{font-size:12.5px;color:var(--on-var);line-height:1.5;margin-top:3px}
+  .reply{display:flex;gap:8px;margin-top:6px}
+  .reply input{flex:1;height:38px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(6,14,32,.55);color:var(--on);font-family:var(--ui);font-size:13px;padding:0 12px;transition:border-color .14s ease,box-shadow .14s ease}
+  .reply input::placeholder{color:var(--outline)} .reply input:focus{outline:0;border-color:var(--primary);box-shadow:0 2px 0 0 var(--primary)}
+  .reply .send{height:38px;padding:0 14px;border-radius:var(--r-md);border:0;cursor:pointer;color:#fff;font-size:13px;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .resolve{height:32px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--neon-lime);font-family:var(--mono);font-size:11px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+  .resolve:hover{box-shadow:0 0 16px -4px rgba(182,243,106,.6);border-color:rgba(182,243,106,.5)}
+  .resolve:focus-visible,.reply input:focus-visible,.reply .send:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* comment-mode + connect affordances */
+  .cpop{position:absolute;z-index:46;width:320px;display:none;border-radius:var(--r-lg);backdrop-filter:blur(40px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.92),rgba(13,21,40,.92)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 70px -24px rgba(0,0,0,.7)}
+  .app[data-state="comment"] .cpop{display:block}
+  .cpop .cp-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--outline-var);font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .cpop .cp-b{padding:14px}
+  .placement{position:absolute;z-index:44;display:none;pointer-events:none;width:18px;height:18px;border:2px solid var(--neon-cyan);border-radius:var(--r-full);box-shadow:0 0 14px var(--neon-cyan)}
+  .placement::before,.placement::after{content:"";position:absolute;background:var(--neon-cyan)}
+  .placement::before{left:50%;top:-9px;width:1px;height:36px;margin-left:-.5px;opacity:.6}.placement::after{top:50%;left:-9px;height:1px;width:36px;margin-top:-.5px;opacity:.6}
+  .app[data-state="comment"] .placement{display:block}
+  .connect-cursor{position:absolute;z-index:44;display:none;width:14px;height:14px;border:2px solid var(--neon-cyan);border-radius:var(--r-full);box-shadow:0 0 14px var(--neon-cyan);background:rgba(94,242,255,.2)}
+  .app[data-overlay="connect"] .connect-cursor{display:block}
+  .modehint{position:absolute;z-index:44;display:none;left:50%;top:14px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:#062a30;padding:6px 14px;border-radius:var(--r-full);background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));box-shadow:0 0 20px -2px rgba(94,242,255,.6)}
+  .app[data-state="comment"] .modehint.mc{display:block}
+  .app[data-overlay="connect"] .modehint.mx{display:block}
+
+  /* ───── drag-drop upload overlay ───── */
+  .dropzone{position:absolute;left:50%;top:56px;transform:translateX(-50%);width:1280px;height:744px;z-index:47;display:none;align-items:center;justify-content:center}
+  .app[data-overlay="upload"] .dropzone{display:flex}
+  .dropzone .dz{width:520px;text-align:center;padding:44px 36px;border:2px dashed var(--neon-cyan);border-radius:var(--r-lg);background:rgba(94,242,255,.06);backdrop-filter:blur(3px);box-shadow:0 0 40px -10px rgba(94,242,255,.5) inset}
+  .dropzone .dz svg{width:46px;height:46px;stroke:var(--neon-cyan);fill:none;stroke-width:1.4;margin-bottom:12px}
+  .dropzone .dz h3{margin:0 0 6px;font-size:18px}
+  .dropzone .dz p{margin:0 0 18px;color:var(--on-var);font-size:13px}
+  .dropzone .dz code{font-family:var(--mono);font-size:11px;color:var(--neon-cyan)}
+
+  /* ───── agent round-trip panel ───── */
+  .agentpanel{position:absolute;top:56px;right:0;bottom:0;width:min(48vw,640px);z-index:48;transform:translateX(100%);transition:transform .22s cubic-bezier(.23,1,.32,1);
+    border-left:1px solid transparent;background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(200deg,rgba(94,242,255,.35),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:-30px 0 80px -30px rgba(0,0,0,.75);display:flex;flex-direction:column}
+  .app[data-overlay="agent"] .agentpanel{transform:translateX(0)}
+  .agentpanel .ap-hd{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--outline-var)}
+  .agentpanel .ap-hd b{font-size:14px}
+  .ap-tabs{display:flex;gap:6px;padding:12px 20px 0}
+  .ap-tabs button{flex:1;height:38px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.4);color:var(--on-var);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+  .ap-tabs button[aria-selected="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .ap-tabs button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ap-body{padding:18px 20px;overflow:auto}
+  .ap-body p{margin:0 0 12px;font-size:13px;color:var(--on-var);line-height:1.5}
+  .ap-body code{font-family:var(--mono);font-size:12px;color:var(--neon-cyan)}
+  .ap-actions{display:flex;gap:8px;margin-top:14px}
+  .agentpanel textarea{width:100%;min-height:150px;resize:vertical;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--mono);font-size:12px;line-height:1.5;padding:12px}
+  .agentpanel textarea:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .report{margin-top:14px;font-family:var(--mono);font-size:11px;border-radius:var(--r-md);padding:10px 12px;border:1px solid rgba(182,243,106,.4);background:rgba(182,243,106,.08);color:var(--neon-lime)}
+  .report.warn{border-color:rgba(245,159,0,.5);background:rgba(245,159,0,.1);color:var(--tertiary)}
+  .agentpanel[data-tab="export"] .import-pane,.agentpanel[data-tab="import"] .export-pane{display:none}
+
+  @media (prefers-reduced-motion: reduce){
+    .reader,.agentpanel{transition:none}.tbtn:active{transform:none}
+    .app[data-overlay="connect"] .handle{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<nav class="statebar" aria-label="Mockup modes">
+  <span class="brand"><b>NYX</b> · Flowcanvas 04 · plan-complete UI</span>
+  <button data-go="empty">Empty</button>
+  <button data-go="loaded" aria-current="true">Loaded</button>
+  <button data-go="connect">Connect</button>
+  <button data-go="comment">Comment</button>
+  <button data-go="upload">Upload</button>
+  <button data-go="agent">Agent I/O</button>
+  <button data-go="reader">Reader</button>
+</nav>
+
+<div class="app" data-state="loaded" data-overlay="none" data-menu="closed">
+
+  <!-- ════════ TOOLBAR (mirrors the plan's full capability set) ════════ -->
+  <header class="toolbar">
+    <span class="ttitle"><span class="dot"></span>mdview 001 architecture map</span>
+
+    <!-- mode tools: select / connect (draw edges) / comment -->
+    <div class="seg" role="group" aria-label="Canvas modes">
+      <button class="tbtn" data-mode="loaded" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move">
+        <svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+      <button class="tbtn" data-mode="connect" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect nodes (draw edge)">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+      <button class="tbtn" data-mode="comment" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+    </div>
+
+    <span class="tdiv"></span>
+
+    <!-- insert: nodes + shapes -->
+    <div class="menu-wrap">
+      <button class="tbtn" id="addBtn" data-testid="toolbar-add-node" aria-haspopup="true" aria-expanded="false" aria-label="Add node or shape">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add</span><svg viewBox="0 0 24 24" style="width:12px"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="menu" role="menu" aria-label="Add node or shape">
+        <button role="menuitem" data-testid="add-node-markdown"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg>Markdown file…<small>pick from repo</small></button>
+        <button role="menuitem" data-testid="add-node-text"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Note (text)</button>
+        <button role="menuitem" data-testid="add-node-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle / group</button>
+        <button role="menuitem" data-testid="add-node-image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg>Image…<small>pick / upload</small></button>
+        <button role="menuitem" data-testid="add-node-link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>Link…</button>
+      </div>
+    </div>
+    <button class="tbtn" data-overlay-go="upload" data-testid="toolbar-upload" aria-label="Upload images or files (drag &amp; drop)">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg><span>Upload</span></button>
+
+    <span class="tspring"></span>
+
+    <!-- agent round-trip -->
+    <button class="tbtn" data-overlay-go="agent" data-tab="import" data-testid="toolbar-import" aria-label="Import agent response">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg><span>Import</span></button>
+    <button class="tbtn" data-overlay-go="agent" data-tab="export" data-testid="toolbar-export" aria-label="Export design brief">
+      <svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg><span>Export</span></button>
+
+    <span class="tdiv"></span>
+    <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="tbtn primary" data-testid="toolbar-save" aria-label="Save board">
+      <span class="save-dot" title="unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+  </header>
+
+  <!-- ════════ BOARD ════════ -->
+  <div class="stage">
+  <div class="board">
+
+    <svg class="edges" viewBox="0 0 1280 744" aria-hidden="true">
+      <defs>
+        <marker id="ar-link" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#908fa0" stroke-width="1.4"/></marker>
+        <marker id="ar-link-s" markerWidth="9" markerHeight="9" refX="2" refY="4.5" orient="auto"><path d="M8 1L1 4.5L8 8" fill="none" stroke="#908fa0" stroke-width="1.4"/></marker>
+        <marker id="ar-user" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#c0c1ff" stroke-width="1.6"/></marker>
+        <marker id="ar-agent" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M1 1L8 5L1 9" fill="none" stroke="#5ef2ff" stroke-width="1.7"/></marker>
+        <linearGradient id="g-agent" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ef2ff"/><stop offset="1" stop-color="#ddb7ff"/></linearGradient>
+      </defs>
+      <!-- 1 · design <-> plan (links, dashed+lock) -->
+      <path d="M424,252 C442,252 440,168 456,168" fill="none" stroke="#908fa0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar-link)" marker-start="url(#ar-link-s)"/>
+      <!-- 2 · log -> plan (links) -->
+      <path d="M616,288 L616,252" fill="none" stroke="#908fa0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar-link)"/>
+      <!-- 3 · log -> design (links) -->
+      <path d="M456,354 L424,354" fill="none" stroke="#908fa0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar-link)"/>
+      <!-- 4 · ui-design-system -> plan (user) -->
+      <path d="M880,316 C846,316 800,238 776,168" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#ar-user)"/>
+      <!-- 5 · project-overview -> design (user) -->
+      <path d="M880,116 C880,18 300,2 264,84" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#ar-user)"/>
+      <!-- 6 · project-overview -> ui-design-system (agent) -->
+      <path d="M1040,200 L1040,232" fill="none" stroke="url(#g-agent)" stroke-width="2" marker-end="url(#ar-agent)" style="filter:drop-shadow(0 0 5px rgba(94,242,255,.7))"/>
+      <!-- connect-mode: in-progress edge being drawn from plan.right handle to the cursor -->
+      <path class="ghost-edge" d="M776,168 C850,168 880,150 936,150" fill="none" stroke="#5ef2ff" stroke-width="2" stroke-dasharray="6 5" style="filter:drop-shadow(0 0 6px rgba(94,242,255,.8))"/>
+    </svg>
+
+    <div class="elabel" style="left:440px;top:210px"><span class="lock">&#128274;</span>links</div>
+    <div class="elabel" style="left:640px;top:270px"><span class="lock">&#128274;</span>links</div>
+    <div class="elabel" style="left:440px;top:336px"><span class="lock">&#128274;</span>links</div>
+    <div class="elabel user" style="left:836px;top:250px">informs</div>
+    <div class="elabel user" style="left:560px;top:30px">contextualizes</div>
+    <div class="elabel agent" style="left:1040px;top:216px">agent</div>
+
+    <div class="group" style="left:72px;top:32px;width:744px;height:432px">
+      <span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>001 — Initial Architecture</span>
+    </div>
+
+    <!-- design (expanded, selected) -->
+    <article class="node md selected" style="left:104px;top:84px;width:320px;height:336px">
+      <div class="hd"><span class="name">001-initial-architecture-design</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node">–</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip ok">approved</span></td></tr>
+        <tr><td class="k">tags</td><td class="v"><span class="tag">design</span><span class="tag">architecture</span><span class="tag">jsoncanvas</span><span class="tag">agent-protocol</span></td></tr>
+        <tr><td class="k">links</td><td class="v">001-…-plan.md</td></tr>
+      </tbody></table>
+      <div class="body"><h2>Problem Statement</h2>
+        <p>Designing a system out of markdown is linear and lossy — file relationships live as paths buried in frontmatter, never seen as a shape.</p>
+        <p>Flowcanvas makes the <strong>board itself the medium</strong>.</p></div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- plan -->
+    <article class="node md" style="left:456px;top:84px;width:320px;height:168px">
+      <div class="hd"><span class="name">001-initial-architecture-plan</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node">–</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip act">active</span></td></tr>
+        <tr><td class="k">tags</td><td class="v"><span class="tag">plan</span><span class="tag">phases</span><span class="tag">canvas</span></td></tr>
+      </tbody></table>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- log (collapsed) -->
+    <article class="node md collapsed" style="left:456px;top:288px;width:320px;height:132px">
+      <div class="hd"><span class="name">001-initial-architecture-log</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Expand node">+</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip act">active</span></td></tr>
+        <tr><td class="k">links</td><td class="v">plan · design · plan-instructions</td></tr>
+      </tbody></table>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- project-overview (collapsed) -->
+    <article class="node md collapsed" style="left:880px;top:32px;width:320px;height:168px">
+      <div class="hd"><span class="name">project-overview</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Expand node">+</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip act">active</span></td></tr>
+        <tr><td class="k">tags</td><td class="v"><span class="tag">architecture</span><span class="tag">stack</span><span class="tag">modules</span></td></tr>
+        <tr><td class="k">links</td><td class="v">project-log · backlog</td></tr>
+      </tbody></table>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- ui-design-system (collapsed) -->
+    <article class="node md collapsed" style="left:880px;top:232px;width:320px;height:168px">
+      <div class="hd"><span class="name">ui-design-system</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Expand node">+</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip act">active</span></td></tr>
+        <tr><td class="k">tags</td><td class="v"><span class="tag">ui</span><span class="tag">tokens</span><span class="tag">ground-truth</span></td></tr>
+        <tr><td class="k">links</td><td class="v">ui-index · mockup-discipline</td></tr>
+      </tbody></table>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- plan-index (collapsed) -->
+    <article class="node md collapsed" style="left:880px;top:432px;width:320px;height:140px">
+      <div class="hd"><span class="name">plan-index</span><span class="kind">md</span>
+        <button class="collapse" data-testid="node-collapse-toggle" aria-label="Expand node">+</button></div>
+      <table class="fm"><tbody>
+        <tr><td class="k">status</td><td class="v"><span class="chip act">active</span></td></tr>
+        <tr><td class="k">tags</td><td class="v"><span class="tag">plans</span><span class="tag">index</span><span class="tag">lifecycle</span></td></tr>
+      </tbody></table>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- text node (rendered markdown) -->
+    <div class="text-node" style="left:72px;top:500px;width:290px;height:140px">
+      <span class="nt">text · note</span>
+      <h3>Dogfood board</h3>
+      <p>These nodes are the 001 plan's <strong>own artifacts</strong>, from real frontmatter — not placeholder data.</p>
+    </div>
+
+    <!-- image node -->
+    <figure class="node img" style="left:386px;top:500px;width:230px;height:140px;margin:0">
+      <div class="hd"><span class="name">architecture.png</span><span class="kind">img</span></div>
+      <div class="imgwrap">
+        <svg viewBox="0 0 120 70" aria-label="architecture diagram">
+          <rect x="8" y="10" width="30" height="16" rx="3" fill="none" stroke="#5ef2ff" stroke-width="1.5"/>
+          <rect x="82" y="10" width="30" height="16" rx="3" fill="none" stroke="#c0c1ff" stroke-width="1.5"/>
+          <rect x="45" y="44" width="30" height="16" rx="3" fill="none" stroke="#ddb7ff" stroke-width="1.5"/>
+          <path d="M38 18h44M23 26v12l24 8M97 26v12l-24 8" fill="none" stroke="#908fa0" stroke-width="1.2"/>
+        </svg>
+      </div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </figure>
+
+    <!-- link node -->
+    <a class="link-node" style="left:640px;top:500px;width:220px;height:64px" href="#" aria-label="Open jsoncanvas.org spec">
+      <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>
+      <span><span class="u">jsoncanvas.org</span><small>link · JSONCanvas 1.0</small></span>
+    </a>
+
+    <!-- comment pin on plan -->
+    <button class="pin" data-testid="comment-pin" style="left:603px;top:240px" aria-label="Comment thread 1 on plan node"><i>1</i></button>
+
+    <!-- connect-mode cursor target -->
+    <div class="connect-cursor" style="left:929px;top:143px"></div>
+
+    <!-- chrome -->
+    <div class="minimap" style="left:1040px;top:588px;width:200px;height:128px" aria-hidden="true">
+      <span class="mm-grid"></span>
+      <b style="left:18px;top:18px;width:40px;height:34px;background:rgba(192,193,255,.7)"></b>
+      <b style="left:66px;top:18px;width:34px;height:20px;background:rgba(94,242,255,.6)"></b>
+      <b style="left:66px;top:44px;width:34px;height:16px;background:rgba(146,143,160,.5)"></b>
+      <b style="left:140px;top:14px;width:34px;height:18px;background:rgba(146,143,160,.5)"></b>
+      <b style="left:140px;top:40px;width:34px;height:18px;background:rgba(221,183,255,.55)"></b>
+      <b style="left:140px;top:66px;width:34px;height:16px;background:rgba(146,143,160,.5)"></b>
+    </div>
+    <div class="controls" style="left:32px;top:652px">
+      <button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button>
+    </div>
+    <div class="legend" style="left:470px;top:668px">
+      <span><i class="lk"></i>links (derived)</span><span><i class="us"></i>user</span><span><i class="ag"></i>agent</span>
+      <span class="note">off-board links draw no edge</span>
+    </div>
+
+    <!-- empty overlay -->
+    <div class="empty">
+      <div class="card">
+        <div class="orb"></div>
+        <h2>No board open</h2>
+        <p>Open a <code>.canvas</code> file or start a new board to map your flowcode artifacts and round-trip them with an agent.</p>
+        <div class="actions"><button class="tbtn primary" data-testid="open-file">Open .canvas…</button><button class="tbtn">New board</button></div>
+      </div>
+    </div>
+
+  </div><!-- /board -->
+  </div><!-- /stage -->
+
+  <!-- connect + comment mode hints -->
+  <div class="modehint mx">Connect mode — drag from any glowing handle to link two nodes</div>
+  <div class="modehint mc">Comment mode — click anywhere to drop a pin · Esc to exit</div>
+  <div class="placement" style="left:50%;top:54%"></div>
+
+  <!-- comment popover -->
+  <div class="cpop" style="left:54%;top:30%">
+    <div class="cp-h">&#128172; Thread · anchored to <strong>&nbsp;plan</strong></div>
+    <div class="cp-b">
+      <div class="cmt"><span class="av h">D</span><div><div class="who">human:david</div><div class="tx">Can the file API be reused verbatim for canvas persistence?</div></div></div>
+      <div class="cmt"><span class="av a">A</span><div><div class="who">agent:opus-4.8 <span class="badge">agent</span></div><div class="tx">Yes — guardPath + the POST handler are reused; canvas adds /api/canvas + /api/asset only.</div></div></div>
+      <div class="reply"><input data-testid="comment-reply-input" placeholder="Reply…" aria-label="Reply to thread"><button class="send" aria-label="Send reply">Send</button></div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end"><button class="resolve" data-testid="comment-resolve"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4L19 7"/></svg>Resolve</button></div>
+    </div>
+  </div>
+
+  <!-- drag-drop upload overlay -->
+  <div class="dropzone">
+    <div class="dz">
+      <svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+      <h3>Drop images or markdown here</h3>
+      <p>Drag files onto the canvas — <code>.png .jpg .svg .webp</code> become image nodes, <code>.md</code> become markdown nodes.</p>
+      <button class="tbtn primary" data-testid="dropzone-browse">Browse files…</button>
+    </div>
+  </div>
+
+  <!-- agent round-trip panel (Export brief / Import response) -->
+  <aside class="agentpanel" data-tab="export" aria-label="Agent round-trip">
+    <div class="ap-hd"><b>Agent round-trip</b><button class="x" data-testid="agent-close" aria-label="Close agent panel">✕</button></div>
+    <div class="ap-tabs" role="tablist">
+      <button role="tab" data-tab="export" data-testid="agent-tab-export" aria-selected="true">Export brief</button>
+      <button role="tab" data-tab="import" data-testid="agent-tab-import" aria-selected="false">Import response</button>
+    </div>
+    <div class="ap-body export-pane">
+      <p>A self-contained <code>DesignBrief</code> — embeds each file's frontmatter + body, the edges with labels, comment threads by id, and your intent. The agent reads it with no filesystem access.</p>
+      <pre class="code"><span class="cm">// DesignBrief (excerpt)</span>
+{ <span class="nm">"briefVersion"</span>: <span class="st">"0.1"</span>, <span class="nm">"briefId"</span>: <span class="st">"brief-3f9c"</span>,
+  <span class="nm">"intent"</span>: <span class="st">"Map 001 design↔plan↔assets for the agent"</span>,
+  <span class="nm">"nodes"</span>: [{ <span class="nm">"id"</span>:<span class="st">"n-design"</span>, <span class="nm">"kind"</span>:<span class="st">"markdown"</span>,
+    <span class="nm">"frontmatter"</span>:{<span class="nm">"status"</span>:<span class="st">"approved"</span>}, <span class="nm">"body"</span>:<span class="st">"## Problem…"</span> }],
+  <span class="nm">"comments"</span>: [{ <span class="nm">"id"</span>:<span class="st">"c-1"</span>, <span class="nm">"text"</span>:<span class="st">"reuse file API?"</span> }] }</pre>
+      <div class="ap-actions"><button class="tbtn primary" data-testid="brief-copy">Copy JSON</button><button class="tbtn" data-testid="brief-download">Download .json</button></div>
+    </div>
+    <div class="ap-body import-pane">
+      <p>Paste the agent's <code>AgentResponse</code>. The merge is idempotent — it writes generated files, upserts nodes/edges, attaches replies by id, and re-derives <code>links:</code> edges.</p>
+      <textarea data-testid="response-paste" placeholder='{ "responseVersion":"0.1", "briefId":"brief-3f9c", "upsertNodes":[…], "generatedFiles":[…] }'></textarea>
+      <div class="ap-actions"><button class="tbtn primary" data-testid="response-apply">Apply merge</button></div>
+      <div class="report">✓ merged — +1 node (ag-tests) · +1 edge · +1 reply on c-1 · 1 file written (001-…-test-notes.md)</div>
+      <div class="report warn">⚠ briefId mismatch — board changed since export · proceeding last-writer-wins</div>
+    </div>
+  </aside>
+
+  <!-- reader drawer (flawless rendered markdown) -->
+  <aside class="reader" aria-label="Reader drawer">
+    <div class="rhd"><div><div class="fn">001-initial-architecture-design.md</div><div class="fp">.flowcode/plans/001-initial-architecture/</div></div>
+      <button class="x" data-testid="reader-close" aria-label="Close reader">✕</button></div>
+    <div class="rbody">
+      <h1>Flowcanvas Design</h1>
+      <p class="lede">A node-based canvas that renders, connects, and round-trips flowcode markdown files with an AI agent via an extended-JSONCanvas schema.</p>
+      <h2>Problem Statement</h2>
+      <p>Designing a system out of markdown today is linear and lossy. Files relate to each other — a design references its plan; a module references its tests — but those relationships live as paths buried in frontmatter, never seen as a shape.</p>
+      <p>Flowcanvas makes the <strong>design board itself the medium</strong>: a spatial, relational, durable, machine-readable artifact that both a human and an agent read and write through one <code>JSON</code> schema.</p>
+      <h2>Scope</h2>
+      <p><strong>In scope (v0.1):</strong></p>
+      <ul>
+        <li>Render flowcode markdown files as canvas nodes showing parsed YAML frontmatter <em>and</em> rendered body.</li>
+        <li>Labeled edges — manually drawn <em>and</em> auto-derived from each file's <code>links:</code> frontmatter.</li>
+        <li>Human comments pinned to a node or canvas coordinates, as flat threads.</li>
+        <li>Export a <code>DesignBrief</code>; import an <code>AgentResponse</code> and merge it onto the board.</li>
+      </ul>
+      <blockquote>The agent loop is the point of the tool — the brief is self-contained, so the agent needs no filesystem access to read it.</blockquote>
+      <h2>Adapter</h2>
+      <p>The adapter maps a <code>FlowcanvasDoc</code> onto React Flow nodes and edges:</p>
+      <pre class="code"><span class="cm">// lib/canvas/adapter.ts</span>
+<span class="kw">export function</span> <span class="fn">toReactFlow</span>(doc: FlowcanvasDoc) {
+  <span class="kw">const</span> nodes = doc.nodes.<span class="fn">map</span>((n) =&gt; ({
+    id: n.id, type: <span class="fn">nodeKind</span>(n),
+    position: { x: n.x, y: n.y },
+    width: n.width, height: n.height,
+  }))
+  <span class="kw">return</span> { nodes, edges: <span class="nm">[]</span> } <span class="cm">// edges derived from links:</span>
+}</pre>
+      <p>Node bodies use a lightweight client renderer; full <code>rehype-shiki</code> highlighting runs only here in the reader.</p>
+    </div>
+    <div class="thread">
+      <div class="th-h">Comments · 1 thread</div>
+      <div class="cmt"><span class="av h">D</span><div><div class="who">human:david</div><div class="tx">Can the file API be reused verbatim for canvas persistence?</div></div></div>
+      <div class="cmt"><span class="av a">A</span><div><div class="who">agent:opus-4.8 <span class="badge">agent</span></div><div class="tx">Yes — guardPath + the POST handler are reused; canvas adds /api/canvas + /api/asset only.</div></div></div>
+      <div class="reply"><input data-testid="comment-reply-input" placeholder="Reply…" aria-label="Reply to thread"><button class="send" aria-label="Send reply">Send</button></div>
+    </div>
+  </aside>
+
+</div><!-- /app -->
+
+<script>
+  var app = document.querySelector('.app');
+  var nav = document.querySelectorAll('.statebar button[data-go]');
+  var modeBtns = document.querySelectorAll('.seg .tbtn[data-mode]');
+  var STATES = { empty:1, loaded:1, reader:1, comment:1 };
+  function pressMode(){
+    var st = app.getAttribute('data-state'), ov = app.getAttribute('data-overlay');
+    modeBtns.forEach(function(b){
+      var on = (b.dataset.mode==='comment' && st==='comment') || (b.dataset.mode==='connect' && ov==='connect') ||
+               (b.dataset.mode==='loaded' && st==='loaded' && ov==='none');
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+  function show(go, tab){
+    if(STATES[go]){ app.setAttribute('data-state', go); app.setAttribute('data-overlay','none'); }
+    else { app.setAttribute('data-state','loaded'); app.setAttribute('data-overlay', go); }   // connect|upload|agent
+    if(go==='agent' && tab){ document.querySelector('.agentpanel').setAttribute('data-tab', tab);
+      document.querySelectorAll('.ap-tabs button').forEach(function(t){ t.setAttribute('aria-selected', String(t.dataset.tab===tab)); }); }
+    app.setAttribute('data-menu','closed');
+    nav.forEach(function(b){ b.setAttribute('aria-current', String(b.dataset.go===go)); });
+    pressMode();
+  }
+  nav.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.go); }); });
+  modeBtns.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.mode); }); });
+  document.querySelectorAll('[data-overlay-go]').forEach(function(b){
+    b.addEventListener('click', function(e){ e.stopPropagation(); show(b.getAttribute('data-overlay-go'), b.dataset.tab); }); });
+  document.querySelectorAll('.ap-tabs button').forEach(function(t){ t.addEventListener('click', function(){ show('agent', t.dataset.tab); }); });
+  document.querySelector('[data-testid="reader-close"]').addEventListener('click', function(){ show('loaded'); });
+  document.querySelector('[data-testid="agent-close"]').addEventListener('click', function(){ show('loaded'); });
+  document.querySelector('[data-testid="open-file"]').addEventListener('click', function(){ show('loaded'); });
+  document.querySelector('[data-testid="dropzone-browse"]').addEventListener('click', function(){ show('loaded'); });
+  // add menu
+  var addBtn = document.getElementById('addBtn');
+  addBtn.addEventListener('click', function(e){ e.stopPropagation();
+    var open = app.getAttribute('data-menu')==='open'; app.setAttribute('data-menu', open?'closed':'open'); addBtn.setAttribute('aria-expanded', String(!open)); });
+  document.addEventListener('click', function(){ app.setAttribute('data-menu','closed'); addBtn.setAttribute('aria-expanded','false'); });
+  // collapse toggles
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(){ var n=t.closest('.node'); n.classList.toggle('collapsed'); t.textContent = n.classList.contains('collapsed')?'+':'–'; }); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') show('loaded'); });
+  pressMode();
+</script>
+</body>
+</html>

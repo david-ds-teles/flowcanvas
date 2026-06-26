@@ -1,0 +1,443 @@
+@import "tailwindcss";
+
+/* nyx design tokens — ground truth: references/DESIGN.md, design § Design System.
+   Tailwind v4 @theme emits these as :root CSS vars and registers theme utilities. */
+@theme {
+  --color-bg:               #0b1326;   /* canvas void (radial indigo/violet wash) */
+  --color-grid:             rgba(146,143,160,.16);
+  --color-surface-lowest:   #060e20;
+  --color-surface-low:      #131b2e;
+  --color-surface:          #171f33;   /* card fill base (used ~55% with blur) */
+  --color-surface-high:     #222a3d;
+  --color-surface-highest:  #2d3449;
+  --color-primary:          #c0c1ff;   /* electric indigo — selection/focus/agent/primary */
+  --color-primary-cont:     #8083ff;
+  --color-secondary:        #ddb7ff;   /* vivid violet — tags/metadata */
+  --color-secondary-cont:   #6f00be;
+  --color-tertiary-cont:    #ff516a;   /* rose — comments/destructive */
+  --color-text-primary:     #dae2fd;
+  --color-text-secondary:   #c7c4d7;
+  --color-outline:          #908fa0;   /* default edge / muted lines */
+  --color-outline-variant:  #464554;   /* hairline glass border */
+  --color-neon-cyan:        #5ef2ff;
+  --color-neon-lime:        #b6f36a;
+  --color-neon-rose:        #ff8fb0;
+  --color-status-amber:     #f59f00;   /* dirty / warning */
+  --font-jetbrains-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-sans:              var(--font-geist-sans);
+  --font-mono:              var(--font-jetbrains-mono);
+  --radius-card: 16px;
+  --radius-control: 8px;
+}
+
+/* base shell */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+:root { color-scheme: dark; }
+
+/* glass recipe + React Flow var mapping (design § Design System) */
+.glass {
+  background-image:
+    linear-gradient(rgba(23,31,51,.55), rgba(23,31,51,.55)),
+    linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1px solid transparent;
+  backdrop-filter: blur(16px);
+}
+.react-flow { --xy-background-color: var(--color-bg); }
+.react-flow__edge-path { stroke: var(--color-outline); stroke-width: 1.5; }
+.react-flow__node.selected { box-shadow: 0 0 0 2px var(--color-primary), 0 0 26px -4px rgba(192,193,255,.6); }
+
+/* ─────────────────────────── content nodes (Phase 4 — nyx glass cards) ───────────────────────────
+   Design direction: mockup 04-nyx-neon. The card is glass; the frontmatter keys stay muted and the
+   COLOR is carried by the values (semantic status chip + tag chips). Markdown cards are content-sized
+   so the collapse toggle visibly shrinks them. */
+.fc-node {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-card);
+  border: 1px solid transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  background-image:
+    linear-gradient(rgba(23,31,51,.55), rgba(23,31,51,.55)),
+    linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease, border-color .14s ease;
+}
+.fc-node:hover {
+  box-shadow: 0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+}
+
+/* header: title · type badge · collapse — the node color (if any) tints the divider */
+.fc-node__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--node-accent, var(--color-outline-variant));
+  flex-shrink: 0;
+}
+.fc-node__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-node__kind {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.fc-node__collapse {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: color .14s ease, border-color .14s ease;
+}
+.fc-node__collapse:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-node__collapse:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* frontmatter table — keys muted, values carry the color */
+.fc-fm {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.fc-fm td { padding: 5px 12px; vertical-align: top; }
+.fc-fm__k {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+.fc-fm__v { color: var(--color-text-primary); word-break: break-word; }
+.fc-fm__v--chips { display: flex; flex-wrap: wrap; gap: 3px 4px; }
+
+/* status chip — semantic color picked from the status value */
+.fc-chip {
+  display: inline-block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  background: rgba(221,183,255,.14);
+  color: var(--color-secondary);
+}
+.fc-chip--ok   { background: rgba(182,243,106,.14); color: var(--color-neon-lime); }
+.fc-chip--act  { background: rgba(94,242,255,.14);  color: var(--color-neon-cyan); }
+.fc-chip--warn { background: rgba(245,159,0,.16);   color: var(--color-status-amber); }
+
+/* tag chips */
+.fc-tag {
+  display: inline-block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+  background: rgba(221,183,255,.12);
+  color: var(--color-secondary);
+}
+.fc-fm__more { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-text-secondary); }
+
+/* body — rendered markdown, clamped to --fc-body-max with a fade-to-card edge */
+.fc-node__body {
+  position: relative;
+  flex: 1 1 auto;
+  max-height: var(--fc-body-max, 280px);
+  overflow: hidden;
+  padding: 8px 12px 12px;
+}
+.fc-node__body::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 32px;
+  background: linear-gradient(transparent, rgba(20,28,47,.97));
+  pointer-events: none;
+}
+.fc-node.is-collapsed .fc-node__body { display: none; }
+
+/* prose — compact in-node markdown (mono cyan headings, glowing list bullets) */
+.fc-prose { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.fc-prose > :first-child { margin-top: 0; }
+.fc-prose h1, .fc-prose h2, .fc-prose h3 {
+  margin: 2px 0 5px;
+  font-family: var(--font-jetbrains-mono);
+  font-weight: 600;
+  color: var(--color-neon-cyan);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.fc-prose h1 { font-size: 13px; }
+.fc-prose h2, .fc-prose h3 { font-size: 12px; }
+.fc-prose p { margin: 0 0 6px; }
+.fc-prose p:last-child { margin-bottom: 0; }
+.fc-prose strong { color: var(--color-text-primary); font-weight: 600; }
+.fc-prose em { color: var(--color-secondary); font-style: italic; }
+.fc-prose a { color: var(--color-neon-cyan); text-decoration: none; }
+.fc-prose a:hover { text-decoration: underline; }
+.fc-prose ul, .fc-prose ol { margin: 0 0 6px; padding: 0; list-style: none; }
+.fc-prose li { position: relative; padding-left: 14px; font-size: 11.5px; line-height: 1.45; margin-bottom: 3px; }
+.fc-prose ul li::before {
+  content: "";
+  position: absolute;
+  left: 2px; top: 7px;
+  width: 4px; height: 4px;
+  border-radius: 1px;
+  background: var(--color-neon-cyan);
+  box-shadow: 0 0 6px -1px var(--color-neon-cyan);
+}
+.fc-prose ol { counter-reset: li; }
+.fc-prose ol li::before {
+  counter-increment: li;
+  content: counter(li);
+  position: absolute;
+  left: 0; top: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-primary);
+}
+.fc-prose code {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  color: var(--color-neon-cyan);
+  background: rgba(94,242,255,.1);
+  border: 1px solid rgba(94,242,255,.16);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.fc-prose pre {
+  margin: 0 0 6px;
+  background: rgba(94,242,255,.06);
+  border: 1px solid rgba(94,242,255,.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+.fc-prose pre code { background: none; border: 0; padding: 0; color: var(--color-text-secondary); }
+.fc-prose blockquote {
+  margin: 0 0 6px;
+  padding: 4px 10px;
+  border-left: 2px solid var(--color-primary);
+  background: rgba(128,131,255,.08);
+  border-radius: 0 6px 6px 0;
+}
+.fc-prose blockquote p { margin: 0; font-style: italic; color: var(--color-text-secondary); }
+.fc-prose img { display: block; max-width: 100%; border-radius: 6px; margin: 4px 0; }
+.fc-prose table { border-collapse: collapse; font-size: 11px; margin: 0 0 6px; }
+.fc-prose th, .fc-prose td { border: 1px solid var(--color-outline-variant); padding: 2px 6px; text-align: left; }
+.fc-prose th { color: var(--color-text-primary); }
+
+/* image node — bytes streamed through the guarded /api/asset route (any allowed type) */
+.fc-node__imgwrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6,14,32,.5);
+  overflow: hidden;
+}
+.fc-node__imgwrap img { width: 100%; height: 100%; object-fit: contain; }
+.fc-node__imgwrap--err {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-neon-rose);
+}
+.fc-node__caption {
+  display: block;
+  flex-shrink: 0;
+  padding: 4px 11px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+/* note (text) node — cyan-tinted glass with a mono kicker */
+.fc-node--note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+  padding: 13px 15px;
+  border-radius: var(--radius-card);
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(rgba(13,21,40,.5), rgba(13,21,40,.5)),
+    linear-gradient(135deg, rgba(94,242,255,.4), rgba(128,131,255,.12));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease;
+}
+.fc-node--note:hover { box-shadow: 0 0 22px -6px rgba(94,242,255,.5); }
+.fc-note__kicker {
+  flex-shrink: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neon-cyan);
+}
+.fc-note__body { overflow: hidden; }
+
+/* link node — horizontal chip: glyph · kicker + url */
+.fc-node--link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  text-decoration: none;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(34,42,61,.5);
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease, border-color .14s ease;
+}
+.fc-node--link:hover { box-shadow: 0 0 22px -6px rgba(128,131,255,.55); border-color: var(--color-primary); }
+.fc-node--link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-link__glyph { flex: 0 0 auto; font-size: 16px; line-height: 1; color: var(--color-secondary); }
+.fc-link__main { min-width: 0; }
+.fc-link__kicker {
+  display: block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.fc-link__url {
+  display: block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+  color: var(--color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* handles — small neon dots */
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--color-surface-highest);
+  border: 1px solid var(--color-primary);
+}
+.react-flow__handle:hover { box-shadow: 0 0 10px -1px var(--color-primary); }
+
+/* empty / error overlay — shown while no doc is loaded (minimal; full polish is Phase 7) */
+.fc-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.fc-empty__card {
+  pointer-events: auto;
+  max-width: 420px;
+  padding: 22px 26px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(23, 31, 51, 0.66);
+  backdrop-filter: blur(16px);
+  text-align: center;
+}
+.fc-empty__mark {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+.fc-empty__msg {
+  margin: 12px 0 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+.fc-empty__msg--err { color: var(--color-text-secondary); }
+.fc-empty__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.fc-empty code {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  background: var(--color-surface-low);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* fallback node — unhandled kinds (group / non-md-non-image file) */
+.fc-node--fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+.fc-fallback__kind {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+.fc-fallback__label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* full-viewport void: deep obsidian + radial indigo/violet wash + dot grid.
+   Phase 2 replaces this CSS grid with React Flow's <Background variant="dots">. */
+.fc-void {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(1100px 760px at 50% -12%, rgba(128,131,255,.20), transparent 60%),
+    radial-gradient(820px 560px at 100% 108%, rgba(221,183,255,.12), transparent 55%),
+    radial-gradient(var(--color-grid) 1.5px, transparent 1.5px);
+  background-size: auto, auto, 22px 22px;
+}

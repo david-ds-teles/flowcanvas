@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flowcanvas v0.1 — Light Editorial / Paper</title>
+<style>
+/* ============================================================
+   FLOWCANVAS v0.1 — VISUAL WORLD: "Light Editorial / Paper"
+   A calm, document-first board. Warm studio desk, white paper
+   sheets, ink-blue accent, soft warm elevation, serif titles.
+   Single coherent token set below — no stray colors elsewhere.
+   ============================================================ */
+:root{
+  /* surfaces */
+  --paper:        #f6f4ee;   /* warm canvas */
+  --desk:         #ece9e0;   /* page behind the frames */
+  --sheet:        #fffdf8;   /* crisp white card sheet */
+  --sheet-tint:   #fbf8f0;   /* faintly warmer sheet (notes) */
+  /* ink */
+  --ink:          #1f1d1a;   /* primary text */
+  --ink-soft:     #6b6557;   /* secondary text */
+  --ink-faint:    #918a7a;   /* tertiary / captions */
+  /* lines */
+  --hairline:     #e6e1d6;   /* warm hairline border */
+  --hairline-2:   #d9d3c5;   /* slightly stronger border */
+  --grid-line:    rgba(80,66,40,.045);
+  /* the one accent */
+  --accent:       #2f5fe0;   /* classic ink-blue: selection/links/active */
+  --accent-soft:  #e7edfc;   /* accent wash */
+  --accent-ring:  rgba(47,95,224,.28);
+  --accent-line:  #cbd9f7;   /* accent hairline companion */
+  --accent-press: #2750c6;   /* accent pressed/hover */
+  /* muted earthy status */
+  --sage:         #5c7a55;   /* approved / ok */
+  --sage-soft:    #e7eee2;
+  --sage-line:    #cfe0c6;   /* sage hairline companion */
+  --sage-line-2:  #d4e0cc;   /* agent comment border */
+  --ochre:        #9c7a2e;   /* active / pending */
+  --ochre-soft:   #f3ecd9;
+  --ochre-line:   #e6d9b3;   /* ochre hairline companion */
+  --brick:        #9e4b3b;   /* error / blocked */
+  --brick-soft:   #f1e1dc;
+  /* the colored "node accent" tick (translated cyan -> calm teal) */
+  --tick-teal:    #2f8f8a;
+  /* edges + comment pins */
+  --edge:         #b9b2a3;   /* thin ink curve */
+  --edge-ink:     #8f877a;   /* arrowheads / glyphs */
+  --pin:          #f4c95d;   /* warm sticky-note amber */
+  --pin-ink:      #4a3a12;   /* number on pin */
+  --pin-line:     #d8a93a;   /* pin border */
+  --pin-line-soft:#c79f3e;   /* ghost pin dashed border */
+  --pin-resolved: #efece4;   /* resolved pin fill */
+  --code-bg:      #fbf9f2;   /* code block surface */
+  --mm-line:      #cfc8b8;   /* minimap node border */
+  /* elevation */
+  --shadow-card:  0 2px 8px rgba(40,33,20,.08);
+  --shadow-float: 0 6px 22px rgba(40,33,20,.14);
+  --shadow-sel:   0 4px 14px rgba(47,95,224,.16);
+  /* type */
+  --serif: 'Iowan Old Style','Palatino Linotype','Georgia',serif;
+  --sans:  system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:  ui-monospace,'SF Mono','SFMono-Regular',Menlo,monospace;
+  /* radius */
+  --r:     10px;
+  --r-sm:  7px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{
+  background:var(--desk);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 80px;
+}
+
+/* ---------- focus + reduced motion (a11y) ---------- */
+:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:4px;
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important;}
+}
+
+/* ---------- page header / state nav ---------- */
+.page-head{
+  max-width:1280px;
+  margin:0 auto;
+  padding:40px 24px 8px;
+}
+.page-head h1{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:30px;
+  letter-spacing:.1px;
+  margin:0 0 6px;
+}
+.page-head .kicker{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 10px;
+}
+.page-head p{
+  max-width:62ch;
+  color:var(--ink-soft);
+  margin:0 0 18px;
+}
+.statenav{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  border-top:1px solid var(--hairline);
+  padding-top:16px;
+}
+.statenav a{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:44px;
+  padding:0 16px;
+  border:1px solid var(--hairline-2);
+  border-radius:999px;
+  background:var(--sheet);
+  color:var(--ink);
+  text-decoration:none;
+  font-size:13px;
+  box-shadow:var(--shadow-card);
+  transition:box-shadow .15s ease, transform .15s ease, color .15s ease;
+}
+.statenav a:hover{transform:translateY(-1px); color:var(--accent);}
+.statenav a .n{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-faint);
+}
+
+/* ---------- frame scaffold ---------- */
+.frame-wrap{
+  max-width:1280px;
+  margin:38px auto 0;
+  padding:0 24px;
+}
+.frame-label{
+  display:flex;
+  align-items:baseline;
+  gap:14px;
+  margin:0 0 12px;
+  padding-left:2px;
+}
+.frame-label .badge{
+  font-family:var(--mono);
+  font-size:12px;
+  font-weight:600;
+  color:var(--sheet);
+  background:var(--ink);
+  border-radius:6px;
+  padding:3px 8px;
+  letter-spacing:.04em;
+}
+.frame-label .name{
+  font-family:var(--serif);
+  font-size:21px;
+}
+.frame-label .desc{
+  color:var(--ink-soft);
+  font-size:13.5px;
+}
+
+/* the board frame: ~1280x820, paper + warm graph-paper grid */
+.frame{
+  position:relative;
+  width:1280px;
+  height:820px;
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size:28px 28px;
+  border:1px solid var(--hairline-2);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:var(--shadow-card), inset 0 0 0 6px rgba(255,253,248,.55);
+}
+/* corner state chip inside each frame */
+.frame-chip{
+  position:absolute;
+  top:16px; left:16px;
+  z-index:40;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:999px;
+  padding:6px 12px;
+  box-shadow:var(--shadow-card);
+}
+
+/* ================= NODES ================= */
+.node{
+  position:absolute;
+  background:var(--sheet);
+  border:1px solid var(--hairline);
+  border-radius:var(--r);
+  box-shadow:var(--shadow-card);
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.node-tick{
+  position:absolute;
+  top:0; left:0;
+  width:4px; height:100%;
+  background:var(--tick-teal);
+  opacity:.85;
+}
+.node-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px 14px 8px 20px;
+}
+.node-title{
+  font-family:var(--mono);
+  font-size:13px;
+  font-weight:600;
+  color:var(--ink);
+  margin:0;
+  letter-spacing:-.01em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.node-collapse{
+  flex:0 0 auto;
+  min-width:44px; min-height:44px;
+  width:44px; height:44px;
+  display:grid; place-items:center;
+  margin:-8px -6px -8px 0;
+  background:transparent;
+  border:none;
+  border-radius:8px;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.node-collapse:hover{background:var(--paper); color:var(--ink);}
+.node-collapse svg{transition:transform .15s ease;}
+.node-collapse[aria-expanded="false"] svg{transform:rotate(-90deg);}
+
+.node-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  padding:0 14px 12px 20px;
+}
+.chip{
+  font-family:var(--sans);
+  font-size:11.5px;
+  color:var(--ink-soft);
+  background:var(--paper);
+  border:1px solid var(--hairline-2);
+  border-radius:6px;
+  padding:3px 8px;
+  line-height:1.3;
+}
+.chip--status{font-weight:600;}
+.chip--approved{color:var(--sage); background:var(--sage-soft); border-color:var(--sage-line);}
+.chip--active{color:var(--ochre); background:var(--ochre-soft); border-color:var(--ochre-line);}
+
+.node-body{
+  padding:4px 20px 16px;
+  border-top:1px solid var(--hairline);
+  margin-top:2px;
+  overflow:hidden;
+  color:var(--ink);
+}
+.node-body .md-h2{
+  font-family:var(--serif);
+  font-size:16px;
+  font-weight:600;
+  margin:12px 0 6px;
+}
+.node-body .md-h2 .hash{color:var(--ink-faint); font-family:var(--mono); font-size:13px; font-weight:400;}
+.node-body p{margin:0; color:var(--ink-soft); font-size:13.5px; line-height:1.5;}
+.node-collapsed-note{
+  padding:14px 20px 18px;
+  border-top:1px solid var(--hairline);
+  color:var(--ink-faint);
+  font-style:italic;
+  font-family:var(--serif);
+  font-size:13.5px;
+}
+
+/* selected node — accent treatment */
+.node.is-selected{
+  border-color:var(--accent);
+  box-shadow:var(--shadow-sel), 0 0 0 3px var(--accent-ring);
+}
+.node.is-selected .node-tick{background:var(--accent); opacity:1;}
+
+/* note node — warm tinted sheet, serif voice */
+.node--note{
+  background:var(--sheet-tint);
+  border-color:var(--hairline-2);
+}
+.node--note .note-body{padding:18px 22px;}
+.node--note .md-h2{
+  font-family:var(--serif);
+  font-size:17px;
+  font-weight:600;
+  margin:0 0 8px;
+}
+.node--note .md-h2 .hash{color:var(--ink-faint); font-family:var(--mono); font-size:13px;}
+.node--note p{margin:0; color:var(--ink); font-size:14.5px; line-height:1.55;}
+.node--note .note-corner{
+  position:absolute; top:0; right:0;
+  width:0; height:0;
+  border-top:18px solid var(--hairline-2);
+  border-left:18px solid transparent;
+}
+
+/* image node */
+.node--img{padding:0;}
+.node--img .img-stage{
+  flex:1;
+  display:grid;
+  place-items:center;
+  background:
+    repeating-linear-gradient(135deg, rgba(80,66,40,.025) 0 10px, transparent 10px 20px),
+    var(--paper);
+  border-bottom:1px solid var(--hairline);
+}
+.node--img figcaption{
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-soft);
+  padding:9px 14px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.node--img figcaption::before{
+  content:""; width:7px; height:7px; border-radius:2px;
+  background:var(--tick-teal); flex:0 0 auto;
+}
+
+/* ============ comment pins ============ */
+.pin{
+  position:absolute;
+  z-index:6;
+  min-width:44px; min-height:44px;
+  width:44px; height:44px;
+  display:grid; place-items:center;
+  border:none; background:transparent; padding:0;
+  cursor:pointer;
+  transform:translate(-50%,-50%);
+}
+.pin .dot{
+  width:28px; height:28px;
+  border-radius:50% 50% 50% 4px;
+  background:var(--pin);
+  border:1.5px solid var(--pin-line);
+  box-shadow:var(--shadow-card);
+  display:grid; place-items:center;
+  font-family:var(--mono);
+  font-size:13px; font-weight:700;
+  color:var(--pin-ink);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.pin:hover .dot{transform:scale(1.08); box-shadow:var(--shadow-float);}
+.pin.is-resolved .dot{
+  background:var(--pin-resolved);
+  border-color:var(--hairline-2);
+  color:var(--ink-faint);
+  box-shadow:none;
+}
+.pin.is-resolved .dot::after{
+  content:"✓"; font-size:13px; color:var(--sage); font-weight:700;
+}
+.pin.is-resolved .dot .num{display:none;}
+/* ghost placement pin */
+.pin-ghost{
+  position:absolute; z-index:6;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.pin-ghost .dot{
+  width:28px; height:28px;
+  border-radius:50% 50% 50% 4px;
+  background:rgba(244,201,93,.35);
+  border:1.5px dashed var(--pin-line-soft);
+}
+.pin-ghost .hint{
+  position:absolute; left:34px; top:50%; transform:translateY(-50%);
+  white-space:nowrap;
+  font-size:11.5px; color:var(--ink-soft);
+  background:var(--sheet); border:1px solid var(--hairline-2);
+  border-radius:6px; padding:4px 8px; box-shadow:var(--shadow-card);
+}
+
+/* ================= EDGES ================= */
+.edges{position:absolute; inset:0; z-index:1; pointer-events:none;}
+.edge-label{
+  position:absolute;
+  z-index:3;
+  transform:translate(-50%,-50%);
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:12.5px;
+  color:var(--ink-soft);
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:999px;
+  padding:3px 10px;
+  box-shadow:var(--shadow-card);
+  display:inline-flex; align-items:center; gap:6px;
+  white-space:nowrap;
+}
+.edge-label.is-link{color:var(--accent); border-color:var(--accent-line); background:var(--accent-soft); font-style:normal; font-family:var(--mono); font-size:11px;}
+.edge-label .lock{flex:0 0 auto;}
+
+/* ================= TOOLBAR ================= */
+.toolbar{
+  position:absolute;
+  top:20px; left:50%;
+  transform:translateX(-50%);
+  z-index:30;
+  display:flex; align-items:center; gap:4px;
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:14px;
+  padding:6px;
+  box-shadow:var(--shadow-float);
+}
+.tbtn{
+  min-width:44px; min-height:44px;
+  width:44px; height:44px;
+  display:grid; place-items:center;
+  background:transparent;
+  border:none; border-radius:9px;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.tbtn:hover{background:var(--paper); color:var(--ink);}
+.tbtn.is-active{background:var(--accent-soft); color:var(--accent);}
+.tdiv{width:1px; height:26px; background:var(--hairline-2); margin:0 3px;}
+
+/* ================= MINIMAP ================= */
+.minimap{
+  position:absolute;
+  right:22px; bottom:22px;
+  z-index:20;
+  width:208px; height:140px;
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:10px;
+  box-shadow:var(--shadow-float);
+  padding:10px;
+}
+.minimap .mm-label{
+  position:absolute; top:7px; left:11px;
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-faint);
+}
+.mm-stage{position:absolute; inset:24px 12px 12px;}
+.mm-node{position:absolute; background:var(--hairline-2); border-radius:3px; border:1px solid var(--mm-line);}
+.mm-node.sel{background:var(--accent-soft); border-color:var(--accent);}
+.mm-view{position:absolute; border:1.5px solid var(--accent); border-radius:4px; background:rgba(47,95,224,.06);}
+
+/* ================= CONTROLS (bottom-left) ================= */
+.controls{
+  position:absolute;
+  left:22px; bottom:22px;
+  z-index:20;
+  display:flex; flex-direction:column;
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:12px;
+  box-shadow:var(--shadow-float);
+  overflow:hidden;
+}
+.cbtn{
+  min-width:44px; min-height:44px;
+  width:44px; height:44px;
+  display:grid; place-items:center;
+  background:transparent; border:none;
+  color:var(--ink-soft); cursor:pointer;
+  border-bottom:1px solid var(--hairline);
+  transition:background .15s ease, color .15s ease;
+}
+.cbtn:last-child{border-bottom:none;}
+.cbtn:hover{background:var(--paper); color:var(--ink);}
+.czoom{
+  font-family:var(--mono); font-size:11px; color:var(--ink-soft);
+  border-bottom:1px solid var(--hairline);
+  height:34px; display:grid; place-items:center;
+}
+
+/* ================= EMPTY STATE ================= */
+.empty-center{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  z-index:5;
+}
+.empty-card{
+  width:520px;
+  background:var(--sheet);
+  border:1px solid var(--hairline);
+  border-radius:16px;
+  box-shadow:var(--shadow-card);
+  padding:46px 48px 40px;
+  text-align:center;
+}
+.empty-mark{
+  width:74px; height:74px; margin:0 auto 22px;
+  display:grid; place-items:center;
+  border:1px solid var(--hairline-2);
+  border-radius:14px;
+  background:var(--paper);
+  color:var(--accent);
+}
+.empty-card h2{
+  font-family:var(--serif);
+  font-weight:600; font-size:24px;
+  margin:0 0 10px;
+}
+.empty-card p{
+  color:var(--ink-soft);
+  margin:0 auto 26px;
+  max-width:42ch;
+}
+.empty-actions{display:flex; gap:12px; justify-content:center;}
+.btn-primary{
+  display:inline-flex; align-items:center; gap:9px;
+  min-height:44px; padding:0 22px;
+  background:var(--accent); color:#fff;
+  border:none; border-radius:10px;
+  font-size:14px; font-weight:500; cursor:pointer;
+  box-shadow:var(--shadow-sel);
+  transition:background .15s ease, transform .15s ease;
+}
+.btn-primary:hover{background:var(--accent-press); transform:translateY(-1px);}
+.btn-quiet{
+  display:inline-flex; align-items:center; gap:9px;
+  min-height:44px; padding:0 20px;
+  background:var(--sheet); color:var(--ink);
+  border:1px solid var(--hairline-2); border-radius:10px;
+  font-size:14px; cursor:pointer;
+  transition:background .15s ease, border-color .15s ease;
+}
+.btn-quiet:hover{background:var(--paper); border-color:var(--ink-faint);}
+.empty-hint{
+  margin-top:24px;
+  font-family:var(--mono); font-size:11px;
+  color:var(--ink-faint); letter-spacing:.02em;
+}
+
+/* ================= READER DRAWER ================= */
+.reader{
+  position:absolute;
+  top:0; right:0; bottom:0;
+  width:486px;
+  z-index:35;
+  background:var(--sheet);
+  border-left:1px solid var(--hairline-2);
+  box-shadow:-12px 0 32px rgba(40,33,20,.12);
+  display:flex; flex-direction:column;
+  /* drawer slide-in feel: animate transform on open (~200ms ease-out) */
+  animation:reader-in .2s ease-out;
+}
+@keyframes reader-in{from{transform:translateX(24px); opacity:.4;} to{transform:none; opacity:1;}}
+.reader-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px;
+  padding:18px 22px;
+  border-bottom:1px solid var(--hairline);
+}
+.reader-file{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--mono); font-size:12.5px; color:var(--ink);
+}
+.reader-file .dot{width:8px; height:8px; border-radius:2px; background:var(--ochre);}
+.reader-close{
+  min-width:44px; min-height:44px; width:44px; height:44px;
+  display:grid; place-items:center;
+  background:transparent; border:none; border-radius:9px;
+  color:var(--ink-soft); cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.reader-close:hover{background:var(--paper); color:var(--ink);}
+.reader-body{
+  flex:1; overflow:auto;
+  padding:30px 40px 36px;
+}
+/* document-style markdown */
+.doc h1{font-family:var(--serif); font-weight:600; font-size:26px; margin:0 0 4px; letter-spacing:.1px;}
+.doc .doc-fm{
+  display:flex; gap:8px; flex-wrap:wrap;
+  margin:0 0 22px; padding-bottom:18px;
+  border-bottom:1px solid var(--hairline);
+}
+.doc h2{font-family:var(--serif); font-weight:600; font-size:19px; margin:26px 0 8px;}
+.doc p{margin:0 0 14px; color:var(--ink); max-width:60ch; line-height:1.65;}
+.doc p .em{font-style:italic;}
+.doc code.inline{font-family:var(--mono); font-size:12.5px; background:var(--paper); border:1px solid var(--hairline); border-radius:5px; padding:1px 5px; color:var(--ink);}
+
+/* syntax-highlighted code block — tokens within the palette */
+.codeblock{
+  background:var(--code-bg);
+  border:1px solid var(--hairline-2);
+  border-radius:10px;
+  margin:6px 0 22px;
+  overflow:hidden;
+}
+.codeblock .cb-bar{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 14px;
+  border-bottom:1px solid var(--hairline);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-faint);
+}
+.codeblock .cb-bar .lang{margin-left:auto; color:var(--accent);}
+.codeblock pre{
+  margin:0; padding:14px 16px;
+  font-family:var(--mono); font-size:12.5px; line-height:1.7;
+  color:var(--ink); overflow-x:auto;
+}
+.tok-kw{color:var(--accent); font-weight:600;}
+.tok-fn{color:var(--ochre);}
+.tok-str{color:var(--sage);}
+.tok-com{color:var(--ink-faint); font-style:italic;}
+.tok-punc{color:var(--ink-soft);}
+
+/* reader comment thread (flat) */
+.reader-comments{
+  margin-top:18px;
+  border-top:1px solid var(--hairline);
+  padding-top:20px;
+}
+.reader-comments .rc-label{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-faint);
+  margin:0 0 14px;
+  display:flex; align-items:center; gap:8px;
+}
+
+/* ============ comment thread (shared) ============ */
+.comment{
+  display:flex; gap:12px;
+  margin:0 0 16px;
+}
+.avatar{
+  flex:0 0 auto;
+  width:34px; height:34px; border-radius:50%;
+  display:grid; place-items:center;
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  border:1px solid var(--hairline-2);
+}
+.avatar.human{background:var(--accent-soft); color:var(--accent);}
+.avatar.agent{background:var(--sage-soft); color:var(--sage);}
+.comment .body{flex:1; min-width:0;}
+.comment .by{
+  display:flex; align-items:baseline; gap:9px; margin-bottom:3px;
+}
+.comment .by .who{font-weight:600; font-size:13px; color:var(--ink);}
+.comment .by .who .tag{
+  font-family:var(--mono); font-size:10px; font-weight:500;
+  color:var(--ink-faint); margin-left:5px;
+}
+.comment .by .when{font-size:11px; color:var(--ink-faint); font-family:var(--mono);}
+.comment .text{
+  font-size:13.5px; color:var(--ink); line-height:1.55;
+  background:var(--paper);
+  border:1px solid var(--hairline);
+  border-radius:9px;
+  padding:9px 12px;
+}
+.comment.is-agent .text{background:var(--sage-soft); border-color:var(--sage-line-2);}
+.comment.is-reply{margin-left:30px;}
+
+/* reply composer */
+.composer{
+  display:flex; gap:10px; align-items:flex-start;
+  margin-top:4px;
+}
+.composer .avatar{width:34px; height:34px;}
+.composer .field{flex:1;}
+.comment-reply-input{
+  width:100%;
+  font-family:var(--sans); font-size:13.5px; color:var(--ink);
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:9px;
+  padding:10px 12px;
+  resize:none;
+  min-height:44px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.comment-reply-input::placeholder{color:var(--ink-faint);}
+.comment-reply-input:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-ring);
+}
+.composer-actions{display:flex; gap:8px; margin-top:8px;}
+.comment-resolve{
+  display:inline-flex; align-items:center; gap:7px;
+  min-height:44px; padding:0 14px;
+  background:var(--sheet); color:var(--sage);
+  border:1px solid var(--sage-line); border-radius:9px;
+  font-size:13px; font-weight:500; cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.comment-resolve:hover{background:var(--sage-soft);}
+.btn-reply-send{
+  display:inline-flex; align-items:center;
+  min-height:44px; padding:0 16px;
+  background:var(--accent); color:#fff;
+  border:none; border-radius:9px;
+  font-size:13px; font-weight:500; cursor:pointer;
+  transition:background .15s ease;
+}
+.btn-reply-send:hover{background:var(--accent-press);}
+
+/* ============ floating comment popover (comment-mode) ============ */
+.comment-pop{
+  position:absolute;
+  z-index:25;
+  width:360px;
+  background:var(--sheet);
+  border:1px solid var(--hairline-2);
+  border-radius:12px;
+  box-shadow:var(--shadow-float);
+  padding:16px 16px 14px;
+}
+.comment-pop .pop-head{
+  display:flex; align-items:center; gap:8px;
+  margin:0 0 14px;
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-faint);
+}
+.comment-pop .pop-head .pop-pin{
+  width:18px; height:18px; border-radius:50% 50% 50% 3px;
+  background:var(--pin); border:1.5px solid var(--pin-line);
+  display:grid; place-items:center;
+  font-size:10px; font-weight:700; color:var(--pin-ink);
+}
+.comment-pop .pop-head .anchor{margin-left:auto; color:var(--ink-faint); text-transform:none; letter-spacing:0;}
+
+/* comment-mode banner */
+.cmode-banner{
+  position:absolute;
+  top:78px; left:50%; transform:translateX(-50%);
+  z-index:24;
+  display:inline-flex; align-items:center; gap:10px;
+  background:var(--accent-soft);
+  border:1px solid var(--accent-line);
+  color:var(--accent);
+  border-radius:999px;
+  padding:8px 16px;
+  font-size:12.5px; font-weight:500;
+  box-shadow:var(--shadow-card);
+}
+.cmode-banner .crosshair{display:grid; place-items:center;}
+
+/* comment-mode crosshair cursor over the canvas surface */
+.frame.is-comment-mode .frame-surface{cursor:crosshair;}
+.frame-surface{position:absolute; inset:0; z-index:0;}
+
+footer.foot{
+  max-width:1280px; margin:48px auto 0; padding:0 24px;
+  color:var(--ink-faint); font-size:12px; font-family:var(--mono);
+  border-top:1px solid var(--hairline); padding-top:18px;
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<header class="page-head">
+  <p class="kicker">Flowcanvas v0.1 · visual world A</p>
+  <h1>Light Editorial / Paper</h1>
+  <p>Markdown files as draggable paper sheets on a warm studio desk — labeled ink edges, sticky-note comment pins, and a printed-document reader. A deliberately distinct world from the dark minimal canvas: light paper, serif editorial type, soft warm elevation, a single ink-blue accent.</p>
+  <nav class="statenav" aria-label="Jump to state">
+    <a href="#empty"><span class="n">01</span> Empty</a>
+    <a href="#loaded"><span class="n">02</span> Loaded board</a>
+    <a href="#reader"><span class="n">03</span> Reader open</a>
+    <a href="#comment"><span class="n">04</span> Comment mode</a>
+  </nav>
+</header>
+
+<!-- ============================================================
+     STATE 01 — EMPTY (no file open)
+     ============================================================ -->
+<section class="frame-wrap" id="empty">
+  <div class="frame-label">
+    <span class="badge">01</span>
+    <span class="name">Empty</span>
+    <span class="desc">No <code>.canvas</code> open — refined centered prompt to open or create one.</span>
+  </div>
+  <div class="frame">
+    <span class="frame-chip">State · Empty</span>
+
+    <div class="empty-center">
+      <div class="empty-card">
+        <div class="empty-mark" aria-hidden="true">
+          <!-- paper-sheet glyph -->
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="13" height="18" rx="2"/>
+            <path d="M8 8h6M8 12h6M8 16h3"/>
+            <path d="M17 7l3 3v9a2 2 0 0 1-2 2h-1" opacity=".5"/>
+          </svg>
+        </div>
+        <h2>Open a board to begin</h2>
+        <p>Arrange your flowcode files as a spatial map. Open an existing <code class="inline">.canvas</code> file or start a fresh board on the desk.</p>
+        <div class="empty-actions">
+          <!-- INTERACTION: opens native file picker scoped to FLOWCANVAS_ROOT; loads *.canvas / *.json -->
+          <button class="btn-primary" data-testid="open-file" aria-label="Open a .canvas file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+            Open .canvas file
+          </button>
+          <!-- INTERACTION: creates a new empty board file, writes initial schemaVersion 0.1 -->
+          <button class="btn-quiet" aria-label="Create a new board">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            New board
+          </button>
+        </div>
+        <div class="empty-hint">drag a .canvas onto the desk · ⌘O to open</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     STATE 02 — LOADED (full worked-example board)
+     ============================================================ -->
+<section class="frame-wrap" id="loaded">
+  <div class="frame-label">
+    <span class="badge">02</span>
+    <span class="name">Loaded board</span>
+    <span class="desc">The mdview 001 map — toolbar, minimap, controls. <strong>n-design</strong> selected.</span>
+  </div>
+  <div class="frame">
+    <span class="frame-chip">State · Loaded · rev 7</span>
+
+    <!-- ---------- TOOLBAR (floating, top-center) ---------- -->
+    <div class="toolbar" role="toolbar" aria-label="Canvas tools">
+      <!-- INTERACTION: drops a new draggable node at viewport center -->
+      <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg>
+      </button>
+      <!-- INTERACTION: zooms/pans so all nodes fit the viewport -->
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit board to view">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg>
+      </button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <!-- INTERACTION: exports the current board -> DesignBrief JSON for an agent -->
+      <button class="tbtn" data-testid="toolbar-export" aria-label="Export design brief">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>
+      </button>
+      <!-- INTERACTION: imports an AgentResponse JSON and merges it onto the board -->
+      <button class="tbtn" data-testid="toolbar-import" aria-label="Import agent response">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>
+      </button>
+      <!-- INTERACTION: POST /api/canvas — persists board, bumps revision -->
+      <button class="tbtn" data-testid="toolbar-save" aria-label="Save board">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7V4M8 21v-6h8v6"/></svg>
+      </button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <!-- INTERACTION: toggles comment mode (pin placement) -->
+      <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>
+      </button>
+    </div>
+
+    <!-- ---------- EDGES (drawn behind nodes) ---------- -->
+    <svg class="edges" viewBox="0 0 1280 820" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1 1 L9 5 L1 9" fill="none" stroke="var(--edge-ink)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <!-- links: n-design -> n-plan (dashed, lock) -->
+      <path d="M440 240 C 500 240, 520 240, 580 240" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow)" opacity=".85"/>
+      <!-- realizes: n-plan(bottom) -> n-arch-img(top) (solid) -->
+      <path d="M770 400 C 770 432, 770 450, 770 480" fill="none" stroke="var(--edge)" stroke-width="1.6" marker-end="url(#arrow)"/>
+      <!-- questions: n-note(top) -> n-design(bottom) (solid) -->
+      <path d="M220 480 C 220 444, 250 432, 250 400" fill="none" stroke="var(--edge)" stroke-width="1.6" marker-end="url(#arrow)"/>
+    </svg>
+    <!-- edge labels on paper pills -->
+    <span class="edge-label is-link" style="left:510px; top:240px;">
+      <svg class="lock" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      links
+    </span>
+    <span class="edge-label" style="left:770px; top:440px;">realizes</span>
+    <span class="edge-label" style="left:225px; top:440px;">questions</span>
+
+    <!-- ---------- NODE: n-design (markdown, SELECTED, expanded) ---------- -->
+    <article class="node node--md is-selected" style="left:60px; top:80px; width:380px; height:320px;" aria-label="Markdown node 001-initial-architecture-design (selected)">
+      <span class="node-tick" aria-hidden="true"></span>
+      <header class="node-head">
+        <h3 class="node-title">001-initial-architecture-design</h3>
+        <!-- INTERACTION: collapses/expands the rendered body -->
+        <button class="node-collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+      <div class="node-meta">
+        <span class="chip chip--status chip--approved">approved</span>
+        <span class="chip">design</span>
+        <span class="chip">architecture</span>
+      </div>
+      <div class="node-body">
+        <h4 class="md-h2"><span class="hash">##</span> Problem Statement</h4>
+        <p>Designing a system out of markdown today is linear and lossy — relationships live as paths buried in frontmatter, never seen as a shape. Flowcanvas makes the design board itself the medium.</p>
+      </div>
+    </article>
+
+    <!-- ---------- NODE: n-plan (markdown, collapsed, has comment pin) ---------- -->
+    <article class="node node--md" style="left:580px; top:80px; width:380px; height:320px;" aria-label="Markdown node 001-initial-architecture-plan">
+      <span class="node-tick" aria-hidden="true"></span>
+      <header class="node-head">
+        <h3 class="node-title">001-initial-architecture-plan</h3>
+        <!-- this node shown collapsed for contrast -->
+        <button class="node-collapse" data-testid="node-collapse-toggle" aria-label="Expand node body" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+      <div class="node-meta">
+        <span class="chip chip--status chip--active">active</span>
+      </div>
+      <div class="node-collapsed-note">Body collapsed — 6 phases, 1 comment thread. Expand to read.</div>
+    </article>
+    <!-- comment pin badge "1" anchored near n-plan bottom (offset 0.5, 0.9) -->
+    <button class="pin" data-testid="comment-pin" style="left:770px; top:368px;" aria-label="Comment thread 1 on 001-initial-architecture-plan">
+      <span class="dot"><span class="num">1</span></span>
+    </button>
+
+    <!-- ---------- NODE: n-arch-img (image, CSS/SVG architecture placeholder) ---------- -->
+    <figure class="node node--img" style="left:580px; top:480px; width:380px; height:240px;" aria-label="Image node architecture.png">
+      <div class="img-stage">
+        <svg width="280" height="120" viewBox="0 0 280 120" fill="none" aria-hidden="true">
+          <!-- a small drawn architecture diagram -->
+          <rect x="14" y="44" width="66" height="34" rx="5" fill="var(--sheet)" stroke="var(--edge-ink)" stroke-width="1.4"/>
+          <rect x="107" y="14" width="66" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <rect x="107" y="74" width="66" height="34" rx="5" fill="var(--sheet)" stroke="var(--edge-ink)" stroke-width="1.4"/>
+          <rect x="200" y="44" width="66" height="34" rx="5" fill="var(--sheet)" stroke="var(--edge-ink)" stroke-width="1.4"/>
+          <path d="M80 61 H100 M140 48 V61 H100 M140 74 V61 M173 31 H200 V44 M173 91 H200 V78" stroke="var(--edge)" stroke-width="1.3" fill="none"/>
+          <text x="47" y="65" font-family="ui-monospace,monospace" font-size="9" fill="var(--ink-soft)" text-anchor="middle">client</text>
+          <text x="140" y="35" font-family="ui-monospace,monospace" font-size="9" fill="var(--accent)" text-anchor="middle">api</text>
+          <text x="140" y="95" font-family="ui-monospace,monospace" font-size="9" fill="var(--ink-soft)" text-anchor="middle">store</text>
+          <text x="233" y="65" font-family="ui-monospace,monospace" font-size="9" fill="var(--ink-soft)" text-anchor="middle">fs</text>
+        </svg>
+      </div>
+      <figcaption>architecture.png</figcaption>
+    </figure>
+
+    <!-- ---------- NODE: n-note (text/note) ---------- -->
+    <article class="node node--note" style="left:60px; top:480px; width:320px; height:160px;" aria-label="Note node, open question">
+      <span class="note-corner" aria-hidden="true"></span>
+      <div class="note-body">
+        <h4 class="md-h2"><span class="hash">##</span> Open question</h4>
+        <p>Should the canvas store get its own slice?</p>
+      </div>
+    </article>
+
+    <!-- ---------- MINIMAP (bottom-right) ---------- -->
+    <div class="minimap" aria-label="Board minimap">
+      <span class="mm-label">Map</span>
+      <div class="mm-stage">
+        <div class="mm-node sel" style="left:2%;  top:8%;  width:34%; height:40%;"></div>
+        <div class="mm-node"     style="left:50%; top:8%;  width:34%; height:40%;"></div>
+        <div class="mm-node"     style="left:50%; top:60%; width:34%; height:30%;"></div>
+        <div class="mm-node"     style="left:2%;  top:60%; width:28%; height:20%;"></div>
+        <div class="mm-view"     style="left:-2%; top:0%;  width:92%; height:98%;"></div>
+      </div>
+    </div>
+
+    <!-- ---------- CONTROLS (bottom-left) ---------- -->
+    <div class="controls" aria-label="Zoom controls">
+      <button class="cbtn" aria-label="Zoom in"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+      <div class="czoom">100%</div>
+      <button class="cbtn" aria-label="Zoom out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     STATE 03 — READER OPEN (drawer from right)
+     ============================================================ -->
+<section class="frame-wrap" id="reader">
+  <div class="frame-label">
+    <span class="badge">03</span>
+    <span class="name">Reader open</span>
+    <span class="desc">Printed-document pane for <strong>n-plan</strong> — rendered markdown, highlighted code, flat comment thread.</span>
+  </div>
+  <div class="frame">
+    <span class="frame-chip">State · Reader</span>
+
+    <!-- toolbar (same as loaded, condensed reference) -->
+    <div class="toolbar" role="toolbar" aria-label="Canvas tools">
+      <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit board to view"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg></button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <button class="tbtn" data-testid="toolbar-export" aria-label="Export design brief"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-import" aria-label="Import agent response"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-save" aria-label="Save board"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7V4M8 21v-6h8v6"/></svg></button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <button class="tbtn" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></button>
+    </div>
+
+    <!-- board behind the drawer (n-design + n-note visible at left) -->
+    <article class="node node--md is-selected" style="left:60px; top:120px; width:360px; height:300px;" aria-label="Markdown node 001-initial-architecture-design">
+      <span class="node-tick" aria-hidden="true"></span>
+      <header class="node-head">
+        <h3 class="node-title">001-initial-architecture-design</h3>
+        <button class="node-collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </header>
+      <div class="node-meta">
+        <span class="chip chip--status chip--approved">approved</span>
+        <span class="chip">design</span>
+        <span class="chip">architecture</span>
+      </div>
+      <div class="node-body">
+        <h4 class="md-h2"><span class="hash">##</span> Problem Statement</h4>
+        <p>Designing a system out of markdown today is linear and lossy. Flowcanvas makes the design board itself the medium.</p>
+      </div>
+    </article>
+    <article class="node node--note" style="left:60px; top:470px; width:300px; height:150px;" aria-label="Note node">
+      <span class="note-corner" aria-hidden="true"></span>
+      <div class="note-body">
+        <h4 class="md-h2"><span class="hash">##</span> Open question</h4>
+        <p>Should the canvas store get its own slice?</p>
+      </div>
+    </article>
+
+    <!-- ---------- READER DRAWER (slides in from right) ---------- -->
+    <!-- INTERACTION: drawer opens when a node is double-clicked; slides ~200ms ease-out -->
+    <aside class="reader" role="dialog" aria-label="Document reader: 001-initial-architecture-plan.md">
+      <header class="reader-head">
+        <span class="reader-file"><span class="dot" aria-hidden="true"></span>001-initial-architecture-plan.md</span>
+        <!-- INTERACTION: closes the reader drawer, returns focus to the node -->
+        <button class="reader-close" data-testid="reader-close" aria-label="Close reader">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div class="reader-body">
+        <article class="doc">
+          <h1>001-initial-architecture-plan</h1>
+          <div class="doc-fm">
+            <span class="chip chip--status chip--active">active</span>
+            <span class="chip">plan</span>
+          </div>
+
+          <h2>Phase 1 — Canvas persistence</h2>
+          <p>Reuse mdview's file API <span class="em">verbatim</span>; the canvas only adds <code class="inline">/api/canvas</code> and <code class="inline">/api/asset</code>. Path safety stays in <code class="inline">guardPath</code> — every route resolves against <code class="inline">FLOWCANVAS_ROOT</code> and rejects anything outside it.</p>
+
+          <div class="codeblock">
+            <div class="cb-bar"><span>server/guard.ts</span><span class="lang">typescript</span></div>
+            <pre><span class="tok-kw">export function</span> <span class="tok-fn">guardPath</span><span class="tok-punc">(</span>root<span class="tok-punc">,</span> p<span class="tok-punc">)</span> <span class="tok-punc">{</span>
+  <span class="tok-kw">const</span> abs <span class="tok-punc">=</span> path<span class="tok-punc">.</span><span class="tok-fn">resolve</span><span class="tok-punc">(</span>root<span class="tok-punc">,</span> p<span class="tok-punc">)</span>   <span class="tok-com">// reuse mdview helper</span>
+  <span class="tok-kw">if</span> <span class="tok-punc">(!</span>abs<span class="tok-punc">.</span><span class="tok-fn">startsWith</span><span class="tok-punc">(</span>root<span class="tok-punc">))</span> <span class="tok-kw">throw new</span> <span class="tok-fn">Error</span><span class="tok-punc">(</span><span class="tok-str">'outside root'</span><span class="tok-punc">)</span>
+  <span class="tok-kw">return</span> abs
+<span class="tok-punc">}</span></pre>
+          </div>
+
+          <h2>Phase 2 — Asset pipeline</h2>
+          <p>Inline image nodes resolve through <code class="inline">/api/asset</code> against the same root guard; the allowlist covers <code class="inline">.png .jpg .svg .webp .avif</code>.</p>
+
+          <!-- flat comment thread for this node -->
+          <div class="reader-comments">
+            <p class="rc-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>
+              Comments · 1 thread
+            </p>
+
+            <div class="comment is-root">
+              <div class="avatar human" aria-hidden="true">D</div>
+              <div class="body">
+                <div class="by"><span class="who">david<span class="tag">human</span></span><span class="when">10:20</span></div>
+                <div class="text">Can the file API be reused verbatim for canvas persistence?</div>
+              </div>
+            </div>
+
+            <div class="comment is-reply is-agent">
+              <div class="avatar agent" aria-hidden="true">⌘</div>
+              <div class="body">
+                <div class="by"><span class="who">opus-4.8<span class="tag">agent</span></span><span class="when">10:41</span></div>
+                <div class="text">Yes — guardPath + the POST handler are reused; canvas adds /api/canvas + /api/asset only.</div>
+              </div>
+            </div>
+
+            <div class="composer">
+              <div class="avatar human" aria-hidden="true">D</div>
+              <div class="field">
+                <!-- INTERACTION: posts an AgentComment with parentId = c-1 -->
+                <textarea class="comment-reply-input" data-testid="comment-reply-input" rows="1" aria-label="Reply to thread" placeholder="Reply to this thread…"></textarea>
+                <div class="composer-actions">
+                  <button class="btn-reply-send" aria-label="Send reply">Reply</button>
+                  <!-- INTERACTION: sets resolvedAt, collapses + de-emphasizes the pin -->
+                  <button class="comment-resolve" data-testid="comment-resolve" aria-label="Resolve thread">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>
+                    Resolve
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============================================================
+     STATE 04 — COMMENT MODE
+     ============================================================ -->
+<section class="frame-wrap" id="comment">
+  <div class="frame-label">
+    <span class="badge">04</span>
+    <span class="name">Comment mode</span>
+    <span class="desc">Pin-placement active — open <code>c-1</code> thread, a reply composer, resolve control, and a de-emphasized resolved pin.</span>
+  </div>
+  <div class="frame is-comment-mode">
+    <span class="frame-chip">State · Comment mode</span>
+    <!-- crosshair cursor surface (comment mode) -->
+    <div class="frame-surface" aria-hidden="true"></div>
+
+    <!-- toolbar with comment-mode ACTIVE -->
+    <div class="toolbar" role="toolbar" aria-label="Canvas tools">
+      <button class="tbtn" data-testid="toolbar-add-node" aria-label="Add node"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit board to view"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg></button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <button class="tbtn" data-testid="toolbar-export" aria-label="Export design brief"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-import" aria-label="Import agent response"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-save" aria-label="Save board"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7V4M8 21v-6h8v6"/></svg></button>
+      <span class="tdiv" aria-hidden="true"></span>
+      <!-- comment mode ON -->
+      <button class="tbtn is-active" data-testid="toolbar-comment-mode" aria-label="Toggle comment mode" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></button>
+    </div>
+
+    <div class="cmode-banner">
+      <span class="crosshair" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></span>
+      Comment mode — click any node or the canvas to drop a pin
+    </div>
+
+    <!-- nodes (n-plan with active pin, n-design, n-arch-img) -->
+    <article class="node node--md" style="left:60px; top:120px; width:360px; height:280px;" aria-label="Markdown node 001-initial-architecture-design">
+      <span class="node-tick" aria-hidden="true"></span>
+      <header class="node-head">
+        <h3 class="node-title">001-initial-architecture-design</h3>
+        <button class="node-collapse" data-testid="node-collapse-toggle" aria-label="Collapse node body" aria-expanded="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </header>
+      <div class="node-meta">
+        <span class="chip chip--status chip--approved">approved</span>
+        <span class="chip">architecture</span>
+      </div>
+      <div class="node-body">
+        <h4 class="md-h2"><span class="hash">##</span> Problem Statement</h4>
+        <p>The design board itself becomes the medium — spatial, relational, durable, machine-readable.</p>
+      </div>
+    </article>
+    <!-- resolved pin on n-design (de-emphasized for contrast) -->
+    <button class="pin is-resolved" data-testid="comment-pin" style="left:380px; top:360px;" aria-label="Resolved comment thread on 001-initial-architecture-design">
+      <span class="dot"><span class="num">2</span></span>
+    </button>
+
+    <article class="node node--md" style="left:560px; top:120px; width:340px; height:280px;" aria-label="Markdown node 001-initial-architecture-plan">
+      <span class="node-tick" aria-hidden="true"></span>
+      <header class="node-head">
+        <h3 class="node-title">001-initial-architecture-plan</h3>
+        <button class="node-collapse" data-testid="node-collapse-toggle" aria-label="Expand node body" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </header>
+      <div class="node-meta">
+        <span class="chip chip--status chip--active">active</span>
+      </div>
+      <div class="node-collapsed-note">Body collapsed — open the reader to read all phases.</div>
+    </article>
+    <!-- active/open pin on n-plan (c-1) -->
+    <button class="pin" data-testid="comment-pin" style="left:730px; top:388px;" aria-label="Open comment thread 1 on 001-initial-architecture-plan">
+      <span class="dot"><span class="num">1</span></span>
+    </button>
+
+    <!-- ghost placement pin following the cursor -->
+    <div class="pin-ghost" style="left:300px; top:520px;">
+      <span class="dot"></span>
+      <span class="hint">Click to pin a comment here</span>
+    </div>
+
+    <!-- ---------- OPEN c-1 THREAD POPOVER ---------- -->
+    <div class="comment-pop" style="left:640px; top:430px;" role="dialog" aria-label="Comment thread 1">
+      <div class="pop-head">
+        <span class="pop-pin" aria-hidden="true">1</span>
+        Thread
+        <span class="anchor">on n-plan</span>
+      </div>
+
+      <div class="comment is-root">
+        <div class="avatar human" aria-hidden="true">D</div>
+        <div class="body">
+          <div class="by"><span class="who">david<span class="tag">human</span></span><span class="when">10:20</span></div>
+          <div class="text">Can the file API be reused verbatim for canvas persistence?</div>
+        </div>
+      </div>
+
+      <div class="comment is-reply is-agent">
+        <div class="avatar agent" aria-hidden="true">⌘</div>
+        <div class="body">
+          <div class="by"><span class="who">opus-4.8<span class="tag">agent</span></span><span class="when">10:41</span></div>
+          <div class="text">Yes — guardPath + the POST handler are reused; canvas adds /api/canvas + /api/asset only.</div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="avatar human" aria-hidden="true">D</div>
+        <div class="field">
+          <!-- INTERACTION: posts a reply (parentId = c-1) into the thread -->
+          <textarea class="comment-reply-input" data-testid="comment-reply-input" rows="1" aria-label="Reply to thread" placeholder="Reply…"></textarea>
+          <div class="composer-actions">
+            <button class="btn-reply-send" aria-label="Send reply">Reply</button>
+            <!-- INTERACTION: marks the thread resolved; pin becomes de-emphasized (see pin 2) -->
+            <button class="comment-resolve" data-testid="comment-resolve" aria-label="Resolve thread">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>
+              Resolve
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  Flowcanvas v0.1 · world A — Light Editorial / Paper · self-contained mockup, no external assets
+</footer>
+
+</body>
+</html>

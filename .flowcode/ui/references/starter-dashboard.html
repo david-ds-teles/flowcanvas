@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Flowcode UI starter reference — demonstrates ui-design-system.md (the shipped starter).
+  Self-contained: system fonts, token CSS vars, inline SVG, no CDN. Renders standalone.
+  Shows: layout shell (header + sidebar + workspace) · page header + filter bar ·
+  data table with status badges · pagination · loaded/empty/error states (CSS-radio switcher).
+  Every interactive element carries data-testid. Light, neutral, recolorable via --accent.
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcode UI Starter — Users</title>
+<style>
+  :root{
+    /* §2 primitives */
+    --white:#fff; --neutral-50:#f8fafc; --neutral-100:#f1f5f9; --neutral-200:#e2e8f0;
+    --neutral-300:#cbd5e1; --neutral-500:#64748b; --neutral-700:#334155; --neutral-900:#0f172a;
+    --accent-600:#4f46e5; --accent-700:#4338ca; --accent-50:#eef2ff;
+    --success:#16a34a; --success-bg:#dcfce7; --warning:#d97706; --warning-bg:#fef3c7;
+    --error:#dc2626; --error-bg:#fee2e2;
+    /* §2.2 semantic aliases */
+    --bg-app:var(--neutral-50); --bg-surface:var(--white); --bg-subtle:var(--neutral-100);
+    --text-primary:var(--neutral-900); --text-body:var(--neutral-700); --text-muted:var(--neutral-500);
+    --border-default:var(--neutral-200); --border-strong:var(--neutral-300);
+    --accent:var(--accent-600); --accent-hover:var(--accent-700); --focus-ring:var(--accent-600);
+    /* §4 spacing */ --space-page:24px; --space-card:16px; --gap:16px; --gap-tight:8px;
+    --field-height:40px; --container-max:1200px;
+    /* §5 radii + elevation */ --radius-sm:6px; --radius:8px; --radius-lg:12px; --radius-pill:999px;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.10);
+    --shadow-lg:0 10px 15px rgba(15,23,42,.10),0 4px 6px rgba(15,23,42,.05);
+    /* §10 motion */ --ease-out:cubic-bezier(.23,1,.32,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5; color:var(--text-body); background:var(--bg-app);
+  }
+  /* ---- Layout shell (§7) ---- */
+  .app{display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; min-height:100vh}
+  .header{
+    grid-column:1 / -1; display:flex; align-items:center; gap:var(--gap);
+    height:64px; padding:0 var(--space-page); background:var(--bg-surface);
+    border-bottom:1px solid var(--border-default);
+  }
+  .brand{display:flex; align-items:center; gap:var(--gap-tight); font-weight:600; color:var(--text-primary)}
+  .brand .mark{width:28px; height:28px; border-radius:var(--radius-sm); background:var(--accent); display:grid; place-items:center; color:#fff}
+  .search{margin-left:auto; display:flex; align-items:center; gap:var(--gap-tight);
+    height:36px; padding:0 12px; background:var(--bg-subtle); border:1px solid var(--border-default);
+    border-radius:var(--radius); color:var(--text-muted); min-width:240px}
+  .search input{border:0; background:transparent; outline:none; font:inherit; color:var(--text-body); width:100%}
+  .avatar{width:32px; height:32px; border-radius:var(--radius-pill); background:var(--accent-50);
+    color:var(--accent); display:grid; place-items:center; font-weight:600; cursor:pointer; border:1px solid var(--border-default)}
+  .sidebar{background:var(--bg-surface); border-right:1px solid var(--border-default); padding:var(--gap) var(--gap-tight)}
+  .nav{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  .nav a{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius);
+    color:var(--text-body); text-decoration:none; font-weight:500;
+    border-left:3px solid transparent; transition:background 150ms var(--ease-out)}
+  .nav a:hover{background:var(--bg-subtle)}
+  .nav a[aria-current="page"]{background:var(--accent-50); color:var(--accent); border-left-color:var(--accent)}
+  .nav svg{width:18px; height:18px; flex:none}
+  .workspace{padding:var(--space-page); max-width:var(--container-max); width:100%}
+
+  /* ---- Page header + filter bar ---- */
+  .page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:var(--gap); margin-bottom:var(--gap)}
+  .page-head h1{margin:0; font-size:30px; letter-spacing:-.02em; color:var(--text-primary)}
+  .page-head p{margin:4px 0 0; color:var(--text-muted)}
+  .filters{display:flex; flex-wrap:wrap; gap:var(--gap-tight); align-items:center; margin-bottom:var(--gap)}
+  .field{display:flex; flex-direction:column; gap:4px}
+  .field label{font-size:12px; font-weight:500; color:var(--text-muted)}
+  .control{height:var(--field-height); padding:0 12px; border:1px solid var(--border-default);
+    border-radius:var(--radius); background:var(--bg-surface); font:inherit; color:var(--text-body); outline:none}
+  .control:focus{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--focus-ring) 30%,transparent)}
+
+  /* ---- Buttons (§8) ---- */
+  .btn{height:var(--field-height); padding:0 16px; border-radius:var(--radius); font:inherit; font-weight:600;
+    cursor:pointer; border:1px solid transparent; display:inline-flex; align-items:center; gap:8px;
+    transition:background 150ms var(--ease-out), transform 120ms var(--ease-out)}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--accent); color:#fff; box-shadow:var(--shadow-sm)}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-secondary{background:var(--bg-surface); color:var(--text-body); border-color:var(--border-strong)}
+  .btn-secondary:hover{background:var(--bg-subtle)}
+
+  /* ---- Card + table (§8) ---- */
+  .card{background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); overflow:hidden}
+  table{width:100%; border-collapse:collapse}
+  thead th{background:var(--bg-subtle); text-align:left; font-size:12px; text-transform:uppercase;
+    letter-spacing:.03em; color:var(--text-muted); padding:10px 16px; position:sticky; top:0}
+  tbody td{padding:12px 16px; border-top:1px solid var(--border-default)}
+  tbody tr{transition:background 120ms var(--ease-out)}
+  tbody tr:hover{background:var(--bg-subtle)}
+  .u{display:flex; align-items:center; gap:10px}
+  .u .av{width:32px; height:32px; border-radius:var(--radius-pill); background:var(--accent-50); color:var(--accent); display:grid; place-items:center; font-weight:600; font-size:12px}
+  .u .meta b{color:var(--text-primary); font-weight:600}
+  .u .meta span{display:block; color:var(--text-muted); font-size:12px}
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:var(--radius-pill); font-size:12px; font-weight:600}
+  .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor}
+  .badge.active{background:var(--success-bg); color:var(--success)}
+  .badge.pending{background:var(--warning-bg); color:var(--warning)}
+  .badge.disabled{background:var(--error-bg); color:var(--error)}
+
+  /* ---- Pagination ---- */
+  .pager{display:flex; align-items:center; justify-content:flex-end; gap:var(--gap-tight); padding:12px 16px; color:var(--text-muted)}
+  .pager button{width:32px; height:32px; border:1px solid var(--border-default); background:var(--bg-surface);
+    border-radius:var(--radius-sm); cursor:pointer; color:var(--text-body)}
+  .pager button:hover{background:var(--bg-subtle)}
+
+  /* ---- Empty + error states ---- */
+  .state{display:none; text-align:center; padding:64px 24px}
+  .state svg{width:40px; height:40px; color:var(--text-muted)}
+  .state h3{margin:12px 0 4px; color:var(--text-primary)}
+  .state p{margin:0 0 16px; color:var(--text-muted)}
+  .error-banner{display:flex; gap:10px; align-items:flex-start; padding:12px 16px; margin-bottom:var(--gap);
+    background:var(--error-bg); color:var(--error); border-radius:var(--radius); display:none}
+
+  /* ---- CSS-radio state switcher (mockup convenience; not shipped to app) ---- */
+  .switcher{position:fixed; right:16px; bottom:16px; display:flex; gap:4px; padding:6px;
+    background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-pill); box-shadow:var(--shadow-lg); z-index:60}
+  .switcher label{font-size:12px; font-weight:600; color:var(--text-muted); padding:6px 12px; border-radius:var(--radius-pill); cursor:pointer}
+  #st-loaded:checked ~ .switcher label[for="st-loaded"],
+  #st-empty:checked ~ .switcher label[for="st-empty"],
+  #st-error:checked ~ .switcher label[for="st-error"]{background:var(--accent); color:#fff}
+  #st-empty:checked ~ .app .card table,
+  #st-error:checked ~ .app .card table{display:none}
+  #st-empty:checked ~ .app #empty{display:block}
+  #st-error:checked ~ .app .card table{display:none}
+  #st-error:checked ~ .app #error{display:block}
+  #st-error:checked ~ .app .card{display:none}
+
+  @media (max-width:1024px){ .app{grid-template-columns:64px 1fr} .nav a span{display:none} }
+  @media (max-width:640px){ .app{grid-template-columns:1fr} .sidebar{display:none} .page-head{flex-direction:column; align-items:flex-start} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<!-- state switcher inputs sit before .app so the :checked ~ sibling selectors reach it -->
+<input type="radio" name="state" id="st-loaded" hidden checked>
+<input type="radio" name="state" id="st-empty" hidden>
+<input type="radio" name="state" id="st-error" hidden>
+
+<div class="switcher" role="radiogroup" aria-label="Preview state">
+  <label for="st-loaded" data-testid="state-loaded">Loaded</label>
+  <label for="st-empty" data-testid="state-empty">Empty</label>
+  <label for="st-error" data-testid="state-error">Error</label>
+</div>
+
+<div class="app">
+  <header class="header">
+    <div class="brand"><span class="mark" aria-hidden="true">F</span> Acme Console</div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="Search users…" data-testid="global-search" aria-label="Search users">
+    </div>
+    <div class="avatar" data-testid="user-menu" title="Your account">AB</div>
+  </header>
+
+  <nav class="sidebar" aria-label="Primary">
+    <ul class="nav">
+      <li><a href="#" data-testid="nav-dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></a></li>
+      <li><a href="#" aria-current="page" data-testid="nav-users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/></svg><span>Users</span></a></li>
+      <li><a href="#" data-testid="nav-billing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span>Billing</span></a></li>
+      <li><a href="#" data-testid="nav-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a></li>
+    </ul>
+  </nav>
+
+  <main class="workspace">
+    <div class="page-head">
+      <div><h1>Users</h1><p>Manage who can access this workspace.</p></div>
+      <button class="btn btn-primary" data-testid="invite-user"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Invite user</button>
+    </div>
+
+    <div class="error-banner" id="error" role="alert">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <div><b>Couldn't load users.</b> The request timed out. <a href="#" data-testid="retry">Retry</a>.</div>
+    </div>
+
+    <div class="filters">
+      <div class="field"><label for="f-role">Role</label><select class="control" id="f-role" data-testid="filter-role"><option>All roles</option><option>Admin</option><option>Member</option></select></div>
+      <div class="field"><label for="f-status">Status</label><select class="control" id="f-status" data-testid="filter-status"><option>All</option><option>Active</option><option>Pending</option></select></div>
+      <div class="field"><label for="f-q">Search</label><input class="control" id="f-q" placeholder="Name or email" data-testid="filter-search"></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last active</th></tr></thead>
+        <tbody>
+          <tr><td><div class="u"><span class="av">AR</span><span class="meta"><b>Ana Ribeiro</b><span>ana@acme.io</span></span></div></td><td>Admin</td><td><span class="badge active">Active</span></td><td>2 min ago</td></tr>
+          <tr><td><div class="u"><span class="av">JM</span><span class="meta"><b>Jonas Meyer</b><span>jonas@acme.io</span></span></div></td><td>Member</td><td><span class="badge pending">Pending</span></td><td>—</td></tr>
+          <tr><td><div class="u"><span class="av">SD</span><span class="meta"><b>Sara Dale</b><span>sara@acme.io</span></span></div></td><td>Member</td><td><span class="badge active">Active</span></td><td>1 hr ago</td></tr>
+          <tr><td><div class="u"><span class="av">TK</span><span class="meta"><b>Tomas Klein</b><span>tomas@acme.io</span></span></div></td><td>Member</td><td><span class="badge disabled">Disabled</span></td><td>3 days ago</td></tr>
+        </tbody>
+      </table>
+      <div class="pager">
+        <span>1–4 of 24</span>
+        <button data-testid="page-prev" aria-label="Previous page">‹</button>
+        <button data-testid="page-next" aria-label="Next page">›</button>
+      </div>
+    </div>
+
+    <div class="state" id="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+      <h3>No users yet</h3>
+      <p>Invite your teammates to get started.</p>
+      <button class="btn btn-primary" data-testid="empty-invite">Invite user</button>
+    </div>
+  </main>
+</div>
+</body>
+</html>
