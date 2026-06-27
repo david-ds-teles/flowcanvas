@@ -17,7 +17,7 @@ const anchorLabel = (a: CommentAnchor) => (a.kind === 'node' ? a.nodeId : 'canva
  * pan/zoom. In comment mode the overlay captures clicks to drop a new pin (node- or canvas-anchored).
  */
 export function CommentLayer() {
-  const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
+  const { flowToScreenPosition, screenToFlowPosition, getInternalNode } = useReactFlow()
   useViewport()                                  // re-render on pan/zoom so projections recompute
   const rfNodes = useNodes()                     // re-render on drag/measure; carries live geometry
 
@@ -39,16 +39,21 @@ export function CommentLayer() {
     if (!commentMode) setDraft(null)
   }
 
-  // Flow-space geometry of every node, keyed by id (measured box wins over the authored one).
+  // Flow-space geometry of every node, keyed by id (measured box wins over the authored one). Uses the
+  // ABSOLUTE position (Phase 10): a grouped child's `position` from useNodes() is relative to its parent,
+  // so a pin on a child would mis-place without internals.positionAbsolute.
   const geom = useMemo<NodeGeom[]>(
-    () => rfNodes.map((n) => ({
-      id: n.id,
-      x: n.position.x,
-      y: n.position.y,
-      width: n.measured?.width ?? n.width ?? 0,
-      height: n.measured?.height ?? n.height ?? 0,
-    })),
-    [rfNodes],
+    () => rfNodes.map((n) => {
+      const abs = getInternalNode(n.id)?.internals.positionAbsolute
+      return {
+        id: n.id,
+        x: abs?.x ?? n.position.x,
+        y: abs?.y ?? n.position.y,
+        width: n.measured?.width ?? n.width ?? 0,
+        height: n.measured?.height ?? n.height ?? 0,
+      }
+    }),
+    [rfNodes, getInternalNode],
   )
   const geomById = useMemo(() => new Map(geom.map((g) => [g.id, g])), [geom])
 

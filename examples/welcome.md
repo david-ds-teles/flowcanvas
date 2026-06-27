@@ -1,10 +1,14 @@
 ---
 name: Welcome to Flowcanvas
 status: living
-tags: [canvas, markdown, getting-started]
+tags:
+  - canvas
+  - markdown
+  - getting-started
 description: This board is what loads by default — it is itself a .canvas file on disk.
 links:
   - examples/schema.md
+  - examples/architecture.svg
 ---
 
 ## What you are looking at

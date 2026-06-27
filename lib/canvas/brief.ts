@@ -189,6 +189,7 @@ function nodeFromAgent(an: AgentNode, id: string, existing?: CanvasNode): Canvas
     id,
     x: an.x, y: an.y, width: an.width, height: an.height,
     ...(an.color ? { color: an.color } : existing?.color ? { color: existing.color } : {}),
+    ...(existing?.parentId ? { parentId: existing.parentId } : {}),   // keep group membership across an agent update (AgentNode carries no parentId)
     meta: { ...existing?.meta, origin: 'agent' as const },
   }
   if (an.type === 'file') return { ...base, type: 'file', file: an.file ?? (existing as FileNode | undefined)?.file ?? '' }

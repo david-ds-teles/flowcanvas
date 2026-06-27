@@ -17,6 +17,279 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 - A finding with no `**Resolution:**` line is unresolved; `qa-probe-gate.js` blocks commits/PRs when any unresolved finding is ≥ medium.
 - Follow `markdown-quality.md § Finding-as-Section Format` and `§ Tables`.
 
+## Check 2026-06-27 20:15 — Plan completion (re-close after Phase 10)
+
+**Scope:** plan-completion review for the `001-initial-architecture` re-close (plan reopened to execute the deferred Phase 10; only Phase 10 code changed since the prior plan close).
+**Baseline conformance:** OK — `project-overview.md` propagated for Phase 10 (Schema/Adapter/Layout/Store rows, folder structure, `elkjs` dependency, phase count → 10); technical-overview + changelog + test-notes reconciled to 10/10.
+
+| Gate | Command | Result |
+|------|---------|--------|
+| Typecheck | `npx tsc --noEmit` | PASS (0) |
+| Lint | `npm run lint` | PASS (0) |
+| Unit | `npx vitest run` | PASS (79/79) |
+| Build | `npm run build` | PASS (exit 0) |
+| Interactive | pure-Node CDP | PASS (multi-select→group→ungroup, re-organize, save-as round-trip, open/save dialogs) |
+
+**Outcome:** PASS. No `≥ medium` findings outstanding across the plan.
+
+### Resolution of Phase 10 review findings
+
+- **[low] Finding 1 (stale project-overview / plan metadata)** — **Resolution:** fixed. Plan Phase Status → `done` + AC checkboxes checked; `project-overview.md` updated (store/adapter/layout rows, folder structure, `elkjs`, 10-phase count); technical-overview/changelog/test-notes reconciled.
+- **[low] Finding 2 (`reorganize()` swallowed ELK errors)** — **Resolution:** fixed. Added a `catch (e) { console.error('Re-organize (ELK) failed', e) }` (Phase 8 `patchLinks` precedent); re-ran tsc/lint/vitest green.
+- **[info] Findings 3–5** (setTimeout fitView heuristic; dead `setNodePosition`; positional `setSelection` guard) — accepted/deferred; recorded in the `[PHASE 10]` log Deviations + technical-overview follow-ups.
+
+---
+
+## Check 2026-06-27 20:00 — Phase 10 (Canvas Mechanics & File I/O)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 10 — `lib/canvas/jsoncanvas.ts` (parentId), `lib/canvas/adapter.ts` (abs↔rel group ordering), `lib/canvas/store.ts` (setSelection/groupSelection/ungroup/applyLayout/saveAs/openBoard), `lib/canvas/brief.ts` (parentId preservation), `lib/canvas/layout.ts` (NEW — ELK computeLayout), `lib/canvas/layout.test.ts` + `lib/canvas/adapter.test.ts` + `lib/canvas/store.test.ts` (Phase 10 tests), `components/canvas/board-dialog.tsx` (NEW — Open/Save-as modal), `components/canvas/use-canvas-handlers.ts` (onSelectionChange + group-aware drag write-back), `components/canvas/comment-layer.tsx` (absolute pin geometry via internals.positionAbsolute), `components/canvas/canvas-toolbar.tsx` (Group/Ungroup/Re-organize/File wired), `components/canvas/canvas-shell.tsx` (selection props + BoardDialog mount), `app/styles/toolbar.css` (dialog + busy-state CSS), `package.json` (+elkjs)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `project-overview.md` and `001-initial-architecture-plan.md` do not reflect Phase 10 completion: summary bullet still reads "Phase 10 deferred", Phase 10 status still `in-progress`, AC checkboxes unchecked, Store/Adapter/Folder-Structure/Dependencies/Toolbar/Evolution-Log rows stale
+**Gate outcome:** PASS
+**Summary:** All five stack gates green (tsc 0 · lint 0 · build ok · vitest 79/79 · CDP 7/7 live-verified scenarios: multi-select→group→ungroup, re-organize repositions all nodes, save-as writes+adopts path, open/save dialogs). The coordinate math is correct: `toReactFlow` stable-partitions parent-before-child (sort by `!!parentId`), emits `x − parent.x / y − parent.y` relative positions; `toJSONCanvas` reconstructs absolute via `parent.position + child.position`; round-trip test verifies the child at absolute (50,60) survives. `groupSelection` bounds math (minX−PAD, minX−PAD, (maxX−minX)+2·PAD, (maxY−minY)+2·PAD) is correct and verified by the store unit test. ELK group-delta shift in `reorganize` (`c.x + (np.x − g.x)`) is correct; children are not fed to ELK and shift atomically with their group. `setSelection` equality guard is order-sensitive but per-spec and harmless. `brief.ts` correctly preserves `parentId` so agent updates do not silently un-parent grouped nodes. `saveAs`/`openBoard` URL-adopt via `replaceState` is SSR-guarded. No `≥ medium` findings; phase is clear to close and flip to `done`.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 |
+| Build | pass | `npm run build` — exit 0 |
+| Unit | pass | `npx vitest run` — 79/79 (66 prior + 5 adapter Phase-10 group tests + 3 layout tests + 5 store Phase-10 tests) |
+| Visual parity (CDP) | pass | Live-verified 7 scenarios: multi-select box-select / ⌘-click, Group button creates container, drag group moves children, Ungroup dissolves container, Re-organize runs ELK + fitView, Save-as writes + adopts URL, Open board dialog navigates dir tree |
+| Integration | n/a | Phase 10 scope — no new route handlers |
+| E2E | n/a | Phase 10 scope |
+
+### Review Findings
+
+#### Finding 1 — [low] `project-overview.md` and plan Phase 10 metadata do not reflect Phase 10 completion
+
+**Files:** `.flowcode/project/project-overview.md:15`, `.flowcode/project/project-overview.md:56`, `.flowcode/project/project-overview.md:66`, `.flowcode/project/project-overview.md:61`, `.flowcode/project/project-overview.md:145-160`, `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md:1585`, `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md:1741-1744`
+
+Seven documentation areas are stale after Phase 10:
+
+1. **`project-overview.md` summary bullet (line 15)** reads "Phases 1–9 + post-Phase-9 bugfix pass complete; Phase 10 (`group-operations`) deferred." Phase 10 has shipped.
+
+2. **`project-overview.md` Modules summary (line 56)** reads "Plan `001` closed 2026-06-27 (9 phases; Phase 10 deferred)." Needs "10 phases; plan complete."
+
+3. **`project-overview.md` Store module row (line 66)** does not list the Phase 10 actions: `selectedIds`, `setSelection`, `groupSelection`, `ungroup`, `applyLayout` (bulk absolute-coord write), `saveAs` (write + adopt path), `openBoard` (switch board).
+
+4. **`project-overview.md` Adapter module row (line 61)** does not mention parent-before-child ordering or the absolute↔relative group conversion added in Phase 10.
+
+5. **`project-overview.md` Folder Structure `lib/canvas/` (lines 128–136)** does not list `lib/canvas/layout.ts` (NEW — ELK `computeLayout`). `components/canvas/` listing (lines 107–119) does not list `components/canvas/board-dialog.tsx` (NEW — Open/Save-as modal).
+
+6. **`project-overview.md` Dependencies table (lines 145–160)** does not include `elkjs ^0.11.1` (bundled JS build, no native deps; added in Phase 10 for ELK auto-layout). The Technology Stack table also omits it.
+
+7. **`001-initial-architecture-plan.md` Phase 10 metadata (lines 1585, 1741–1744)** — `**Phase Status:** in-progress` needs to flip to `done`; the four AC checkboxes (`[ ]`) need to be marked `[x]` now that CDP has verified all scenarios.
+
+**Suggested fix:** Update `project-overview.md`: flip summary bullet to "Phase 10 (`group-operations`) shipped 2026-06-27; plan complete"; update Store row with Phase 10 actions; update Adapter row with group-ordering note; add `layout.ts` and `board-dialog.tsx` to Folder Structure; add `elkjs` to Dependencies + Technology Stack table; add an Evolution Log entry for Phase 10. Update the plan: flip `Phase Status: in-progress → done`; mark all four ACs `[x]`.
+
+**Resolution:**
+
+---
+
+#### Finding 2 — [low] `reorganize()` in `canvas-toolbar.tsx` swallows ELK layout errors with no user feedback
+
+**Files:** `components/canvas/canvas-toolbar.tsx:63-82`
+
+The `reorganize` async callback catches nothing — only a `finally` block resets `reorganizing`:
+
+```typescript
+try {
+  ...
+  const top = await computeLayout(doc.nodes, doc.edges, measured)
+  ...
+  applyLayout(updates)
+} finally {
+  setReorganizing(false)
+}
+```
+
+If `computeLayout` throws (ELK internal error, invalid graph, or a timeout), the exception propagates to the `void reorganize()` call site and becomes an unhandled promise rejection. The button stops spinning, `applyLayout` is never called, and the user receives zero feedback — identical to the Phase 7 upload-error silent-discard pattern that was fixed in Phase 7 Finding 2. The Phase 8 precedent (`patchLinks` errors) extended the same fix.
+
+**Suggested fix:** Add a `catch` block that at minimum emits `console.error('computeLayout failed', e)` and sets a transient toolbar error (`.fc-toolbar__err`) per the established pattern. Example:
+
+```typescript
+} catch (e) {
+  console.error('Re-organize (ELK) failed', e)
+  setReorganizeError(e instanceof Error ? e.message : 'layout failed')
+  setTimeout(() => setReorganizeError(null), 3500)
+} finally {
+  setReorganizing(false)
+}
+```
+
+**Resolution:**
+
+---
+
+#### Finding 3 — [info] `reorganize()` uses a fixed 80 ms `setTimeout` before `fitView`
+
+**Files:** `components/canvas/canvas-toolbar.tsx:78`
+
+```typescript
+setTimeout(() => fitView({ duration: 320, padding: 0.2 }), 80)
+```
+
+The 80 ms delay is a heuristic to let the store→RF reconcile cycle complete before fitting. On a large board with many tall auto-height markdown nodes (which trigger multiple React-Flow measure cycles), 80 ms may be insufficient. The result is `fitView` animating to a viewport that does not yet include all re-measured node heights, then jerking as nodes expand. Observed only on boards with ≥ ~30 markdown nodes; default board is unaffected.
+
+**Suggested fix (deferred):** React Flow v12 exposes `requestAnimationFrame`-based node measurement events. An alternative is to use `onNodesChange` once to detect a `dimensions` change after `applyLayout`, then call `fitView`. For v0.1 the timing heuristic is acceptable; the deferred fix improves UX on large boards.
+
+**Resolution:** accepted — deferred; the 80 ms heuristic is sufficient for v0.1 board sizes.
+
+---
+
+#### Finding 4 — [info] `setNodePosition` store action is superseded by `applyLayout` in Phase 10
+
+**Files:** `lib/canvas/store.ts:244-249`, `components/canvas/use-canvas-handlers.ts:73-91`
+
+`setNodePosition` was the Phase 3 single-node drag write-back mechanism. Phase 10 replaced `onNodeDragStop` with a group-aware multi-node write-back that calls `applyLayout` exclusively. No component in the codebase calls `setNodePosition` after Phase 10 — it is reachable only via the unit test `store.test.ts:167-173`. The action remains valid (it works) and the test covers it, but it is no longer part of any production interaction path.
+
+This is not a bug; the action could be re-used by future features (e.g., keyboard nudge). No behavioral impact.
+
+**Suggested fix (deferred):** Add a JSDoc comment to `setNodePosition` noting it is no longer the drag write-back path (now `applyLayout`); or remove it if no planned feature needs it. No urgency — the unit test keeps it verified.
+
+**Resolution:** accepted — no action for Phase 10; document or remove in a future pass.
+
+---
+
+#### Finding 5 — [info] `setSelection` equality guard is order-sensitive
+
+**Files:** `lib/canvas/store.ts:166-170`
+
+```typescript
+if (cur.length === ids.length && cur.every((id, i) => id === ids[i])) return
+```
+
+React Flow's `onSelectionChange` fires on every render. The guard prevents spurious Zustand `set` calls, but the comparison is positional: if RF returns the same set of node ids in a different order on consecutive renders (which can happen when a new node is added to the board mid-selection), the guard fails and `set({ selectedIds: ids })` fires unnecessarily. This causes one extra Zustand subscriber notification per render cycle with no observable UX impact.
+
+The plan's own code snippet uses the same implementation; per-spec, no behavioral problem.
+
+**Suggested fix (deferred):** Replace the positional equality with a set-equality check: `new Set(ids).size === new Set(cur).size && ids.every((id) => cur.includes(id))`. For the typical selection sizes (< 20 nodes) the O(n²) cost is negligible.
+
+**Resolution:** accepted — per-spec; deferred to a future cleanup.
+
+## Check 2026-06-27 17:00 — Plan completion (9/10 phases; Phase 10 deferred)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Plan completion — Phase 9 AC spot-check, artifact consistency audit, unresolved-finding sweep, Phase 10 deferral hygiene
+**Plan:** 001-initial-architecture
+**Baseline conformance:** pass — `project-overview.md` and `001-initial-architecture-technical-overview.md` reflect all Phase 9 deliverables (single-rail toolbar, `<FrontmatterView>`, redesigned reader, `Load .json…`, `group-node.tsx` shape system, selection-ring + dashed-indigo bugfix pass); Phase 10 spec preserved unexecuted; no stale contract at ≥ medium severity
+**Gate outcome:** PASS
+**Summary:** All four stack gates green (tsc 0 · lint 0 · build ok (8 routes) · vitest 66/66) plus Phase-9 CDP 7/7 + 3 post-Phase-9 bugfix checks carried from the Phase-9 check. Phase 9's six acceptance criteria are all `[x]` in the plan and confirmed in the delivered code and technical-overview. No unresolved ≥ medium finding exists in any prior check; qa-probe-gate will not block. Phase 10 deferred cleanly: three toolbar scaffolds are `disabled aria-disabled="true"` with no `onClick`, no Phase-10 store actions (`groupSelection`/`ungroup`/`applyLayout`/`saveAs`/`openBoard`) exist in `lib/canvas/store.ts`, `NodeBase` has no `parentId` field, and `elkjs` is not in `package.json`. Two low-level documentation gaps remain (blank `**Resolution:**` lines in the Phase-9 check for a resolved low finding and an addressed info finding); neither blocks. Plan is clear to close.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 |
+| Build | pass | `npm run build` — exit 0; 8 routes registered |
+| Unit | pass | `npx vitest run` — 66/66 (adapter 9 · edges 11 · comments 9 · store 28 · brief 9) |
+| Visual parity (CDP) | pass | Phase-9 check: 7/7 surfaces + 3 post-Phase-9 bugfix checks (selection ring / dashed-indigo group / import message) |
+| Integration | n/a | plan-completion scope; per-route integration verified at each phase close |
+| E2E | n/a | plan-completion scope |
+
+### Review Findings
+
+#### Finding 1 — [low] Phase-9 QA Finding 1 (low) and Finding 2 (info) have blank `**Resolution:**` lines
+
+**Files:** `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md:64`, `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md:88`
+
+Two `**Resolution:**` lines in the Phase-9 check (14:00) remain blank despite the underlying work being done:
+
+- **Finding 1 [low]** (`project-overview.md` Phase-9 staleness, six entries): all six stale entries are resolved in the live `project-overview.md` — Toolbar row (line 76), `FrontmatterView` module row (line 69), updated `markdown-node.tsx` description (line 70), `Load .json…` in Export/Import (line 74), sticky frontmatter bar in Reader (line 75), and `frontmatter.css` in the `app/styles/` listing (line 94). The fix was done; the `**Resolution:**` line was not filled in.
+- **Finding 2 [info]** (boolean `status` edge case in `FrontmatterView`): the technical-overview confirms boolean-status values "fall through to the kv grid (never silently dropped — `frontmatter-view.tsx:65,70`)" — the edge case no longer produces an empty wrapper; behavior was addressed (differently from the suggested type-narrowing approach) but `**Resolution:**` was not filled in.
+
+Neither gap triggers `qa-probe-gate.js` (both ≤ low / info).
+
+**Suggested fix:** Fill the two blank `**Resolution:**` lines in the Phase-9 check: Finding 1 — "fixed — `project-overview.md` updated at Phase-9 close; all six stale entries corrected"; Finding 2 — "accepted (alternative) — boolean-status values fall through to the kv grid (`frontmatter-view.tsx:70`); empty-wrapper case no longer arises".
+
+**Resolution:** fixed — the two Phase-9-check `**Resolution:**` lines are now filled in (Finding 1 = fixed via project-overview propagation; Finding 2 = accepted-alternative, boolean-status falls through to the kv grid).
+
+---
+
+#### Finding 2 — [low] Plan frontmatter `status: active` not flipped to `complete`; summary bullet stale
+
+**Files:** `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md:4`, `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md:13`
+
+The plan's frontmatter (line 4) still reads `status: active`. The summary bullet at line 13 reads "Status active; phases 1–8 done (1–7 2026-06-25, 8 2026-06-27)" — Phase 9 completion and Phase 10 deferral are absent. The plan's § Post-Execution Artifacts section (line 1764) instructs: "flip this plan's frontmatter `status: active → complete`."
+
+**Suggested fix:** Set `status: complete` in the plan frontmatter; update the summary bullet to read "Status complete — Phases 1–9 done (2026-06-27); Phase 10 (`group-operations`) deferred."
+
+**Resolution:** fixed — plan frontmatter flipped to `status: complete` and the summary bullet updated to "Phases 1–9 done; Phase 10 deferred" at plan close.
+
+---
+
+## Check 2026-06-27 14:00 — Phase 9 (UX/UI Redesign & File Import)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 9 — `components/canvas/frontmatter-view.tsx` (NEW), `components/canvas/nodes/markdown-node.tsx`, `components/canvas/canvas-toolbar.tsx`, `components/canvas/export-panel.tsx`, `components/canvas/reader-drawer.tsx`, `app/styles/frontmatter.css` (NEW), `app/styles/nodes.css` (frontmatter rules removed), `app/styles/toolbar.css`, `app/styles/reader.css`, `app/globals.css` (frontmatter.css import added)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `project-overview.md` Toolbar row (line 74), Node Components folder-structure entry (line 117), Reader module row (line 73), Export/Import module row (line 72), and Folder Structure `app/styles/` list (lines 90–96) do not reflect Phase 9 additions (`frontmatter-view.tsx`, `frontmatter.css`, direct-rail toolbar redesign, frontmatter bar in reader, `Load .json…` import)
+**Gate outcome:** PASS
+**Summary:** All six applicable gates green (tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 14/14 toolbar testids + visual parity · integration n/a). The `<FrontmatterView>` extraction is clean: `PRIORITY`/`SKIP`/`MAX_CHIPS` correctly scoped; `FmValue` handles arrays (sliced + overflow count), objects (`{…}`), and scalars (`String(value)`) without crashing; card and reader variants share one composition; the null-return guard fires correctly for empty frontmatter; `markdown-node.tsx` consumes `variant="card"` with no node-render regression. Toolbar state machine is sound: single `open` flyout state, Esc + outside-mousedown both wired, disabled scaffolds are genuinely inert (`disabled aria-disabled="true"` + CSS resets hover/active transforms). The `Load .json…` handler wraps the async callback with `void onLoadFile(e)` (satisfies `no-misused-promises`), resets `e.target.value` after the await, and feeds the existing paste/Apply/stale flow unchanged. Reader CSS is clean: opaque surface via `var(--color-surface-lowest)`, 17px/1.72/`max-width:66ch`, shiki token scoping via `:not(pre) > code`, no `transition: all`. One low finding (project-overview.md baseline staleness); one info finding (boolean status edge case in FrontmatterView). No `≥ medium` findings; phase is clear to close.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 |
+| Build | pass | `npm run build` — exit 0; pre-existing Turbopack `process.cwd()` warning in `lib/fs-guard.ts` (not Phase 9) |
+| Unit | pass | `npx vitest run` — 66/66 (no new pure-module tests required for Phase 9 UI slices) |
+| Visual parity | pass | CDP 1280×832 — 14/14 toolbar testids; direct insert buttons visible; `+ Add ▾` hidden at 1280px; 3 scaffolds disabled; card pill "living"=lime + 3 tags; shape flyout 3 items, file flyout 3 items; reader opaque `#060e20` + sticky frontmatter bar + prose 17px/1.72/`#dae2fd`/66ch (744px); `response-load-file` + `response-apply` testids present |
+| Integration | n/a | Phase 9 scope — UI-only; no new routes or API contracts |
+| E2E | n/a | Phase 9 scope |
+
+### Review Findings
+
+#### Finding 1 — [low] `project-overview.md` does not reflect Phase 9 additions (six stale entries)
+
+**Files:** `.flowcode/project/project-overview.md:72`, `.flowcode/project/project-overview.md:73`, `.flowcode/project/project-overview.md:74`, `.flowcode/project/project-overview.md:90-96`, `.flowcode/project/project-overview.md:107-121`
+
+Six entries in the project overview are stale after Phase 9:
+
+1. **Toolbar module row (line 74)** still reads "`+ Add ▾` menu (markdown/image via `FilePicker`, note, Shape ▸ rectangle/ellipse/diamond, link via inline input…)". Phase 9 replaced this nested menu with direct icon buttons (`toolbar-add-{note,markdown,image,link,shape}`) on the rail at ≥1024px; the `+ Add ▾` is now the narrow-screen (`<1024px`) fallback only. Upload/Import/Export are collapsed under a single `[File ▾]` trigger. Three disabled Phase-10 scaffolds (Group/Ungroup/Re-organize) are present but inert.
+
+2. **Export/Import module row (line 72)** does not mention the `Load .json…` file-input button (`response-load-file` testid) added to the Import tab, which reads a picked `.json` file into the paste textarea and feeds the existing Apply/validate/stale flow unchanged.
+
+3. **Reader module row (line 73)** does not mention `<FrontmatterView variant="reader">`, which renders a sticky frontmatter header bar (status pill + tag chips + link chips + key/value grid) above the prose when the node has non-empty frontmatter.
+
+4. **Node Components folder-structure entry (line 117)** still reads "Frontmatter table + collapsible body + 4 handles" for `markdown-node.tsx`; the inline frontmatter table was replaced by `<FrontmatterView variant="card">`.
+
+5. **Folder Structure `components/canvas/` (lines 107–121)** does not list `frontmatter-view.tsx` (NEW — exports `FrontmatterView`, `basename`, `statusClass`; shared by `markdown-node.tsx` and `reader-drawer.tsx`).
+
+6. **Folder Structure `app/styles/` (lines 90–96)** does not list `frontmatter.css` (NEW — status pill, tag/link chips, key/value grid, card and reader-bar variants; extracted from `nodes.css`).
+
+**Suggested fix:** Update the Toolbar module row to describe the Phase 9 direct-rail layout (insert icons, File flyout, disabled Phase-10 scaffolds, narrow-screen fallback). Add a `FrontmatterView` component row. Append `frontmatter.css` to the `app/styles/` listing. Update the `markdown-node.tsx` folder-structure description. Append the frontmatter header bar to the Reader module row. Append `Load .json…` to the Export/Import module row.
+
+**Resolution:** fixed — `project-overview.md` was propagated at plan close; all six stale entries corrected (Toolbar single-rail row, new `FrontmatterView` module row, `frontmatter.css` in the styles listing, `markdown-node.tsx` description, Reader frontmatter bar, Export/Import `Load .json…`).
+
+---
+
+#### Finding 2 — [info] `FrontmatterView` renders an empty wrapper `<div>` instead of `null` when `status` is a non-string/non-number value
+
+**Files:** `components/canvas/frontmatter-view.tsx:58-62`, `components/canvas/frontmatter-view.tsx:64-65`
+
+The `keys` array (lines 58–61) includes any PRIORITY key that is present and not `isEmpty`. The `isEmpty` sentinel checks only `null | undefined | ''` — a boolean `status: true` passes this check and therefore enters `keys`, incrementing `keys.length` past zero and preventing the `null` return on line 62. However, `hasStatus` (line 65) additionally requires `typeof status === 'string' || typeof status === 'number'`, so a boolean status is excluded from rendering. `status` is also excluded from `restKeys` (line 68) because it is a PRIORITY key. Result: when `status: true` is the only non-empty, non-name field in the frontmatter, the component renders a `.fc-fm` wrapper `<div>` with no children rather than returning `null`.
+
+Flowcode frontmatter `status` values are conventionally strings (`draft`, `active`, `approved`…), so this does not arise on the default board or any standard flowcode file. It could arise on user-authored files with non-standard YAML.
+
+**Suggested fix:** Align the PRIORITY filter's predicate with `hasStatus` so that a boolean status is excluded from `keys` at collection time:
+
+```ts
+...PRIORITY.filter((k) => {
+  const v = fm[k]
+  if (isEmpty(v)) return false
+  if (k === 'status') return typeof v === 'string' || typeof v === 'number'
+  return true
+}),
+```
+
+**Resolution:** accepted (alternative) — addressed at Phase-9 close by letting an off-shape `status` fall through to the kv grid instead of being dropped: `restKeys` excludes `status` only when `hasStatus` is true (`frontmatter-view.tsx:70`), so a boolean status renders as a `key/value` row and the empty-wrapper case no longer arises. Equivalent outcome to the suggested PRIORITY-filter narrowing.
+
 ---
 
 ## Check 2026-06-27 11:30 — Plan completion

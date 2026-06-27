@@ -4,51 +4,61 @@
 /* reader drawer */
 .fc-reader__title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
 .fc-reader__path { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-outline); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fc-reader__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px 40px; }
-.fc-reader__msg { font-size: 13px; color: var(--color-text-secondary); }
+/* opaque reading surface — no canvas bleed-through behind the prose (Phase 9 #3). Side padding lives
+   on the prose / bar / thread so the sticky frontmatter bar can span the full drawer width. */
+.fc-reader__scroll { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-surface-lowest); }
+.fc-reader__msg { padding: 20px 24px; font-size: 13px; color: var(--color-text-secondary); }
 .fc-reader__msg--err { color: var(--color-neon-rose); }
-.fc-reader__thread { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--color-outline-variant); }
+.fc-reader__thread { max-width: 66ch; margin: 4px auto 0; padding: 16px 24px 44px; border-top: 1px solid var(--color-outline-variant); }
 .fc-reader__threadh { margin: 0 0 10px; font-family: var(--font-jetbrains-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
 .fc-reader__cmt { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
 .fc-reader__cmtwho { font-family: var(--font-jetbrains-mono); font-size: 11px; color: var(--color-secondary); }
 .fc-reader__cmttx { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
 
-/* reader prose — full-fidelity, larger than the in-node renderer (design: body 16/1.66) */
-.fc-reader__prose { font-size: 16px; line-height: 1.66; color: var(--color-text-secondary); }
+/* reader prose — editorial column (Phase 9 #3): constrained ≤66ch measure, 17/1.72, high-contrast
+   body on the opaque surface, calmer sans headings (was mono-cyan). */
+.fc-reader__prose {
+  max-width: 66ch;
+  margin-inline: auto;
+  padding: 30px 24px 40px;
+  font-size: 17px;
+  line-height: 1.72;
+  color: var(--color-text-primary);
+}
 .fc-reader__prose > :first-child { margin-top: 0; }
 .fc-reader__prose h1, .fc-reader__prose h2, .fc-reader__prose h3, .fc-reader__prose h4 {
-  font-family: var(--font-jetbrains-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
-  color: var(--color-neon-cyan);
-  line-height: 1.3;
-  margin: 1.4em 0 0.5em;
+  line-height: 1.25;
 }
-.fc-reader__prose h1 { font-size: 22px; color: var(--color-text-primary); }
-.fc-reader__prose h2 { font-size: 18px; }
-.fc-reader__prose h3 { font-size: 15px; }
+.fc-reader__prose h1 { font-size: 26px; letter-spacing: -0.015em; margin: 0 0 0.55em; color: var(--color-text-primary); }
+.fc-reader__prose h2 { font-size: 21px; letter-spacing: -0.01em; margin: 1.6em 0 0.55em; color: var(--color-text-primary); }
+.fc-reader__prose h3 { font-size: 17px; margin: 1.4em 0 0.45em; color: var(--color-secondary); }
+.fc-reader__prose h4 { font-size: 15px; margin: 1.3em 0 0.4em; color: var(--color-text-secondary); }
 .fc-reader__prose p { margin: 0 0 1em; }
-.fc-reader__prose strong { color: var(--color-text-primary); }
+.fc-reader__prose strong { color: var(--color-text-primary); font-weight: 600; }
 .fc-reader__prose em { color: var(--color-secondary); }
-.fc-reader__prose a { color: var(--color-neon-cyan); text-decoration: none; }
-.fc-reader__prose a:hover { text-decoration: underline; }
-.fc-reader__prose ul, .fc-reader__prose ol { margin: 0 0 1em; padding-left: 1.4em; }
-.fc-reader__prose li { margin-bottom: 0.35em; }
+.fc-reader__prose a { color: var(--color-secondary); text-decoration: underline; text-underline-offset: 2px; }
+.fc-reader__prose a:hover { color: var(--color-primary); }
+.fc-reader__prose ul, .fc-reader__prose ol { margin: 0 0 1.1em; padding-left: 1.5em; }
+.fc-reader__prose li { margin-bottom: 0.45em; }
 .fc-reader__prose blockquote {
-  margin: 0 0 1em;
-  padding: 6px 14px;
-  border-left: 3px solid var(--color-primary);
+  margin: 0 0 1.1em;
+  padding: 10px 18px;
+  border-left: 2px solid var(--color-primary);
   background: rgba(128, 131, 255, 0.08);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
   color: var(--color-text-secondary);
 }
-.fc-reader__prose code {
+/* inline code only — scoped off `pre` so shiki's per-token spans keep their own colors */
+.fc-reader__prose :not(pre) > code {
   font-family: var(--font-jetbrains-mono);
-  font-size: 0.86em;
+  font-size: 0.82em;
   color: var(--color-neon-cyan);
   background: rgba(94, 242, 255, 0.1);
-  border: 1px solid rgba(94, 242, 255, 0.16);
-  border-radius: 4px;
-  padding: 1px 5px;
+  border: 1px solid rgba(94, 242, 255, 0.18);
+  border-radius: 6px;
+  padding: 1px 6px;
 }
 .fc-reader__prose pre {
   margin: 0 0 1.1em;

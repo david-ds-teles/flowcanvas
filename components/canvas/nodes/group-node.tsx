@@ -16,10 +16,13 @@ const SHAPES: { key: NodeShape; glyph: string; label: string }[] = [
 // hit area is the ellipse/diamond, not the rectangular bounding box. Selection highlights the shape
 // stroke (React Flow's rectangular .selected box is suppressed for groups in CSS).
 function ShapeOutline({ shape, selected }: { shape: NodeShape; selected: boolean }) {
+  // Rest: a clearly-indigo DASHED container (design system §8) so it reads as an intentional shape,
+  // not a faint gray smudge. Selected: the dashes close up to a solid, glowing ring.
   const a = {
     fill: 'var(--fc-group-fill)',
     stroke: selected ? 'var(--color-primary)' : 'var(--fc-group-stroke)',
-    strokeWidth: selected ? 2.25 : 1.5,
+    strokeWidth: selected ? 2.25 : 1.75,
+    strokeDasharray: selected ? undefined : '7 5',
     vectorEffect: 'non-scaling-stroke' as const,
     style: selected ? { filter: 'drop-shadow(0 0 6px rgba(192,193,255,.7))' } : undefined,
   }

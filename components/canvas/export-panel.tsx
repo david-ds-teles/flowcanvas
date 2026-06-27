@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import type { AgentResponse, MergeReport } from '@/lib/canvas/brief'
 
@@ -26,6 +26,14 @@ export function ExportPanel({ tab, onTab, onClose }: ExportPanelProps) {
   const [report, setReport] = useState<MergeReport | null>(null)
   const [applyErr, setApplyErr] = useState<string | null>(null)
   const [applying, setApplying] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Load .json… — read a saved AgentResponse file into the paste box; Apply/validate/stale flow unchanged.
+  const onLoadFile = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) setPaste(await f.text())
+    e.target.value = '' // allow re-selecting the same file
+  }, [])
 
   // Build the brief once per panel open (the first time the export tab is shown). Re-opening the panel
   // remounts this component and rebuilds; toggling Export↔Import within one session does NOT — each
@@ -73,8 +81,15 @@ export function ExportPanel({ tab, onTab, onClose }: ExportPanelProps) {
       setApplyErr('Not valid JSON — paste exactly one AgentResponse object.')
       return
     }
+    // Most common mistake: pasting the DesignBrief you just exported (it carries briefVersion, not
+    // responseVersion) — explain the round-trip instead of a cryptic "missing field".
+    const shape = resp as unknown as Record<string, unknown>
+    if (shape.briefVersion && !shape.responseVersion) {
+      setApplyErr('That looks like the DesignBrief you exported, not an agent reply. Hand the brief to your agent — Import expects the AgentResponse it returns (same briefId, "responseVersion": "0.1").')
+      return
+    }
     if (resp.responseVersion !== '0.1' || !resp.briefId) {
-      setApplyErr('Missing responseVersion "0.1" or briefId — is this an AgentResponse?')
+      setApplyErr('Missing responseVersion "0.1" or briefId — Import expects the agent\'s AgentResponse, not the exported brief.')
       return
     }
     setApplying(true)
@@ -119,7 +134,9 @@ export function ExportPanel({ tab, onTab, onClose }: ExportPanelProps) {
             aria-label="AgentResponse JSON"
           />
           <div className="fc-agent__row">
-            <button className="fc-btn fc-btn--primary" data-testid="response-apply" disabled={!paste.trim() || applying} onClick={() => void apply()}>{applying ? 'Applying…' : 'Apply response'}</button>
+            <button className="fc-btn" data-testid="response-load-file" aria-label="Load a .json response file" onClick={() => fileRef.current?.click()}>Load .json…</button>
+            <input ref={fileRef} type="file" accept="application/json,.json" hidden data-testid="response-file-input" onChange={(e) => void onLoadFile(e)} />
+            <button className="fc-btn fc-btn--primary fc-agent__apply" data-testid="response-apply" disabled={!paste.trim() || applying} onClick={() => void apply()}>{applying ? 'Applying…' : 'Apply response'}</button>
           </div>
           {applyErr && <p className="fc-agent__msg fc-agent__msg--err" data-testid="apply-error">{applyErr}</p>}
           {report && (

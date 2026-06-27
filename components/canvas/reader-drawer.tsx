@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { isFileNode } from '@/lib/canvas/jsoncanvas'
 import { cn } from '@/lib/utils'
+import { FrontmatterView } from './frontmatter-view'
 
 // Reader width presets surfaced as a segmented control in the header (Phase 8, Fix 3/4).
 const SIZES = [
@@ -25,6 +26,8 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
   const node = doc?.nodes.find((n) => n.id === nodeId) ?? null
   const file = node && isFileNode(node) ? node.file : null
   const title = node && isFileNode(node) ? String(node.meta?.frontmatter?.name ?? file?.split('/').pop()) : 'Reader'
+  // The frontmatter bar (#4) reads the node's own frontmatter — shown above the prose, omitted when empty.
+  const frontmatter = (node && isFileNode(node) ? node.meta?.frontmatter : null) ?? {}
 
   // Result is keyed by the file it belongs to, so switching nodes shows "Rendering…" until the new
   // fetch lands (no synchronous reset in the effect → satisfies react-hooks/set-state-in-effect).
@@ -78,6 +81,7 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
       </header>
 
       <div className="fc-reader__scroll">
+        <FrontmatterView frontmatter={frontmatter} variant="reader" />
         {!file && <p className="fc-reader__msg">This node has no readable markdown.</p>}
         {file && !ready && <p className="fc-reader__msg">Rendering…</p>}
         {ready && result.error && <p className="fc-reader__msg fc-reader__msg--err">Could not render — {result.error}</p>}

@@ -9,6 +9,7 @@ import {
   MiniMap,
   ConnectionMode,
   ConnectionLineType,
+  SelectionMode,
   type NodeTypes,
   type EdgeTypes,
 } from '@xyflow/react'
@@ -27,6 +28,7 @@ import { CanvasToolbar } from './canvas-toolbar'
 import { Dropzone } from './dropzone'
 import { ReaderDrawer } from './reader-drawer'
 import { ExportPanel } from './export-panel'
+import { BoardDialog } from './board-dialog'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
 // shows content out of the box instead of an empty grid.
@@ -65,6 +67,7 @@ function CanvasFlow() {
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
   const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' }>({ open: false, tab: 'export' })
+  const [board, setBoard] = useState<{ open: boolean; mode: 'open' | 'save' }>({ open: false, mode: 'open' })
 
   // Kick off the load once on mount; the catch (async) surfaces failures in the empty-state card.
   useEffect(() => {
@@ -82,6 +85,7 @@ function CanvasFlow() {
         onConnect={handlers.onConnect}
         onNodeDragStop={handlers.onNodeDragStop}
         onNodeClick={handlers.onNodeClick}
+        onSelectionChange={handlers.onSelectionChange}
         onEdgeDoubleClick={handlers.onEdgeDoubleClick}
         isValidConnection={handlers.isValidConnection}
         nodeTypes={nodeTypes}
@@ -91,6 +95,10 @@ function CanvasFlow() {
         connectionLineType={ConnectionLineType.SmoothStep}
         connectionRadius={34}
         deleteKeyCode={['Delete', 'Backspace']}
+        selectionOnDrag={mode === 'select'}
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={mode === 'select' ? [1, 2] : true}
+        multiSelectionKeyCode={['Meta', 'Control']}
         fitView
         minZoom={0.2}
         maxZoom={2}
@@ -102,8 +110,13 @@ function CanvasFlow() {
         {/* React Flow attribution is kept (MIT terms); subscribers may hide it via proOptions */}
       </ReactFlow>
 
-      {/* Top glass toolbar — modes, add-node, upload, agent I/O, fit-view, save (⌘S + dirty dot). */}
-      {doc && <CanvasToolbar onOpenAgent={(tab) => setAgent({ open: true, tab })} />}
+      {/* Top glass toolbar — modes, add-node, group/ungroup/re-organize, file (open/save-as/upload/agent), fit, save. */}
+      {doc && (
+        <CanvasToolbar
+          onOpenAgent={(tab) => setAgent({ open: true, tab })}
+          onOpenBoard={(boardMode) => setBoard({ open: true, mode: boardMode })}
+        />
+      )}
 
       {/* Drag-drop overlay — drop images / markdown to upload + add nodes. */}
       <Dropzone />
@@ -122,6 +135,9 @@ function CanvasFlow() {
           onClose={() => setAgent((a) => ({ ...a, open: false }))}
         />
       )}
+
+      {/* Open / Save-as board dialog (Phase 10). */}
+      {board.open && <BoardDialog mode={board.mode} onClose={() => setBoard((b) => ({ ...b, open: false }))} />}
 
       {/* Minimal empty/error state so a board that fails to load is never a silent blank grid. */}
       {!doc && (

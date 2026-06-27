@@ -1,7 +1,7 @@
 ---
 name: 001-initial-architecture-changelog
 description: Per-phase changelog for 001-initial-architecture — file-level change record built incrementally and reconciled against code at plan completion.
-status: active
+status: complete
 tags: [changelog, changes, per-phase]
 links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md, .flowcode/plans/001-initial-architecture/001-initial-architecture-technical-overview.md]
 ---
@@ -10,7 +10,7 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 - Per-phase file-level change record for Flowcanvas v0.1; built incrementally and reconciled at plan completion.
 - Type: FEATURE.
-- Status: active; dated 2026-06-26.
+- Status: complete; plan closed 2026-06-27 (10 phases delivered).
 - Built incrementally per phase; reconciled against code at plan completion.
 - Source plan: `001-initial-architecture-plan.md`.
 
@@ -18,9 +18,13 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ## Summary
 
-Flowcanvas built in 8 phases over 2026-06-26 (v0.1, Phases 1–7) and 2026-06-27 (Phase 8 polish). Phases 1–7 delivered: Next.js 16 / React 19 / Tailwind v4 bootstrap + nyx design system; extended-JSONCanvas schema + RF adapter; 7 guarded fs API routes; 5 node types + origin-styled labeled edges + pinned comment threads; bidirectional agent JSON loop with idempotent merge; full chrome (toolbar, shiki reader drawer, export/import panel). Phase 8 applied 7 targeted post-execution fixes: CSS extraction from `app/globals.css` to 6 partials under `app/styles/`; RF controlled state and handler callbacks extracted to `useCanvasHandlers`; smoothstep edge paths (`getSmoothStepPath(borderRadius:8)`); 3-size reader drawer (440 px / 50 vw / 100 vw); bidirectional `links:` write-back via a new 8th route (`/api/canvas/links`); nyx controls cascade overrides; dev badge suppression — vitest hardened from 56/56 to 66/66.
+**Plan closed at 10 of 10 phases.** Phase 10 (canvas mechanics & file I/O) was executed after the operator reopened the plan: multi-select + true group containers (`parentId`/`extent`), ELK "Re-organize" auto-layout, and Save-as / Open-board. The operator-added transitive-hydration / referenced-file-access and the broader linking / source-of-truth + agent-collaboration vision were split to a new plan (`002-system-design-studio`). A post-Phase-9 UX bugfix pass had been applied earlier: selection ring conformed to rounded cards (`globals.css:69-74`), shape/group nodes opt out (`nodes.css:343`), and the group outline was promoted to dashed-bright-indigo (`strokeDasharray:'7 5'`, `stroke:var(--color-primary)`, 8% fill).
 
-Type: FEATURE. Dev: david-ds-teles. Gates at plan close: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9 (Phase 8).
+Flowcanvas built in 9 phases over 2026-06-26 (v0.1, Phases 1–7) and 2026-06-27 (Phases 8–9 + bugfix pass). Phases 1–7 delivered: Next.js 16 / React 19 / Tailwind v4 bootstrap + nyx design system; extended-JSONCanvas schema + RF adapter; 7 guarded fs API routes; 5 node types + origin-styled labeled edges + pinned comment threads; bidirectional agent JSON loop with idempotent merge; full chrome (toolbar, shiki reader drawer, export/import panel). Phase 8 applied 7 targeted post-execution fixes: CSS extraction from `app/globals.css` to 6 partials under `app/styles/`; RF controlled state + handler callbacks extracted to `useCanvasHandlers`; smoothstep edges; 3-size reader drawer; bidirectional `links:` write-back via a new 8th route; nyx controls cascade overrides; dev badge suppression — vitest hardened from 56/56 to 66/66. Phase 9 (UX/UI redesign) added: shared `<FrontmatterView>` component extracted from `markdown-node.tsx`; toolbar single-rail redesign (direct icon inserts + `[File ▾]` + disabled Phase-10 scaffolds + narrow-screen `+ Add ▾` fallback); reader readability overhaul (opaque scroll, 17 px/1.72/66ch, sans headings, inline-code scoped off `<pre>`); `Load .json…` file-input + DesignBrief-detection on Import tab; `GroupNode` promoted to a real SVG shape node with `NodeResizer` + shape-switcher + inline label editor; `NoteNode` double-click inline editing; seventh CSS partial `frontmatter.css`.
+
+Phase 10 (canvas mechanics & file I/O) then added `parentId` group containers + abs↔rel adapter conversion; ELK `computeLayout` ("Re-organize"); store `selectedIds`/`setSelection`/`groupSelection`/`ungroup`/`applyLayout`/`saveAs`/`openBoard`; `<BoardDialog>` Open/Save-as modal; group-aware drag write-back; absolute comment-pin geometry; toolbar Group/Ungroup/Re-organize + File Open/Save-as; `+elkjs`.
+
+Type: FEATURE. Dev: david-ds-teles. Gates at plan close: tsc 0 · lint 0 · build ok · vitest 79/79 · CDP live-verified (Phase 10: multi-select→group→ungroup, re-organize, save-as/open).
 
 ---
 
@@ -197,7 +201,35 @@ Reconciled at plan completion against the committed source (audit run **inline**
 
 No anomalies. The 56-test suite, `tsc`/`lint`/`build`, and the Phase-7 CDP visual-parity run (18/18) all pass on the reconciled tree.
 
-**Phase 8 (2026-06-27):** All per-phase entries match the audited code. Cross-phase notes: `app/globals.css` content moved to `app/styles/*.css` (zero selectors dropped — move-only, gate-verified); `onConnect` reworked to branch file↔file vs user edge (Phase 5–6 store tests updated accordingly in Phase 8); `removeEdgeWriteback` is new with no prior phase coverage. The Phase 8 CDP run (9/9) confirmed visual parity on controls overrides, reader size control, and smoothstep edges. Final gates: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9.
+**Phase 8 (2026-06-27):** All per-phase entries match the audited code. Cross-phase notes: `app/globals.css` content moved to `app/styles/*.css` (zero selectors dropped — move-only, gate-verified); `onConnect` reworked to branch file↔file vs user edge (Phase 5–6 store tests updated accordingly in Phase 8); `removeEdgeWriteback` is new with no prior phase coverage. The Phase 8 CDP run (9/9) confirmed visual parity on controls overrides, reader size control, and smoothstep edges. Gates: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9.
+
+**Phase 9 (2026-06-27) + post-Phase-9 bugfix pass:** All per-phase entries match the audited code, with one correction: the Phase 9 table entry for `frontmatter-view.tsx` originally stated that `FmValue`/`PRIORITY`/`SKIP`/`MAX_CHIPS` are "exported" — confirmed **incorrect** against the committed source; they are module-private. Only `basename` and `statusClass` are exported (`frontmatter-view.tsx:16,19`). This has been corrected in the table above. Cross-phase notes: `GroupNode` is now a first-class component (`group-node.tsx`, full SVG shape + NodeResizer + shape-switcher + label editor) — it is no longer delegated to `FallbackNode`; `FallbackNode` is now exclusively the catch-all for non-md/non-image `file` kinds. The `+ Add ▾` menu remains in the codebase as the narrow-screen (<1024 px) fallback — it is not removed, contrary to a possible reading of the Phase 9 description. The post-Phase-9 bugfix pass applied three fixes: (1) selection ring conformed to card corners via `globals.css:69-74`; (2) group/shape nodes opt out of the ring via `nodes.css:343`; (3) group outline promoted to dashed-bright-indigo at rest (`group-node.tsx:25-26`). Phase 10 (`group-operations`) was not executed; disabled scaffold buttons (`aria-disabled=true`) were added to the toolbar to finalize the chrome layout. Final plan-close gates: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 7/7 (Phase 9).
+
+---
+
+## Phase 9 — UX/UI Redesign & File Import
+
+UI-gate first (3 parallel mockups, operator selected `09-direct-rail.html`), then implemented in four sub-waves: shared `<FrontmatterView>` component, agent JSON file import, toolbar redesign as a single glass rail, and reader readability overhaul.
+
+| File | Type | Summary |
+|------|------|---------|
+| `components/canvas/frontmatter-view.tsx` | created | Shared `<FrontmatterView frontmatter variant="card"\|"reader">` — semantic status pill (dot + lime/cyan/amber), violet tag chips, `↗` link chips, muted mono kv grid; returns null when empty. Exports `basename` (path→filename helper) and `statusClass` (semantic pill classifier) only — `FmValue`/`PRIORITY`/`SKIP`/`MAX_CHIPS` are **module-private** internal helpers (extracted from `markdown-node.tsx`). |
+| `app/styles/frontmatter.css` | created | Card + sticky reader-bar CSS variants for frontmatter: `.fc-fm`, `.fc-fm__pill`, `.fc-fm__dot`, `.fc-fm__chip`, `.fc-fm__tag`, `.fc-fm__k`/`.fc-fm__v` grid selectors; `--fm-pill-*` color vars for lime/cyan/amber; sticky `.fc-fm--reader` bar. |
+| `.flowcode/plans/001-initial-architecture/mockups/09-direct-rail.html` | created | UI gate mockup A — direct glass rail toolbar (selected by operator). |
+| `.flowcode/plans/001-initial-architecture/mockups/09-spec-header.html` | created | UI gate mockup B — spec-header toolbar variant (not selected). |
+| `.flowcode/plans/001-initial-architecture/mockups/09-editorial-calm.html` | created | UI gate mockup C — editorial-calm toolbar variant (not selected). |
+| `.flowcode/plans/001-initial-architecture/mockups/captures/phase-9/09-*.png` | created | CDP visual-parity captures (1280×832): `09-loaded`, `09-shape-menu`, `09-file-menu`, `09-reader-drawer`, `09-reader-half`, `09-reader-full`, `09-agent-import`. |
+| `components/canvas/nodes/markdown-node.tsx` | modified | Delegates frontmatter rendering to `<FrontmatterView variant="card">`; removed local `FmValue`/`PRIORITY`/`SKIP`/`MAX_CHIPS`/`statusClass` (now in `frontmatter-view.tsx`); `boolean`-status `restKeys` fall-through added so off-shape status values reach the kv grid instead of an empty `.fc-fm` wrapper (code-reviewer low finding — fixed). |
+| `components/canvas/canvas-toolbar.tsx` | modified | Rebuilt as a single glass rail — direct icon insert buttons (`toolbar-add-{note,markdown,image,link,shape}`) split by `.fc-toolbar__divider`; Shape → 3-item flyout; Upload/Import/Export collapsed under `[File ▾]` (`toolbar-file-menu`); Group/Ungroup/Re-organize disabled as Phase-10 scaffolds; unified insert popovers into one `open` flyout state machine anchored to shared `.fc-toolbar__flyhost` (Esc + outside-mousedown close); below 1024px the `+ Add ▾` fallback (`toolbar-add-node`) returns. |
+| `components/canvas/export-panel.tsx` | modified | Import tab gained `Load .json…` button (`data-testid="response-load-file"`) backed by a hidden `<input type="file" accept="application/json,.json">` that reads the file and calls `setPaste(await f.text())`; paste/Apply/validate/stale flow unchanged. |
+| `components/canvas/reader-drawer.tsx` | modified | Renders `<FrontmatterView variant="reader">` as a sticky bar above the prose; empty frontmatter → no bar. |
+| `app/styles/nodes.css` | modified | Removed old `.fc-fm` table / `.fc-chip*` / `.fc-tag` rules (all moved to `frontmatter.css`); `.fc-fm__k`/`.fc-fm__v` now styled via class selectors (cleanup refinement from code-reviewer info finding). |
+| `app/styles/toolbar.css` | modified | Added divider/seg/inserts/flyhost/icon+flyout buttons/disabled states/responsive rules + `.fc-agent__apply`; removed legacy `+ Add ▾` popover overlap rules. |
+| `app/styles/reader.css` | modified | Readability overhaul: opaque `.fc-reader__scroll` (`--color-surface-lowest`), prose 17px/1.72/`--color-text-primary`/≤66ch centered, calmer sans headings (h1 26px / h2 21px / h3 violet), inline-code scoped off `pre` so shiki tokens survive. |
+| `app/globals.css` | modified | Added `@import "./styles/frontmatter.css"` after the existing style partial imports. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md` | modified | Phase-9 section updated with sub-wave details and gate results. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-ui-design.md` | modified | Phase-9 UI gate row added (Visual Parity section): 3 mockups, operator selection of `09-direct-rail.html` recorded. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md` | modified | Phase-9 QA findings and code-reviewer PASS recorded (0 critical/high/medium · 1 low fixed · 1 info fixed). |
 
 ---
 
@@ -235,3 +267,27 @@ Seven targeted fixes applied post-v0.1 to address QA findings and operator feedb
 | `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md` | modified | Phase 8 QA findings and review recorded. |
 | `.flowcode/plans/001-initial-architecture/001-initial-architecture-changelog.md` | modified | This file — Phase 8 section appended. |
 | `.flowcode/plans/001-initial-architecture/001-initial-architecture-log.md` | modified | Phase 8 `[PHASE 8]` log entry prepended. |
+
+---
+
+## Phase 10 — Canvas Mechanics & File I/O
+
+Multi-select + true group containers (`parentId`/`extent:'parent'`), ELK "Re-organize" auto-layout, and Save-as / Open-board. Doc node `x/y` stay ABSOLUTE; all absolute↔relative conversion is confined to the adapter + drag write-back. Single nesting level. Gates: tsc 0 · lint 0 · build ok · vitest 79/79 (+13: 5 adapter, 5 store, 3 layout) · CDP live-verified (multi-select→group→ungroup, re-organize repositions all nodes, save-as round-trip writes+adopts path, open/save dialogs).
+
+| File | Type | Summary |
+|------|------|---------|
+| `lib/canvas/jsoncanvas.ts` | modified | Added optional `parentId?: string` to `NodeBase` (group membership; coords stay absolute → no migration). |
+| `lib/canvas/adapter.ts` | modified | `toReactFlow`: stable parentless-first ordering (parent before child) + absolute→relative child positions + `parentId`/`extent:'parent'` (dangling `parentId` → top-level). `toJSONCanvas`: relative→absolute inverse via `absPos`, sets/drops `parentId` from live RF state. |
+| `lib/canvas/store.ts` | modified | New `selectedIds` state + `setSelection` (equality-guarded), `groupSelection(ids)` (wrap ≥2 ungrouped non-group nodes; group sized to bounds+PAD; prepended), `ungroup(groupId)` (drop group + clear children parentId), `applyLayout(positions)` (bulk absolute write), `saveAs(path)` (write + adopt path + `replaceState`), `openBoard(path)` (load + clear selection + `replaceState`). |
+| `lib/canvas/brief.ts` | modified | `nodeFromAgent` preserves `existing.parentId` (agent updates no longer silently un-parent a grouped node). |
+| `lib/canvas/layout.ts` | created | ELK `computeLayout(nodes, edges, measured)` — layered/L→R/orthogonal, measured-height fallback ladder, top-level-only (grouped children shift with their group), edge endpoints into a group resolve to the group, intra-group/dangling/duplicate edges filtered, islands separated. |
+| `lib/canvas/layout.test.ts` | created | 3 tests — top-level-only output, finite coords, non-overlapping arrangement using measured heights. |
+| `lib/canvas/adapter.test.ts` | modified | +5 Phase 10 tests — parent-before-child ordering, relative child position + `extent`, top-level absolute, dangling-parentId degrade, abs↔rel round-trip with a parented child. |
+| `lib/canvas/store.test.ts` | modified | +5 Phase 10 tests — `setSelection` equality-guard, `groupSelection` bounds/membership/no-op, `ungroup` children-unmoved, `applyLayout` named-only; `beforeEach` resets `selectedIds`. |
+| `components/canvas/board-dialog.tsx` | created | Open / Save-as glass modal — browses the guarded tree (`.canvas` filter), Open dirty-guards inline (no native dialog) → `openBoard`, Save-as = dir browse + filename input → `saveAs`. Testids: `board-dialog`, `board-save-name/confirm`, `board-open-row`, `board-discard-confirm/yes`. |
+| `components/canvas/use-canvas-handlers.ts` | modified | `onSelectionChange` → `setSelection`; `onNodeDragStop` rewritten for multi-node + group-aware bulk write-back (`internals.positionAbsolute`; a dragged group's children follow) → `applyLayout`. Dropped the single-node `setNodePosition` write-back. |
+| `components/canvas/comment-layer.tsx` | modified | Pin geometry uses `getInternalNode(id).internals.positionAbsolute` so pins on grouped children (whose `useNodes()` position is parent-relative) place correctly. |
+| `components/canvas/canvas-toolbar.tsx` | modified | Enabled Group (≥2 eligible selected) / Ungroup (≥1 selected group) / Re-organize (async ELK + spinning `is-busy` + error catch); `[File ▾]` gains Open board… / Save as… via new `onOpenBoard` callback prop + `.fc-menu__sep`. |
+| `components/canvas/canvas-shell.tsx` | modified | Selection props gated on `mode==='select'` (`selectionOnDrag`/`selectionMode=Partial`/`panOnDrag=[1,2]`/`multiSelectionKeyCode=['Meta','Control']`/`onSelectionChange`); mounts `<BoardDialog>`; passes `onOpenBoard`. |
+| `app/styles/toolbar.css` | modified | `.fc-dialog*` modal (backdrop, list, save row, inline confirm, error), `.fc-menu__sep`, and `.fc-tbtn.is-busy` spin (reduced-motion safe). |
+| `package.json` | modified | Added `elkjs ^0.11.1` (bundled JS, no native deps). |

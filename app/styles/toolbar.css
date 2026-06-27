@@ -33,8 +33,18 @@
   margin-right: 6px;
   white-space: nowrap;
 }
-.fc-toolbar__group { display: flex; align-items: center; gap: 4px; }
 .fc-toolbar__spacer { flex: 1 1 auto; }
+
+/* Phase 9 — single-rail layout: clustered insert tools split by hairline dividers. */
+.fc-toolbar__divider { width: 1px; height: 26px; background: var(--color-outline-variant); margin: 0 5px; flex: 0 0 auto; }
+.fc-toolbar__seg { display: flex; align-items: center; border: 1px solid var(--color-outline-variant); border-radius: var(--radius-control); overflow: hidden; flex: 0 0 auto; }
+.fc-toolbar__seg .fc-tbtn { border: 0; border-radius: 0; height: 36px; }
+.fc-toolbar__seg .fc-tbtn + .fc-tbtn { border-left: 1px solid var(--color-outline-variant); }
+.fc-toolbar__inserts,
+.fc-toolbar__arrange { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.fc-toolbar__add { display: none; }                 /* narrow-screen "+ Add ▾" fallback (shown < 1024px) */
+.fc-toolbar__file { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
+.fc-toolbar__flyhost { position: relative; align-self: stretch; width: 0; flex: 0 0 auto; }
 .fc-toolbar__dot {
   width: 7px;
   height: 7px;
@@ -83,6 +93,15 @@
   box-shadow: 0 0 18px -2px rgba(94, 242, 255, 0.55);
 }
 .fc-tbtn--save { color: var(--color-text-primary); }
+.fc-tbtn--icon { width: 38px; padding: 0; }
+.fc-tbtn--flyout { gap: 4px; padding: 0 9px; }
+.fc-tbtn__caret { opacity: 0.75; flex: 0 0 auto; }
+.fc-tbtn:disabled,
+.fc-tbtn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+.fc-tbtn:disabled:hover,
+.fc-tbtn[aria-disabled="true"]:hover { color: var(--color-text-secondary); border-color: var(--color-outline-variant); box-shadow: none; }
+.fc-tbtn:disabled:active,
+.fc-tbtn[aria-disabled="true"]:active { transform: none; }
 
 /* add-node dropdown menu */
 .fc-menu {
@@ -112,7 +131,7 @@
 }
 .fc-menu__item:hover { background: rgba(128, 131, 255, 0.14); color: var(--color-primary); }
 .fc-menu__item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-.fc-menu__link { display: flex; gap: 6px; padding: 6px; }
+.fc-menu--link { display: flex; gap: 6px; }
 .fc-menu__input {
   flex: 1;
   height: 34px;
@@ -304,20 +323,133 @@
   box-shadow: 0 0 40px -8px rgba(128, 131, 255, 0.5);
 }
 
-/* add-node menu — shape sub-row */
-.fc-menu__shapes { display: flex; flex-direction: column; gap: 2px; padding: 2px 6px 6px; }
-.fc-menu__shape {
+/* insert flyouts (shape / add / link) live in the shared flyout host, just below the rail */
+.fc-toolbar__flyhost .fc-menu,
+.fc-toolbar__flyhost .fc-picker { top: 46px; left: 0; margin-left: 0; }
+.fc-menu--shapes,
+.fc-menu--file { min-width: 184px; }
+/* the File menu sits near the right edge — open it right-aligned so it never clips off-canvas */
+.fc-toolbar__file .fc-menu { top: 46px; left: auto; right: 0; }
+
+/* Phase 9 — agent Import: Apply takes the remaining width beside "Load .json…" */
+.fc-agent__apply { flex: 1; }
+
+/* Responsive: below 1024px the direct insert + arrange clusters collapse to the "+ Add ▾" menu. */
+@media (max-width: 1024px) {
+  .fc-toolbar__inserts,
+  .fc-toolbar__arrange,
+  .fc-toolbar__divider--arrange { display: none; }
+  .fc-toolbar__add { display: flex; }
+}
+
+/* ─── Phase 10 — File menu separator, Open/Save-as board dialog, Re-organize busy state ─── */
+.fc-menu__sep { height: 1px; margin: 5px 6px; background: var(--color-outline-variant); }
+
+/* Re-organize: spin the icon while ELK runs. */
+.fc-tbtn.is-busy { color: var(--color-neon-cyan); border-color: var(--color-primary); }
+.fc-tbtn.is-busy svg { animation: fc-spin 0.9s linear infinite; transform-origin: 50% 50%; }
+@keyframes fc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .fc-tbtn.is-busy svg { animation: none; } }
+
+/* Open / Save-as modal — centered glass dialog over a dimmed backdrop. */
+.fc-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 14, 32, 0.55);
+  backdrop-filter: blur(2px);
+}
+.fc-dialog {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.98);
+  backdrop-filter: blur(28px);
+  box-shadow: 0 32px 80px -28px rgba(0, 0, 0, 0.8);
+}
+.fc-dialog__h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+}
+.fc-dialog__x { margin-left: auto; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: 13px; }
+.fc-dialog__x:hover { color: var(--color-text-primary); }
+.fc-dialog__path {
+  padding: 7px 15px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-outline);
+  border-bottom: 1px solid var(--color-outline-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-dialog__list { list-style: none; margin: 0; padding: 8px; overflow-y: auto; flex: 1; }
+.fc-dialog__row {
+  display: block;
+  width: 100%;
   text-align: left;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border: 0;
   border-radius: 6px;
-  background: rgba(128, 131, 255, 0.06);
+  background: transparent;
   color: var(--color-text-primary);
-  font-size: 12.5px;
+  font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.fc-menu__shape:hover { background: rgba(128, 131, 255, 0.16); color: var(--color-primary); }
-.fc-menu__shape:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-
-/* Phase 8, Fix 1 — replaces inline style={{ position:'relative' }} on the add-node toolbar group. */
-.fc-toolbar__group--rel { position: relative; }
+.fc-dialog__row:hover:not(:disabled) { background: rgba(128, 131, 255, 0.14); }
+.fc-dialog__row:disabled { opacity: 0.38; cursor: default; }
+.fc-dialog__row--dir { color: var(--color-secondary); }
+.fc-dialog__msg { padding: 10px; font-size: 12px; color: var(--color-text-secondary); }
+.fc-dialog__save {
+  display: flex;
+  gap: 8px;
+  padding: 12px 15px;
+  border-top: 1px solid var(--color-outline-variant);
+}
+.fc-dialog__name {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-primary);
+  background: rgba(6, 14, 32, 0.7);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12.5px;
+}
+.fc-dialog__name:focus { outline: none; box-shadow: 0 0 14px -4px var(--color-primary); }
+.fc-dialog__confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-top: 1px solid var(--color-outline-variant);
+  background: rgba(255, 159, 0, 0.08);
+  font-size: 12.5px;
+  color: var(--color-text-primary);
+}
+.fc-dialog__confirm .fc-btn { margin-left: auto; }
+.fc-dialog__confirm .fc-btn + .fc-btn { margin-left: 0; }
+.fc-dialog__err {
+  padding: 10px 15px;
+  border-top: 1px solid var(--color-outline-variant);
+  color: var(--color-neon-rose);
+  font-size: 12px;
+}

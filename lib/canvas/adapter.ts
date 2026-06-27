@@ -7,20 +7,29 @@ const PRESET: Record<string, string> = { '1': '#ff516a', '2': '#f59f00', '3': '#
 export const colorVar = (c?: CanvasColor): string | undefined => (!c ? undefined : c.startsWith('#') ? c : PRESET[c])
 
 export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdge[] } {
-  const nodes = doc.nodes.map<RFNode>((n) => {
+  const byId = new Map(doc.nodes.map((n) => [n.id, n]))
+  // React Flow requires a parent node to PRECEDE its children in the array. Single nesting level
+  // (no nested groups) → a stable parentless-first partition is enough; Array.prototype.sort is stable.
+  const ordered = [...doc.nodes].sort((a, b) => Number(!!a.parentId) - Number(!!b.parentId))
+  const nodes = ordered.map<RFNode>((n) => {
     const kind = nodeKind(n)                              // 'markdown'|'image'|'link'|'note'|'file'|'group'
     const autoHeight = kind === 'markdown'                // content-sized so the collapse toggle visibly shrinks the card
     const vars: Record<string, string> = {}
     if (n.color) vars['--node-accent'] = colorVar(n.color) ?? ''
     if (autoHeight) vars['--fc-body-max'] = `${Math.max(72, n.height - 88)}px`   // clamp the rendered body to ~the authored box
+    // Doc coords are ABSOLUTE; React Flow wants a child positioned RELATIVE to its parent. A dangling
+    // parentId (parent not on the board) degrades to a top-level node at its absolute position.
+    const parent = n.parentId ? byId.get(n.parentId) : undefined
+    const position = parent ? { x: n.x - parent.x, y: n.y - parent.y } : { x: n.x, y: n.y }
     return {
       id: n.id,
       type: kind,
-      position: { x: n.x, y: n.y },
+      position,
       width: n.width,
       height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box
       data: { node: n },
       deletable: false,                                  // edges are key-deletable (Fix 5); nodes are not
+      ...(parent ? { parentId: n.parentId, extent: 'parent' as const } : {}),
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
   })
@@ -38,10 +47,22 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
 export function toJSONCanvas(rfNodes: RFNode[], rfEdges: RFEdge[], prev: FlowcanvasDoc): FlowcanvasDoc {
   const prevNodeById = new Map(prev.nodes.map((n) => [n.id, n]))
   const prevEdgeById = new Map(prev.edges.map((e) => [e.id, e]))
+  const rfById = new Map(rfNodes.map((n) => [n.id, n]))
+  // React Flow children carry parent-RELATIVE positions; the doc stores ABSOLUTE. Single nesting level
+  // → the parent is itself top-level, so its position is already absolute.
+  const absPos = (rn: RFNode): { x: number; y: number } => {
+    const parent = rn.parentId ? rfById.get(rn.parentId) : undefined
+    return parent ? { x: parent.position.x + rn.position.x, y: parent.position.y + rn.position.y } : { x: rn.position.x, y: rn.position.y }
+  }
   const nodes: CanvasNode[] = rfNodes.map((rn) => {
     const base = prevNodeById.get(rn.id)
     if (!base) throw new Error(`unknown node in RF state: ${rn.id}`)
-    return { ...base, x: rn.position.x, y: rn.position.y, width: rn.width ?? base.width, height: rn.height ?? base.height }
+    const { x, y } = absPos(rn)
+    const next: CanvasNode = { ...base, x, y, width: rn.width ?? base.width, height: rn.height ?? base.height }
+    // Membership follows React Flow's live state (set on group, dropped on ungroup) — not the stale base.
+    if (rn.parentId) next.parentId = rn.parentId
+    else delete (next as { parentId?: string }).parentId
+    return next
   })
   const edges: CanvasEdge[] = rfEdges.map((re) => {
     const base = prevEdgeById.get(re.id)                 // carry color / fromEnd / toEnd that RF state does not model

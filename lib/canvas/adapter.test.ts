@@ -116,3 +116,50 @@ describe('adapter / round-trip', () => {
     expect(back.flowcanvas.session.revision).toBe(7)
   })
 })
+
+describe('adapter / Phase 10 — group containers (parentId, abs↔rel)', () => {
+  // The child is listed BEFORE its group on purpose, to prove toReactFlow re-orders parent-first.
+  const grouped: FlowcanvasDoc = {
+    nodes: [
+      { id: 'c-1', type: 'file', file: 'a.md', x: 50, y: 60, width: 200, height: 120, parentId: 'g-1', meta: { origin: 'user' } },
+      { id: 'g-1', type: 'group', label: 'box', x: 10, y: 20, width: 400, height: 300, meta: { origin: 'user', shape: 'rectangle' } },
+      { id: 'i-1', type: 'text', text: 'island', x: 1000, y: 1000, width: 200, height: 100, meta: { origin: 'user' } },
+      { id: 'd-1', type: 'text', text: 'dangling', x: 5, y: 5, width: 100, height: 80, parentId: 'ghost', meta: { origin: 'user' } },
+    ],
+    edges: [],
+    flowcanvas: { schemaVersion: '0.1', session: { createdAt: 'x', updatedAt: 'x', revision: 0 }, comments: [] },
+  }
+
+  it('orders the parent before its child in the React Flow array', () => {
+    const ids = toReactFlow(grouped).nodes.map((n) => n.id)
+    expect(ids.indexOf('g-1')).toBeLessThan(ids.indexOf('c-1'))
+  })
+
+  it('emits a child position relative to its parent, with parentId + extent:parent', () => {
+    const c = toReactFlow(grouped).nodes.find((n) => n.id === 'c-1')!
+    expect(c.position).toEqual({ x: 40, y: 40 }) // abs (50,60) − parent (10,20)
+    expect(c.parentId).toBe('g-1')
+    expect(c.extent).toBe('parent')
+  })
+
+  it('keeps a top-level node absolute and parentless', () => {
+    const i = toReactFlow(grouped).nodes.find((n) => n.id === 'i-1')!
+    expect(i.position).toEqual({ x: 1000, y: 1000 })
+    expect(i.parentId).toBeUndefined()
+    expect(i.extent).toBeUndefined()
+  })
+
+  it('degrades a dangling parentId to a top-level node at its absolute position', () => {
+    const d = toReactFlow(grouped).nodes.find((n) => n.id === 'd-1')!
+    expect(d.position).toEqual({ x: 5, y: 5 })
+    expect(d.parentId).toBeUndefined()
+  })
+
+  it('round-trips a parented child back to absolute coords + parentId', () => {
+    const { nodes, edges } = toReactFlow(grouped)
+    const back = toJSONCanvas(nodes, edges, grouped)
+    const c = back.nodes.find((n) => n.id === 'c-1')!
+    expect({ x: c.x, y: c.y }).toEqual({ x: 50, y: 60 })
+    expect(c.parentId).toBe('g-1')
+  })
+})

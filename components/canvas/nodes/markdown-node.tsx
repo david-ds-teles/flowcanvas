@@ -5,44 +5,9 @@ import type { FileNode } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { cn } from '@/lib/utils'
 import { CanvasMarkdown } from '../canvas-markdown'
+import { FrontmatterView, basename } from '../frontmatter-view'
 
 const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
-const PRIORITY = ['status', 'tags', 'links'] // surfaced first, in this order
-const SKIP = new Set(['name']) // already the card title
-const MAX_CHIPS = 8
-
-const basename = (p: string) => p.split(/[\\/]/).pop() ?? p
-
-// Map a frontmatter status to a semantic chip color (lime = settled, cyan = in-flight, amber = caution).
-function statusClass(value: string): string {
-  const s = value.toLowerCase()
-  if (/(approv|done|complete|stable|living|merged|shipped|passed|ready|resolved)/.test(s)) return 'fc-chip--ok'
-  if (/(active|in[-_ ]?progress|review|wip|draft|pending|quality|open)/.test(s)) return 'fc-chip--act'
-  if (/(deprecat|blocked|paused|fail|stale|archiv|warn|reject)/.test(s)) return 'fc-chip--warn'
-  return ''
-}
-
-function FmValue({ field, value }: { field: string; value: unknown }) {
-  if (field === 'status' && (typeof value === 'string' || typeof value === 'number')) {
-    return <span className={cn('fc-chip', statusClass(String(value)))}>{String(value)}</span>
-  }
-  if (Array.isArray(value)) {
-    const items = value.map((v) => (field === 'links' ? basename(String(v)) : String(v)))
-    const shown = items.slice(0, MAX_CHIPS)
-    return (
-      <span className="fc-fm__v--chips">
-        {shown.map((t, i) => (
-          <span key={`${t}-${i}`} className="fc-tag">
-            {t}
-          </span>
-        ))}
-        {items.length > shown.length && <span className="fc-fm__more">+{items.length - shown.length}</span>}
-      </span>
-    )
-  }
-  if (value !== null && typeof value === 'object') return <span className="fc-fm__more">{'{…}'}</span>
-  return <>{String(value)}</>
-}
 
 function Inner({ id, data }: NodeProps) {
   const node = (data as { node: FileNode }).node
@@ -52,14 +17,6 @@ function Inner({ id, data }: NodeProps) {
   const toggle = useCanvasStore((s) => s.toggleCollapsed)
   const maximizeReader = useCanvasStore((s) => s.maximizeReader)
   const title = String(fm.name ?? basename(node.file))
-
-  // Every meaningful frontmatter field — priority keys first, then the rest (skipping empties + the title).
-  const keys = [
-    ...PRIORITY.filter((k) => k in fm),
-    ...Object.keys(fm).filter(
-      (k) => !SKIP.has(k) && !PRIORITY.includes(k) && fm[k] !== null && fm[k] !== undefined && fm[k] !== '',
-    ),
-  ]
 
   return (
     <>
@@ -88,20 +45,7 @@ function Inner({ id, data }: NodeProps) {
         </button>
       </header>
 
-      {keys.length > 0 && (
-        <table className="fc-fm">
-          <tbody>
-            {keys.map((k) => (
-              <tr key={k}>
-                <td className="fc-fm__k">{k}</td>
-                <td className="fc-fm__v">
-                  <FmValue field={k} value={fm[k]} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <FrontmatterView frontmatter={fm} variant="card" />
 
       <div className="fc-node__body">
         <CanvasMarkdown basePath={node.file}>{body ?? '_resolving…_'}</CanvasMarkdown>

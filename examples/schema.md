@@ -1,8 +1,13 @@
 ---
 name: Extended JSONCanvas
 status: stable
-tags: [schema, jsoncanvas, adapter]
+tags:
+  - schema
+  - jsoncanvas
+  - adapter
 description: Flowcanvas stores boards as an extended JSONCanvas document.
+links:
+  - examples/welcome.md
 ---
 
 ## Nodes

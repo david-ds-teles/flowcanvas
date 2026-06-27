@@ -1,0 +1,90 @@
+/* Shared frontmatter view — node-card variant + reader header-bar variant (Phase 9, #5 + #4).
+   Extracted from nodes.css (the old .fc-fm table) and redesigned: status pill (dot + semantic
+   color) + violet tag chips + ↗ link chips + a muted mono key/value grid. <FrontmatterView>
+   renders `.fc-fm` with a `--card` or `--reader` modifier; the inner composition is identical
+   so the in-node block and the reader bar stay pixel-consistent. */
+
+.fc-fm { display: flex; flex-direction: column; gap: 9px; }
+
+/* card variant — inside the markdown node, bordered above the body */
+.fc-fm--card {
+  flex-shrink: 0;
+  padding: 0 12px 11px;
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+.fc-node.is-collapsed .fc-fm--card { border-bottom: 0; padding-bottom: 0; }
+
+/* reader variant — sticky header bar pinned at the top of the opaque scroll body (#4) */
+.fc-fm--reader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 16px 22px;
+  background: var(--color-surface-low);
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.fc-fm__row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+/* key/value grid for non-priority fields */
+.fc-fm__kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+  margin: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.fc-fm__kv .fc-fm__k { color: var(--color-outline); letter-spacing: 0.04em; }
+.fc-fm__kv .fc-fm__v { margin: 0; color: var(--color-text-secondary); word-break: break-word; }
+.fc-fm__v--chips { display: flex; flex-wrap: wrap; gap: 3px 4px; }
+.fc-fm__more { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-text-secondary); }
+
+/* status pill — dot + label; semantic color picked from the value */
+.fc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 3px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(221, 183, 255, 0.24);
+  background: rgba(221, 183, 255, 0.13);
+  color: var(--color-secondary);
+}
+.fc-pill__dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.fc-pill--ok   { background: rgba(182, 243, 106, 0.13); color: var(--color-neon-lime);    border-color: rgba(182, 243, 106, 0.30); }
+.fc-pill--act  { background: rgba(94, 242, 255, 0.12);  color: var(--color-neon-cyan);    border-color: rgba(94, 242, 255, 0.28); }
+.fc-pill--warn { background: rgba(245, 159, 0, 0.13);   color: var(--color-status-amber); border-color: rgba(245, 159, 0, 0.32); }
+
+/* tag chips */
+.fc-tag {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(221, 183, 255, 0.13);
+  border: 1px solid rgba(221, 183, 255, 0.22);
+  color: var(--color-secondary);
+}
+
+/* link chips — ↗ + basename */
+.fc-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  background: rgba(34, 42, 61, 0.55);
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-text-secondary);
+}
+.fc-link-chip__arrow { color: var(--color-primary); font-size: 11px; line-height: 1; }

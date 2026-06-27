@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas — Phase 9 · "Direct Rail" (09)</title>
+<!--
+  Flowcanvas v0.1 — Phase 9 redesign — iteration "Direct Rail" (the restrained, production-faithful evolution).
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx) + mockups/04-nyx-neon.html (approved board).
+  This is a DESIGN BOARD: three stacked, labeled ~1280x800 artboards, each the full nyx void.
+  THESIS: toolbar collapses to ONE horizontal glass rail; insert tools are compact ~38px icon
+  buttons split into clusters by hairline dividers — direct, no Add-dropdown. Card-variant
+  frontmatter (status pill + tag/link chips + muted kv). Reader = opaque editorial column.
+  Minimal neon — accent reserved for active / selected / hover / syntax only. Self-contained.
+-->
+<style>
+  :root{
+    /* nyx tokens — §2 of the design system, verbatim */
+    --color-bg:#0b1326; --color-grid:rgba(146,143,160,.16);
+    --color-surface-lowest:#060e20; --color-surface-low:#131b2e; --color-surface:#171f33;
+    --color-surface-high:#222a3d; --color-surface-highest:#2d3449;
+    --color-primary:#c0c1ff; --color-primary-cont:#8083ff;
+    --color-secondary:#ddb7ff; --color-secondary-cont:#6f00be;
+    --color-tertiary-cont:#ff516a;
+    --color-text-primary:#dae2fd; --color-text-secondary:#c7c4d7;
+    --color-outline:#908fa0; --color-outline-variant:#464554;
+    --color-neon-cyan:#5ef2ff; --color-neon-lime:#b6f36a; --color-neon-rose:#ff8fb0;
+    --color-status-amber:#f59f00;
+    /* glass recipe — §2.2 / §5 */
+    --glass-fill:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --shadow-drawer:-30px 0 80px -30px rgba(0,0,0,.75);
+    --shadow-overlay:0 24px 60px -20px rgba(0,0,0,.7);
+    /* type / shape / motion */
+    --ui:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+    --r-card:16px; --r-control:8px; --r-pill:999px; --r-sm:4px;
+    --ease:cubic-bezier(.23,1,.32,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--ui); color:var(--color-text-primary);
+    background:
+      radial-gradient(1100px 700px at 12% -6%, rgba(128,131,255,.10), transparent 60%),
+      var(--color-surface-lowest);
+    -webkit-font-smoothing:antialiased; min-width:1344px;
+  }
+
+  /* ───────── page chrome (the design board) ───────── */
+  .page-hd{padding:30px 32px 6px}
+  .page-hd .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-primary)}
+  .page-hd h1{margin:8px 0 6px;font-size:22px;font-weight:600;letter-spacing:-.01em;color:var(--color-text-primary)}
+  .page-hd p{margin:0;max-width:78ch;font-size:13px;line-height:1.6;color:var(--color-text-secondary)}
+  .page-hd p code{font-family:var(--mono);font-size:12px;color:var(--color-neon-cyan)}
+  .boards{display:flex;flex-direction:column;gap:48px;padding:24px 32px 64px;width:1344px}
+  .frame{}
+  .frame__label{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+  .frame__label .tag{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--color-text-primary)}
+  .frame__label .sub{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--color-text-secondary)}
+  .frame__label .issue{font-family:var(--mono);font-size:10px;color:var(--color-secondary);border:1px solid rgba(221,183,255,.3);border-radius:var(--r-pill);padding:2px 9px}
+
+  /* the artboard = a framed nyx void */
+  .artboard{position:relative;width:1280px;height:800px;border-radius:var(--r-card);overflow:hidden;
+    border:1px solid transparent;
+    background-color:var(--color-bg);
+    background-image:
+      radial-gradient(1100px 640px at 16% -8%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(900px 720px at 108% 116%, rgba(111,0,190,.18), transparent 55%),
+      radial-gradient(var(--color-grid) 1px, transparent 1.4px),
+      var(--glass-edge);
+    background-size:auto,auto,22px 22px,auto;
+    background-position:0 0,0 0,11px 67px,0 0;
+    background-origin:border-box;background-clip:padding-box,padding-box,padding-box,border-box;
+    box-shadow:0 30px 90px -40px rgba(0,0,0,.85);}
+
+  /* ───────── the redesigned toolbar — ONE horizontal glass rail ───────── */
+  .fc-toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:6px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--color-outline-variant)}
+  .fc-toolbar__brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--color-text-primary);white-space:nowrap;padding-right:2px}
+  .fc-toolbar__brand svg{width:18px;height:18px;color:var(--color-primary)}
+  .fc-toolbar__divider{width:1px;height:26px;background:var(--color-outline-variant);margin:0 5px;flex:0 0 auto}
+  .fc-toolbar__spring{margin-left:auto}
+
+  .fc-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;min-width:38px;padding:0 10px;
+    border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.5);color:var(--color-text-primary);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease,transform .1s ease}
+  .fc-btn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .fc-btn:active{transform:scale(.97)}
+  .fc-btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .fc-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .fc-btn--icon{width:38px;padding:0}
+  .fc-btn--primary{background:linear-gradient(135deg,var(--color-primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .fc-btn--primary:hover{box-shadow:var(--glow-indigo)}
+  .fc-btn .kbd{font-family:var(--mono);font-size:10px;color:var(--color-text-secondary);border:1px solid var(--color-outline-variant);border-radius:var(--r-sm);padding:1px 5px}
+  .fc-btn[disabled],.fc-btn[aria-disabled="true"]{opacity:.4;cursor:not-allowed;background:rgba(34,42,61,.28);border-color:var(--color-outline-variant);box-shadow:none}
+  .fc-btn[disabled]:hover,.fc-btn[aria-disabled="true"]:hover{box-shadow:none;border-color:var(--color-outline-variant);transform:none}
+  .fc-btn .caret{width:11px;height:11px;margin-left:1px;opacity:.8}
+
+  /* segmented mode cluster (Select / Connect / Comment) */
+  .fc-seg{display:flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;flex:0 0 auto}
+  .fc-seg .fc-btn{border:0;border-radius:0;background:transparent;width:42px;min-width:42px;height:36px;padding:0}
+  .fc-seg .fc-btn:hover{box-shadow:none;background:rgba(128,131,255,.12)}
+  .fc-seg .fc-btn + .fc-btn{border-left:1px solid var(--color-outline-variant)}
+  .fc-seg .fc-btn[aria-pressed="true"]{background:linear-gradient(135deg,rgba(128,131,255,.9),rgba(94,242,255,.5));color:#fff}
+
+  /* tooltips — give the compact icon buttons their label */
+  .tip::after{content:attr(data-tip);position:absolute;top:46px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:10px;letter-spacing:.02em;white-space:nowrap;padding:4px 8px;border-radius:6px;
+    background:rgba(6,14,32,.96);border:1px solid var(--color-outline-variant);color:var(--color-text-secondary);
+    opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:70}
+  .tip:hover::after,.tip:focus-visible::after{opacity:1}
+
+  /* flyout menus (Shape split-button, File) */
+  .fc-flyout{position:relative}
+  .fc-menu{position:absolute;top:48px;left:0;z-index:60;min-width:188px;padding:6px;display:none;border:1px solid transparent;border-radius:var(--r-control);
+    box-shadow:var(--shadow-overlay),var(--glow-indigo);
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px)}
+  .fc-flyout[data-open="true"] .fc-menu{display:block}
+  .fc-menu button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--color-text-primary);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .fc-menu button:hover{background:rgba(255,255,255,.06)}
+  .fc-menu button svg{width:15px;height:15px;stroke:var(--color-primary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .fc-menu button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--color-text-secondary);letter-spacing:.04em}
+  .fc-menu button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+
+  .save-dot{width:8px;height:8px;border-radius:var(--r-pill);background:var(--color-status-amber);box-shadow:0 0 9px var(--color-status-amber)}
+
+  /* ───────── board surface ───────── */
+  .fc-board{position:absolute;left:0;top:56px;right:0;bottom:0}
+  .fc-board.is-dimmed{filter:saturate(.92) brightness(.8)}
+
+  .fc-edges{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .fc-edge-label{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+    color:var(--color-text-secondary);padding:3px 8px;border-radius:var(--r-pill);white-space:nowrap;
+    background:rgba(13,21,40,.85);border:1px solid var(--color-outline-variant);display:inline-flex;gap:5px;align-items:center}
+
+  /* ───────── node (glass fc-node) ───────── */
+  .fc-node{position:absolute;z-index:10;border-radius:var(--r-card);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;color:var(--color-text-primary);
+    display:flex;flex-direction:column;transition:box-shadow .14s ease,border-color .14s ease}
+  .fc-node:hover{box-shadow:var(--glow-indigo)}
+  .fc-node.is-selected{box-shadow:0 0 0 2px var(--color-primary),0 0 26px -4px rgba(192,193,255,.55)}
+  .fc-node__hd{display:flex;align-items:center;gap:8px;padding:11px 12px 9px}
+  .fc-node__title{font-size:13px;font-weight:600;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kind-chip{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-secondary);
+    border:1px solid var(--color-outline-variant);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto;flex:0 0 auto}
+  .icon-btn{flex:0 0 auto;width:24px;height:24px;border-radius:var(--r-sm);border:1px solid var(--color-outline-variant);background:transparent;
+    color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;
+    transition:color .14s ease,border-color .14s ease}
+  .icon-btn:hover{color:var(--color-text-primary);border-color:var(--color-primary)}
+  .icon-btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}
+  .icon-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+  /* card-variant frontmatter (issue #5) */
+  .fc-fm{padding:0 12px 11px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--color-outline-variant)}
+  .fc-fm__row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .fc-fm__kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-family:var(--mono);font-size:10.5px;line-height:1.45}
+  .fc-fm__kv .k{color:var(--color-outline);letter-spacing:.04em}
+  .fc-fm__kv .v{color:var(--color-text-secondary)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+    padding:3px 11px;border-radius:var(--r-pill);border:1px solid transparent}
+  .pill .d{width:6px;height:6px;border-radius:var(--r-pill);flex:0 0 auto}
+  .pill.approved{background:rgba(182,243,106,.13);color:var(--color-neon-lime);border-color:rgba(182,243,106,.3)}
+  .pill.approved .d{background:var(--color-neon-lime);box-shadow:0 0 8px var(--color-neon-lime)}
+  .pill.active{background:rgba(94,242,255,.12);color:var(--color-neon-cyan);border-color:rgba(94,242,255,.28)}
+  .pill.active .d{background:var(--color-neon-cyan);box-shadow:0 0 8px var(--color-neon-cyan)}
+  .pill.stale{background:rgba(245,159,0,.13);color:var(--color-status-amber);border-color:rgba(245,159,0,.32)}
+  .pill.stale .d{background:var(--color-status-amber);box-shadow:0 0 8px var(--color-status-amber)}
+
+  .chip-tag{font-family:var(--mono);font-size:10px;letter-spacing:.02em;padding:2px 8px;border-radius:var(--r-pill);
+    background:rgba(221,183,255,.13);color:var(--color-secondary);border:1px solid rgba(221,183,255,.22)}
+  .chip-link{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:var(--r-control);
+    background:rgba(34,42,61,.55);color:var(--color-text-secondary);border:1px solid var(--color-outline-variant);text-decoration:none}
+  .chip-link:hover{border-color:var(--color-primary);color:var(--color-text-primary)}
+  .chip-link svg{width:11px;height:11px;stroke:var(--color-primary);fill:none;stroke-width:1.7;flex:0 0 auto}
+
+  /* rendered markdown — node body (calm; neon stays in the reader) */
+  .fc-md{position:relative;flex:1;overflow:hidden;padding:10px 12px 12px}
+  .fc-md::after{content:"";position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(transparent,rgba(23,31,51,.75))}
+  .fc-md h2{margin:2px 0 6px;font-size:12px;font-weight:600;color:var(--color-text-primary);letter-spacing:.01em}
+  .fc-md p{margin:0 0 7px;font-size:12px;line-height:1.5;color:var(--color-text-secondary)}
+  .fc-md p:last-child{margin-bottom:0}
+  .fc-md strong{color:var(--color-text-primary);font-weight:600}
+  .fc-md em{color:var(--color-secondary);font-style:italic}
+  .fc-md ul{margin:0;padding:0;list-style:none}
+  .fc-md li{position:relative;padding-left:14px;font-size:11.5px;line-height:1.5;color:var(--color-text-secondary);margin-bottom:3px}
+  .fc-md li::before{content:"";position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:1px;background:var(--color-primary-cont)}
+  .fc-md code{font-family:var(--mono);font-size:11px;color:var(--color-neon-cyan);background:rgba(94,242,255,.1);padding:0 4px;border-radius:3px;border:1px solid rgba(94,242,255,.16)}
+  .fc-node.is-collapsed .fc-md{display:none}
+  .fc-node.is-collapsed .fc-fm{border-bottom:0}
+
+  /* note (text) node */
+  .fc-note{position:absolute;z-index:10;border-radius:var(--r-card);padding:13px 15px;backdrop-filter:blur(16px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.5),rgba(13,21,40,.5)),linear-gradient(135deg,rgba(94,242,255,.36),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box}
+  .fc-note .eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neon-cyan)}
+  .fc-note h3{margin:6px 0 5px;font-family:var(--ui);font-size:13px;font-weight:600;color:var(--color-text-primary)}
+  .fc-note p{margin:0;font-size:12px;line-height:1.5;color:var(--color-text-secondary)}
+  .fc-note strong{color:var(--color-text-primary);font-weight:600}
+
+  /* minimap */
+  .fc-minimap{position:absolute;z-index:30;border-radius:var(--r-control);backdrop-filter:blur(16px);border:1px solid var(--color-outline-variant);background:rgba(6,14,32,.6);overflow:hidden}
+  .fc-minimap .grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:14px 14px}
+  .fc-minimap b{position:absolute;border-radius:3px;display:block}
+
+  /* ───────── reader drawer + opaque editorial prose (issues #3 #4) ───────── */
+  .fc-reader{position:absolute;top:56px;right:0;bottom:0;width:600px;z-index:45;display:flex;flex-direction:column;
+    border-left:1px solid transparent;
+    background-image:linear-gradient(rgba(11,19,38,.5),rgba(11,19,38,.5)),linear-gradient(200deg,rgba(128,131,255,.4),rgba(255,255,255,.04));
+    background-origin:border-box;background-clip:padding-box,border-box;
+    backdrop-filter:blur(40px);box-shadow:var(--shadow-drawer)}
+  .fc-reader__hd{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--color-outline-variant);background:rgba(6,14,32,.5);backdrop-filter:blur(8px)}
+  .fc-reader__title{font-size:14px;font-weight:600;color:var(--color-text-primary);line-height:1.3}
+  .fc-reader__path{font-family:var(--mono);font-size:10.5px;color:var(--color-text-secondary);margin-top:2px}
+  .seg-reader{display:flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;flex:0 0 auto;margin-left:auto}
+  .seg-reader button{border:0;background:transparent;color:var(--color-text-secondary);font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    height:30px;padding:0 11px;cursor:pointer;transition:background-color .14s ease,color .14s ease}
+  .seg-reader button + button{border-left:1px solid var(--color-outline-variant)}
+  .seg-reader button:hover{color:var(--color-text-primary)}
+  .seg-reader button[aria-pressed="true"]{background:linear-gradient(135deg,var(--color-neon-cyan),var(--color-secondary));color:var(--color-bg)}
+  .seg-reader button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+  .x-btn{flex:0 0 auto;width:34px;height:34px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:transparent;color:var(--color-text-primary);cursor:pointer;font-size:15px}
+  .x-btn:hover{box-shadow:var(--glow-indigo)}
+  .x-btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+
+  .fc-reader__scroll{flex:1;overflow:auto;background:var(--color-surface-lowest)} /* OPAQUE — no canvas bleed-through (#3) */
+
+  /* (#4) frontmatter header bar — pinned at the top of the scroll body */
+  .fc-fmbar{position:sticky;top:0;z-index:2;display:flex;flex-direction:column;gap:9px;padding:16px 24px;
+    background:var(--color-surface-low);border-bottom:1px solid var(--color-outline-variant)}
+
+  /* (#3) editorial prose — constrained measure, opaque, generous */
+  .fc-prose{max-width:66ch;margin-inline:auto;padding:30px 24px 64px;font-size:17px;line-height:1.72;color:var(--color-text-primary)}
+  .fc-prose > :first-child{margin-top:0}
+  .fc-prose h1{font-size:26px;font-weight:600;letter-spacing:-.015em;line-height:1.2;margin:0 0 14px;color:var(--color-text-primary)}
+  .fc-prose h2{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:34px 0 12px;color:var(--color-text-primary)}
+  .fc-prose h3{font-size:17px;font-weight:600;margin:24px 0 8px;color:var(--color-secondary)}
+  .fc-prose p{margin:0 0 16px;color:var(--color-text-primary)}
+  .fc-prose strong{font-weight:600;color:var(--color-text-primary)}
+  .fc-prose em{font-style:italic;color:var(--color-secondary)}
+  .fc-prose a{color:var(--color-secondary);text-decoration:underline;text-underline-offset:2px}
+  .fc-prose ul{margin:0 0 18px;padding:0;list-style:none}
+  .fc-prose li{position:relative;padding-left:26px;margin:0 0 10px;color:var(--color-text-primary)}
+  .fc-prose ul li::before{content:"";position:absolute;left:6px;top:12px;width:6px;height:6px;border-radius:2px;
+    background:linear-gradient(135deg,var(--color-neon-cyan),var(--color-primary));box-shadow:0 0 8px -1px var(--color-neon-cyan)}
+  .fc-prose blockquote{margin:0 0 18px;padding:12px 18px;border-left:2px solid var(--color-primary);background:rgba(128,131,255,.08);border-radius:0 var(--r-control) var(--r-control) 0}
+  .fc-prose blockquote p{margin:0;font-style:italic;color:var(--color-text-secondary)}
+  .fc-prose :not(pre) > code{font-family:var(--mono);font-size:14px;color:var(--color-neon-cyan);background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.2);padding:1px 6px;border-radius:6px}
+  .fc-code{font-family:var(--mono);font-size:13px;line-height:1.65;background:var(--color-surface-low);border:1px solid var(--color-outline-variant);
+    border-radius:var(--r-control);padding:15px 17px;overflow:auto;margin:0 0 18px}
+  .fc-code .kw{color:var(--color-neon-cyan)} .fc-code .st{color:var(--color-neon-lime)} .fc-code .nm{color:var(--color-neon-rose)}
+  .fc-code .cm{color:var(--color-outline)} .fc-code .fn{color:var(--color-secondary)} .fc-code .pl{color:var(--color-text-primary)}
+
+  /* ───────── agent panel (Import tab) issue #2a ───────── */
+  .agent-panel{position:absolute;top:56px;right:0;bottom:0;width:600px;z-index:48;display:flex;flex-direction:column;
+    border-left:1px solid transparent;
+    background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(200deg,rgba(94,242,255,.32),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;
+    backdrop-filter:blur(40px);box-shadow:var(--shadow-drawer)}
+  .agent-panel__hd{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--color-outline-variant)}
+  .agent-panel__hd b{font-size:14px;color:var(--color-text-primary)}
+  .agent-panel__hd .sub{font-family:var(--mono);font-size:10.5px;color:var(--color-text-secondary)}
+  .agent-tabs{display:flex;gap:6px;padding:12px 18px 0}
+  .agent-tabs button{flex:1;height:38px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.4);
+    color:var(--color-text-secondary);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:background-color .14s ease,color .14s ease,border-color .14s ease}
+  .agent-tabs button[aria-selected="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--color-primary-cont),#6f5bff)}
+  .agent-tabs button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .agent-body{padding:18px;overflow:auto;display:flex;flex-direction:column}
+  .agent-body .hint{margin:0 0 12px;font-size:13px;line-height:1.55;color:var(--color-text-secondary)}
+  .agent-body .hint code{font-family:var(--mono);font-size:12px;color:var(--color-neon-cyan)}
+  .agent-body textarea{width:100%;min-height:188px;resize:vertical;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);
+    background:rgba(6,14,32,.6);color:var(--color-text-primary);font-family:var(--mono);font-size:12px;line-height:1.5;padding:13px;
+    transition:border-color .14s ease,box-shadow .14s ease}
+  .agent-body textarea:focus{outline:0;border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary)}
+  .agent-body textarea::placeholder{color:var(--color-outline)}
+  .agent-actions{display:flex;gap:10px;margin-top:14px;align-items:center}
+  .report{margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.6;border-radius:var(--r-control);padding:12px 14px;
+    border:1px solid rgba(182,243,106,.4);background:rgba(182,243,106,.08);color:var(--color-neon-lime)}
+  .report .counts{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .report .counts b{color:var(--color-text-primary);font-weight:600}
+  .report .wrote{color:var(--color-text-secondary)}
+  .report .wrote .path{color:var(--color-neon-cyan)}
+
+  @media (prefers-reduced-motion: reduce){
+    .fc-btn,.fc-node,.tip::after,.seg-reader button,.agent-tabs button,.agent-body textarea{transition:none}
+    .fc-btn:active{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="page-hd">
+  <div class="eyebrow">Flowcanvas · Phase 9 redesign · iteration 09</div>
+  <h1>Direct Rail — the restrained, production-faithful evolution</h1>
+  <p>Insert tools live <strong>directly on a single horizontal glass rail</strong> as compact icon buttons, split into clusters by hairline dividers — no <code>Add ▾</code> dropdown. Frontmatter becomes a card variant (status pill + violet tag chips + link chips + muted key/value). The reader is an opaque editorial column. Neon is reserved for active / selected / hover / syntax only. Three labeled artboards below; every interactive element carries a <code>data-testid</code>.</p>
+</header>
+
+<main class="boards">
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ARTBOARD A — Loaded board + redesigned toolbar (issues #8, #5)
+       ════════════════════════════════════════════════════════════════════ -->
+  <section class="frame">
+    <div class="frame__label">
+      <span class="tag">Artboard A</span>
+      <span class="sub">loaded board · redesigned toolbar · card-variant frontmatter</span>
+      <span class="issue">#8</span><span class="issue">#5</span>
+    </div>
+
+    <div class="artboard">
+
+      <!-- THE RAIL -->
+      <header class="fc-toolbar" role="toolbar" aria-label="Canvas toolbar">
+        <div class="fc-toolbar__brand">
+          <!-- ◐ brand mark (CSS/SVG, not emoji) -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+          flowcanvas
+        </div>
+
+        <span class="fc-toolbar__divider"></span>
+
+        <!-- mode cluster (segmented) -->
+        <div class="fc-seg" role="group" aria-label="Canvas mode">
+          <button class="fc-btn tip" data-testid="toolbar-select" data-tip="Select  V" aria-label="Select and move" aria-pressed="true">
+            <svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-connect" data-tip="Connect  C" aria-label="Connect nodes" aria-pressed="false">
+            <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-comment-mode" data-tip="Comment  M" aria-label="Comment mode" aria-pressed="false">
+            <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+
+        <span class="fc-toolbar__divider"></span>
+
+        <!-- INSERT cluster — direct icon buttons, no dropdown (issue #8 headline) -->
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-note" data-tip="Note" aria-label="Add note">
+          <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-markdown" data-tip="Markdown file" aria-label="Add markdown file">
+          <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-image" data-tip="Image" aria-label="Add image">
+          <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-link" data-tip="Link" aria-label="Add link">
+          <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+
+        <!-- Shape = split / flyout button (shown OPEN here to demo rectangle/ellipse/diamond) -->
+        <div class="fc-flyout" data-open="true">
+          <button class="fc-btn tip" data-testid="toolbar-add-shape" data-tip="Shape" aria-label="Add shape" aria-haspopup="menu" aria-expanded="true">
+            <svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12" rx="2"/></svg>
+            <svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="Shape">
+            <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="2"/></svg>Rectangle</button>
+            <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+            <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+          </div>
+        </div>
+
+        <span class="fc-toolbar__divider"></span>
+
+        <!-- File flyout — collapses Upload / Import / Export (closed; click to open) -->
+        <div class="fc-flyout" data-open="false">
+          <button class="fc-btn" id="fileBtn-a" data-testid="toolbar-file-menu" aria-label="File menu" aria-haspopup="menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><span>File</span>
+            <svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="toolbar-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>drag-drop</small></button>
+            <button role="menuitem" data-testid="toolbar-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="toolbar-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+
+        <span class="fc-toolbar__divider"></span>
+
+        <!-- Phase-10 placeholders — scaffolded but DISABLED, tooltip "coming soon" -->
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-group" data-tip="Group · coming soon" aria-label="Group (coming soon)" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-ungroup" data-tip="Ungroup · coming soon" aria-label="Ungroup (coming soon)" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24"><path d="M4 8V5h3M20 16v3h-3M7 19H4v-3"/><path d="M14 5h6v6"/><path d="M10 14l8-8"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-reorganize" data-tip="Re-organize · coming soon" aria-label="Re-organize (coming soon)" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24"><path d="M4 6h7M4 12h7M4 18h7"/><path d="M16 8l3-3 3 3M19 5v14"/></svg></button>
+
+        <span class="fc-toolbar__spring"></span>
+
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-fit-view" data-tip="Fit view" aria-label="Fit view">
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="fc-btn fc-btn--primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)">
+          <span class="save-dot" title="unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+      </header>
+
+      <!-- BOARD -->
+      <div class="fc-board">
+
+        <svg class="fc-edges" viewBox="0 0 1280 744" aria-hidden="true">
+          <defs>
+            <marker id="ar-u" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#c0c1ff" stroke-width="1.6"/></marker>
+          </defs>
+          <!-- Architecture Decision → Schema & Adapter (user edge) -->
+          <path d="M398,196 C424,196 426,196 450,196" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#ar-u)"/>
+        </svg>
+        <div class="fc-edge-label" style="left:424px;top:182px">implements</div>
+
+        <!-- NODE 1 — the showcase: card-variant frontmatter, selected, full body -->
+        <article class="fc-node is-selected" style="left:64px;top:60px;width:334px;height:300px">
+          <div class="fc-node__hd">
+            <span class="fc-node__title">Architecture Decision</span>
+            <span class="kind-chip">md</span>
+            <button class="icon-btn" data-testid="node-maximize" aria-label="Open in reader" title="Open in reader">
+              <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 20H4v-6M4 20l8-8"/></svg></button>
+            <button class="icon-btn" data-testid="node-collapse-toggle" aria-label="Collapse node" title="Collapse">−</button>
+          </div>
+          <div class="fc-fm">
+            <div class="fc-fm__row"><span class="pill approved"><span class="d"></span>approved</span></div>
+            <div class="fc-fm__row">
+              <span class="chip-tag">design</span><span class="chip-tag">architecture</span>
+            </div>
+            <div class="fc-fm__row">
+              <a class="chip-link" href="#" data-testid="fm-link-schema"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>schema.md</a>
+              <a class="chip-link" href="#" data-testid="fm-link-adapter"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>adapter.md</a>
+            </div>
+            <div class="fc-fm__kv">
+              <span class="k">owner</span><span class="v">canvas-team</span>
+              <span class="k">updated</span><span class="v">2026-06-27</span>
+            </div>
+          </div>
+          <div class="fc-md">
+            <h2>Adapter boundary</h2>
+            <p>The adapter is the single seam between the <strong>JSONCanvas</strong> document and React Flow — nothing else maps coordinates.</p>
+            <ul>
+              <li>Pure function, no side effects</li>
+              <li>Edges derived from <code>links:</code></li>
+              <li>Presets resolved via <code>colorVar()</code></li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- NODE 2 — active / in-progress -->
+        <article class="fc-node" style="left:450px;top:60px;width:300px;height:236px">
+          <div class="fc-node__hd">
+            <span class="fc-node__title">Schema &amp; Adapter</span>
+            <span class="kind-chip">md</span>
+            <button class="icon-btn" data-testid="node-maximize" aria-label="Open in reader" title="Open in reader">
+              <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 20H4v-6M4 20l8-8"/></svg></button>
+            <button class="icon-btn" data-testid="node-collapse-toggle" aria-label="Collapse node" title="Collapse">−</button>
+          </div>
+          <div class="fc-fm">
+            <div class="fc-fm__row"><span class="pill active"><span class="d"></span>in-progress</span></div>
+            <div class="fc-fm__row"><span class="chip-tag">schema</span><span class="chip-tag">adapter</span></div>
+            <div class="fc-fm__row">
+              <a class="chip-link" href="#" data-testid="fm-link-design"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>design.md</a>
+            </div>
+          </div>
+          <div class="fc-md">
+            <h2>Status</h2>
+            <p>Adapter unit tests landing this phase; <em>preset resolution</em> already green.</p>
+          </div>
+        </article>
+
+        <!-- NODE 3 — stale (amber), collapsed -->
+        <article class="fc-node is-collapsed" style="left:450px;top:330px;width:300px;height:auto">
+          <div class="fc-node__hd">
+            <span class="fc-node__title">Legacy Importer</span>
+            <span class="kind-chip">md</span>
+            <button class="icon-btn" data-testid="node-maximize" aria-label="Open in reader" title="Open in reader">
+              <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 20H4v-6M4 20l8-8"/></svg></button>
+            <button class="icon-btn" data-testid="node-collapse-toggle" aria-label="Expand node" title="Expand">+</button>
+          </div>
+          <div class="fc-fm">
+            <div class="fc-fm__row"><span class="pill stale"><span class="d"></span>stale</span></div>
+            <div class="fc-fm__row"><span class="chip-tag">import</span><span class="chip-tag">deprecated</span></div>
+            <div class="fc-fm__row">
+              <a class="chip-link" href="#" data-testid="fm-link-migration"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>migration.md</a>
+            </div>
+          </div>
+          <div class="fc-md"><p>Superseded by the JSONCanvas adapter. Kept for one release.</p></div>
+        </article>
+
+        <!-- NOTE node — restates the thesis -->
+        <div class="fc-note" style="left:64px;top:392px;width:334px;height:128px">
+          <span class="eyebrow">text · note</span>
+          <h3>Direct Rail</h3>
+          <p>Insert tools sit <strong>directly on the rail</strong> — no <em>Add</em> dropdown. Clusters split by hairline dividers; neon shows up only on active, selected, and hover.</p>
+        </div>
+
+        <!-- minimap -->
+        <div class="fc-minimap" style="left:1040px;top:592px;width:200px;height:128px" aria-hidden="true">
+          <span class="grid"></span>
+          <b style="left:16px;top:16px;width:38px;height:34px;background:rgba(192,193,255,.7)"></b>
+          <b style="left:70px;top:16px;width:30px;height:24px;background:rgba(94,242,255,.55)"></b>
+          <b style="left:70px;top:46px;width:30px;height:14px;background:rgba(245,159,0,.5)"></b>
+          <b style="left:16px;top:58px;width:38px;height:16px;background:rgba(94,242,255,.4)"></b>
+        </div>
+
+      </div><!-- /board -->
+    </div><!-- /artboard A -->
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ARTBOARD B — Reader open (issues #3 readability + #4 frontmatter bar)
+       ════════════════════════════════════════════════════════════════════ -->
+  <section class="frame">
+    <div class="frame__label">
+      <span class="tag">Artboard B</span>
+      <span class="sub">reader open · opaque editorial column · pinned frontmatter bar</span>
+      <span class="issue">#3</span><span class="issue">#4</span>
+    </div>
+
+    <div class="artboard">
+
+      <!-- same fixed rail -->
+      <header class="fc-toolbar" role="toolbar" aria-label="Canvas toolbar">
+        <div class="fc-toolbar__brand">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+          flowcanvas
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <div class="fc-seg" role="group" aria-label="Canvas mode">
+          <button class="fc-btn tip" data-testid="toolbar-select" data-tip="Select  V" aria-label="Select and move" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-connect" data-tip="Connect  C" aria-label="Connect nodes" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-comment-mode" data-tip="Comment  M" aria-label="Comment mode" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-note" data-tip="Note" aria-label="Add note"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-markdown" data-tip="Markdown file" aria-label="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-image" data-tip="Image" aria-label="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-link" data-tip="Link" aria-label="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+        <div class="fc-flyout" data-open="false">
+          <button class="fc-btn tip" data-testid="toolbar-add-shape" data-tip="Shape" aria-label="Add shape" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12" rx="2"/></svg><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="Shape">
+            <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="2"/></svg>Rectangle</button>
+            <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+            <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+          </div>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <div class="fc-flyout" data-open="false">
+          <button class="fc-btn" id="fileBtn-b" data-testid="toolbar-file-menu" aria-label="File menu" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><span>File</span><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="toolbar-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>drag-drop</small></button>
+            <button role="menuitem" data-testid="toolbar-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="toolbar-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-group" data-tip="Group · coming soon" aria-label="Group (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-ungroup" data-tip="Ungroup · coming soon" aria-label="Ungroup (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 8V5h3M20 16v3h-3M7 19H4v-3"/><path d="M14 5h6v6"/><path d="M10 14l8-8"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-reorganize" data-tip="Re-organize · coming soon" aria-label="Re-organize (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 6h7M4 12h7M4 18h7"/><path d="M16 8l3-3 3 3M19 5v14"/></svg></button>
+        <span class="fc-toolbar__spring"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-fit-view" data-tip="Fit view" aria-label="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="fc-btn fc-btn--primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)"><span class="save-dot" title="unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+      </header>
+
+      <!-- dimmed board behind the reader -->
+      <div class="fc-board is-dimmed">
+        <article class="fc-node" style="left:64px;top:60px;width:320px;height:188px">
+          <div class="fc-node__hd"><span class="fc-node__title">Architecture Decision</span><span class="kind-chip">md</span>
+            <button class="icon-btn" aria-label="Open in reader" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 20H4v-6M4 20l8-8"/></svg></button>
+            <button class="icon-btn" aria-label="Collapse node" tabindex="-1">−</button></div>
+          <div class="fc-fm">
+            <div class="fc-fm__row"><span class="pill approved"><span class="d"></span>approved</span></div>
+            <div class="fc-fm__row"><span class="chip-tag">design</span><span class="chip-tag">architecture</span></div>
+          </div>
+          <div class="fc-md"><h2>Adapter boundary</h2><p>The single seam between JSONCanvas and React Flow.</p></div>
+        </article>
+        <article class="fc-node" style="left:430px;top:60px;width:290px;height:150px">
+          <div class="fc-node__hd"><span class="fc-node__title">Schema &amp; Adapter</span><span class="kind-chip">md</span>
+            <button class="icon-btn" aria-label="Collapse node" tabindex="-1">−</button></div>
+          <div class="fc-fm"><div class="fc-fm__row"><span class="pill active"><span class="d"></span>in-progress</span></div></div>
+          <div class="fc-md"><p>Adapter unit tests landing this phase.</p></div>
+        </article>
+      </div>
+
+      <!-- READER DRAWER -->
+      <aside class="fc-reader" aria-label="Reader">
+        <div class="fc-reader__hd">
+          <div>
+            <div class="fc-reader__title">Architecture Decision.md</div>
+            <div class="fc-reader__path">.flowcode/plans/001-initial-architecture/</div>
+          </div>
+          <!-- width mode: Drawer / Half / Full (cyan→violet gradient on active) -->
+          <div class="seg-reader" role="group" aria-label="Reader width">
+            <button data-testid="reader-mode-drawer" aria-pressed="true">Drawer</button>
+            <button data-testid="reader-mode-half" aria-pressed="false">Half</button>
+            <button data-testid="reader-mode-full" aria-pressed="false">Full</button>
+          </div>
+          <button class="x-btn" data-testid="reader-close" aria-label="Close reader">✕</button>
+        </div>
+
+        <div class="fc-reader__scroll">
+          <!-- (#4) frontmatter header bar — same chips as the node card. Empty frontmatter → this bar is omitted entirely. -->
+          <div class="fc-fmbar">
+            <div class="fc-fm__row"><span class="pill approved"><span class="d"></span>approved</span></div>
+            <div class="fc-fm__row"><span class="chip-tag">design</span><span class="chip-tag">architecture</span></div>
+            <div class="fc-fm__row">
+              <a class="chip-link" href="#" data-testid="reader-fm-link-schema"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>schema.md</a>
+              <a class="chip-link" href="#" data-testid="reader-fm-link-adapter"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>adapter.md</a>
+            </div>
+            <div class="fc-fm__kv">
+              <span class="k">owner</span><span class="v">canvas-team</span>
+              <span class="k">updated</span><span class="v">2026-06-27</span>
+            </div>
+          </div>
+
+          <!-- (#3) editorial prose — opaque surface, 17/1.72, 66ch measure -->
+          <article class="fc-prose">
+            <h1>Architecture Decision</h1>
+            <p>Flowcanvas treats the <strong>board itself as the medium</strong>. A markdown file is no longer a flat document with paths buried in its frontmatter — it is a node whose relationships are drawn, labeled, and navigable.</p>
+            <p>This decision pins the boundary between persisted JSONCanvas and the rendered graph to exactly one place, so every other module can stay pure.</p>
+
+            <h2>Adapter boundary</h2>
+            <p>The adapter maps a <code>FlowcanvasDoc</code> onto React Flow nodes and edges. It is the only code allowed to translate coordinates or resolve color presets.</p>
+            <ul>
+              <li>A pure, side-effect-free transform — trivially unit-testable.</li>
+              <li>Edges are derived from each file's <code>links:</code> frontmatter, never stored twice.</li>
+              <li>JSONCanvas presets <code>"1".."6"</code> resolve through <code>colorVar()</code> and nowhere else.</li>
+            </ul>
+
+            <blockquote>Keep the seam thin: if a module needs to know a node's pixel position, it asks the adapter — it does not reach into the document.</blockquote>
+
+            <h3>toReactFlow()</h3>
+            <p>The reference implementation stays small enough to read in one screen:</p>
+            <pre class="fc-code"><code><span class="cm">// lib/canvas/adapter.ts</span>
+<span class="kw">export function</span> <span class="fn">toReactFlow</span>(doc<span class="pl">: FlowcanvasDoc</span>) {
+  <span class="kw">const</span> nodes = doc.nodes.<span class="fn">map</span>((n) =&gt; ({
+    id: n.id,
+    type: <span class="fn">nodeKind</span>(n),
+    position: { x: n.x, y: n.y },
+    width: n.width ?? <span class="nm">320</span>,
+    height: n.height ?? <span class="nm">180</span>,
+    data: { color: <span class="fn">colorVar</span>(n.color) },
+  }))
+  <span class="kw">return</span> { nodes, edges: <span class="fn">deriveEdges</span>(doc) }
+}</code></pre>
+            <p>Syntax highlighting (shiki) runs <em>only</em> here in the reader — node bodies use a lighter client renderer.</p>
+          </article>
+        </div>
+      </aside>
+
+    </div><!-- /artboard B -->
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ARTBOARD C — Agent Import · Load .json (issue #2a)
+       ════════════════════════════════════════════════════════════════════ -->
+  <section class="frame">
+    <div class="frame__label">
+      <span class="tag">Artboard C</span>
+      <span class="sub">agent panel · Import tab · Load .json affordance</span>
+      <span class="issue">#2a</span>
+    </div>
+
+    <div class="artboard">
+
+      <!-- same fixed rail (Import context) -->
+      <header class="fc-toolbar" role="toolbar" aria-label="Canvas toolbar">
+        <div class="fc-toolbar__brand">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+          flowcanvas
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <div class="fc-seg" role="group" aria-label="Canvas mode">
+          <button class="fc-btn tip" data-testid="toolbar-select" data-tip="Select  V" aria-label="Select and move" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-connect" data-tip="Connect  C" aria-label="Connect nodes" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="fc-btn tip" data-testid="toolbar-comment-mode" data-tip="Comment  M" aria-label="Comment mode" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-note" data-tip="Note" aria-label="Add note"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-markdown" data-tip="Markdown file" aria-label="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-image" data-tip="Image" aria-label="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-add-link" data-tip="Link" aria-label="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+        <div class="fc-flyout" data-open="false">
+          <button class="fc-btn tip" data-testid="toolbar-add-shape" data-tip="Shape" aria-label="Add shape" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12" rx="2"/></svg><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="Shape">
+            <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="2"/></svg>Rectangle</button>
+            <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+            <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+          </div>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <div class="fc-flyout" data-open="false">
+          <button class="fc-btn" id="fileBtn-c" data-testid="toolbar-file-menu" aria-label="File menu" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><span>File</span><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="fc-menu" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="toolbar-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>drag-drop</small></button>
+            <button role="menuitem" data-testid="toolbar-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="toolbar-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+        <span class="fc-toolbar__divider"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-group" data-tip="Group · coming soon" aria-label="Group (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-ungroup" data-tip="Ungroup · coming soon" aria-label="Ungroup (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 8V5h3M20 16v3h-3M7 19H4v-3"/><path d="M14 5h6v6"/><path d="M10 14l8-8"/></svg></button>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-reorganize" data-tip="Re-organize · coming soon" aria-label="Re-organize (coming soon)" aria-disabled="true" disabled><svg viewBox="0 0 24 24"><path d="M4 6h7M4 12h7M4 18h7"/><path d="M16 8l3-3 3 3M19 5v14"/></svg></button>
+        <span class="fc-toolbar__spring"></span>
+        <button class="fc-btn fc-btn--icon tip" data-testid="toolbar-fit-view" data-tip="Fit view" aria-label="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="fc-btn fc-btn--primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)"><span class="save-dot" title="unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+      </header>
+
+      <!-- dimmed board behind the agent panel -->
+      <div class="fc-board is-dimmed">
+        <article class="fc-node" style="left:64px;top:60px;width:320px;height:172px">
+          <div class="fc-node__hd"><span class="fc-node__title">Architecture Decision</span><span class="kind-chip">md</span>
+            <button class="icon-btn" aria-label="Collapse node" tabindex="-1">−</button></div>
+          <div class="fc-fm"><div class="fc-fm__row"><span class="pill approved"><span class="d"></span>approved</span></div>
+            <div class="fc-fm__row"><span class="chip-tag">design</span><span class="chip-tag">architecture</span></div></div>
+          <div class="fc-md"><h2>Adapter boundary</h2><p>The single seam between JSONCanvas and React Flow.</p></div>
+        </article>
+        <article class="fc-node" style="left:430px;top:60px;width:280px;height:132px">
+          <div class="fc-node__hd"><span class="fc-node__title">Test Notes</span><span class="kind-chip">md</span></div>
+          <div class="fc-fm"><div class="fc-fm__row"><span class="pill active"><span class="d"></span>in-progress</span></div></div>
+        </article>
+      </div>
+
+      <!-- AGENT PANEL — Import tab active -->
+      <aside class="agent-panel" aria-label="Agent round-trip">
+        <div class="agent-panel__hd">
+          <div><b>Agent round-trip</b><div class="sub">brief-3f9c · last export 2026-06-27 14:02</div></div>
+          <button class="x-btn" data-testid="agent-close" aria-label="Close agent panel" style="margin-left:auto">✕</button>
+        </div>
+        <div class="agent-tabs" role="tablist">
+          <button role="tab" data-testid="agent-tab-export" aria-selected="false">Export</button>
+          <button role="tab" data-testid="agent-tab-import" aria-selected="true">Import</button>
+        </div>
+
+        <div class="agent-body">
+          <p class="hint">Paste the agent's <code>AgentResponse</code>, or load the <code>.json</code> file it wrote. The merge is idempotent — it upserts nodes/edges, attaches replies by id, and re-derives <code>links:</code> edges.</p>
+
+          <textarea data-testid="response-paste" aria-label="Paste agent response JSON" placeholder='{ "responseVersion":"0.1", "briefId":"brief-3f9c", "upsertNodes":[…], "generatedFiles":[…] }'>{
+  "responseVersion": "0.1",
+  "briefId": "brief-3f9c",
+  "upsertNodes": [ { "id": "n-test-notes", "kind": "markdown" } ],
+  "removeNodes": [ "n-legacy-import" ],
+  "generatedFiles": [ "001-initial-architecture-test-notes.md" ]
+}</textarea>
+
+          <!-- "Load .json…" triggers a hidden <input type="file" accept=".json"> — the new affordance, beside paste + Apply -->
+          <div class="agent-actions">
+            <button class="fc-btn" data-testid="response-load-file" aria-label="Load a .json response file">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg><span>Load .json…</span></button>
+            <button class="fc-btn fc-btn--primary" data-testid="response-apply" aria-label="Apply response" style="flex:1">Apply response</button>
+          </div>
+
+          <!-- sample merge report -->
+          <div class="report" role="status" data-testid="merge-report">
+            <div class="counts">
+              <span><b>2</b> created</span><span><b>3</b> updated</span><span><b>1</b> removed</span>
+            </div>
+            <div class="wrote">wrote <span class="path">.flowcode/plans/001-initial-architecture/001-initial-architecture-test-notes.md</span></div>
+            <div class="wrote">re-derived <b style="color:var(--color-text-primary)">4</b> <code style="color:var(--color-neon-cyan)">links:</code> edges</div>
+          </div>
+        </div>
+      </aside>
+
+    </div><!-- /artboard C -->
+  </section>
+
+</main>
+
+<script>
+  // Flyout toggles (Shape split-button + File menu). Click-outside closes.
+  document.querySelectorAll('.fc-flyout > .fc-btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var fly = btn.closest('.fc-flyout');
+      var open = fly.getAttribute('data-open') === 'true';
+      // close siblings within the same toolbar
+      btn.closest('.fc-toolbar').querySelectorAll('.fc-flyout').forEach(function(f){
+        if (f !== fly){ f.setAttribute('data-open','false'); var b=f.querySelector('.fc-btn'); if(b) b.setAttribute('aria-expanded','false'); }
+      });
+      fly.setAttribute('data-open', open ? 'false' : 'true');
+      btn.setAttribute('aria-expanded', String(!open));
+    });
+  });
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.fc-flyout').forEach(function(f){
+      f.setAttribute('data-open','false');
+      var b = f.querySelector('.fc-btn'); if(b) b.setAttribute('aria-expanded','false');
+    });
+  });
+
+  // Node collapse toggle
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(){
+      var n = t.closest('.fc-node');
+      var collapsed = n.classList.toggle('is-collapsed');
+      t.textContent = collapsed ? '+' : '−';
+      t.setAttribute('aria-label', collapsed ? 'Expand node' : 'Collapse node');
+    });
+  });
+
+  // Reader width segmented control (visual only)
+  document.querySelectorAll('.seg-reader').forEach(function(seg){
+    seg.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        seg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+        b.setAttribute('aria-pressed','true');
+      });
+    });
+  });
+</script>
+</body>
+</html>

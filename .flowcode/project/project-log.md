@@ -14,6 +14,37 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 001-initial-architecture — Phase 10 canvas mechanics & file I/O — 2026-06-27
+
+**Dev:** david-ds-teles
+**Delivered:** Re-closed `001-initial-architecture` `complete` at **10/10 phases** after executing the previously-deferred **Phase 10** (operator-directed reopen). Shipped: **multi-select** (marquee gated on select mode + ⌘/Ctrl-click), **true group containers** (`parentId`/`extent:'parent'`, drag-as-a-unit, group/ungroup) keeping the doc's coords absolute (all abs↔rel confined to the adapter), an **ELK "Re-organize"** auto-layout (`elkjs`), and **Save-as / Open-board** (`<BoardDialog>` modal + `?path=` adoption + inline dirty-guard). The operator-added transitive-hydration / ≤1-action referenced-file-access and the wider **linking / source-of-truth + agent-collaboration** vision were split to the new plan **`002-system-design-studio`**.
+**Phases:** 10/10 — all `done`.
+**Artifacts:** technical-overview (Phase 10 sections; 9→10 phases, 66→79 tests), changelog (Phase 10 + Summary 10/10), test-notes (Phase 10 unit + CDP + gaps), qa-report (Phase 10 + plan-completion, both PASS) under `.flowcode/plans/001-initial-architecture/`; `project-overview.md` propagated (Schema/Adapter/Layout/Store, folder structure, `elkjs`).
+**Follow-ups:** `002-system-design-studio` (linking semantics, source-of-truth, reference nav/hydration, templates, richer agent loop). Tech-debt: component tests for toolbar flyout / `<FrontmatterView>` / `<BoardDialog>`; `reorganize` fitView heuristic; dead `setNodePosition`.
+**Gates:** tsc 0 · lint 0 · build ok · vitest 79/79 · CDP live-verified (group/ungroup/re-organize/save-as/open). Review: 0 ≥medium (2 low fixed, 3 info accepted); plan-completion PASS.
+
+---
+
+## [PLAN COMPLETE] 001-initial-architecture — Phase 9 UX/UI redesign + bugfixes; Phase 10 deferred — 2026-06-27
+
+**Dev:** david-ds-teles
+**Delivered:** Closed `001-initial-architecture` `complete` at **9/10 phases**. Phase 9 shipped the single-rail toolbar (direct insert buttons + Shape/File flyouts + disabled Phase-10 scaffolds + `+ Add ▾` narrow fallback), the shared `<FrontmatterView>` (card + sticky reader-bar), a readability-overhauled reader (opaque surface, 17px/≤66ch, frontmatter header bar), and `.json` agent import (`Load .json…` + brief-vs-response detection). A post-Phase-9 bugfix pass fixed the selection ring (conforms to the rounded cards), the shape outline (dashed bright-indigo), and the import message. **Phase 10 deferred** — multi-select + true group containers, ELK "Re-organize", save-as/open-board, plus operator-added transitive board hydration + ≤1-action access to referenced files (needs a UI pass) → carried into the next exploration/design cycle.
+**Phases:** 9/10 — Phases 1–9 `done`; Phase 10 `deferred`.
+**Artifacts:** technical-overview (regenerated from a code-explorer audit), changelog (reconciled), test-notes, qa-report (plan-completion PASS) under `.flowcode/plans/001-initial-architecture/`; `project-overview.md` propagated.
+**Follow-ups:** Phase 10 → next plan; add Phase-9 component tests (toolbar flyout state machine / `<FrontmatterView>` — CDP-only today); standing v0.1 tech-debt (revision double-bump, `AGENT_CONTRACT` ⇄ contract-doc sync, reader relative-image rewriting, symlink-aware path guard).
+**Gates:** tsc 0 · lint 0 · build ok · vitest 66/66 · CDP visual-parity green. Review: 0 ≥medium across all checks; plan-completion PASS.
+
+---
+
+## [BUGFIX] Post-Phase-9 UX: selection ring / shape contrast / import message — 2026-06-27
+
+**Dev:** david-ds-teles
+**Cause:** (1) the `.selected` box-shadow sat on the **square** `.react-flow__node` wrapper while the cards are 16px-rounded, so the ring fenced a gap around the corners and its wide soft glow read fuzzy/low-contrast; (2) shape/group nodes used a 5%-indigo fill + thin solid `--color-primary-cont` stroke, reading as a faint gray box; (3) pasting the exported **DesignBrief** into Import gave a cryptic "Missing responseVersion/briefId" error (the brief carries `briefVersion`, not `responseVersion`).
+**Fix:** (1) moved the ring onto the rounded cards (`.fc-node`/`.fc-node--link`/`.fc-node--note`) with a crisp 2px `--color-primary` ring + tight indigo halo, wrapper shadow `none` — conforms to the corners; (2) shape outline is now a **dashed** (`7 5`) bright-indigo (`--color-primary`) container with 8% fill (design system §8); (3) Import detects a pasted brief and explains the round-trip ("hand the brief to your agent — Import expects its AgentResponse").
+**Affected:** `app/globals.css`, `components/canvas/nodes/group-node.tsx`, `app/styles/nodes.css`, `components/canvas/export-panel.tsx`. Gates: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP — selection ring conforms to 16px card (wrapper shadow none), shape rect `stroke-dasharray=7 5` stroke `rgb(192,193,255)`, Import shows the brief-guidance message. Captures `mockups/captures/phase-9/09-fix-{selection,shape,import}.png`.
+
+---
+
 ## [PLAN COMPLETE] 001-initial-architecture — Phase 8 polish & cleanup — 2026-06-27
 
 **Dev:** david-ds-teles

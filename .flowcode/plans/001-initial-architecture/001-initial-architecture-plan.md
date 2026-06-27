@@ -1,6 +1,6 @@
 ---
 name: 001-initial-architecture-plan
-description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all eight phases (7 build phases + a post-execution polish phase).
+description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all ten phases (7 build phases + a polish phase + 2 UX/mechanics enhancement phases).
 status: complete
 tags: [plan, implementation, phases, canvas]
 links: [001-initial-architecture-design.md]
@@ -9,10 +9,10 @@ links: [001-initial-architecture-design.md]
 # 001-initial-architecture — Flowcanvas Implementation Plan
 
 - Delivers Flowcanvas v0.1: a standalone Next.js canvas that renders flowcode markdown as nodes, connects them, embeds images, takes comments, and round-trips the board to/from an AI agent as one JSON.
-- Phases: 8 — Bootstrap, Schema & Empty Canvas, Persistence & Resolve API, Content Nodes, Edges, Comments, Agent Round-Trip & Polish, Post-Execution Polish & Cleanup.
-- Status complete; phases 1–7 done (2026-06-25), Phase 8 (7 hands-on polish fixes) done 2026-06-27 — plan re-closed 8/8.
+- Phases: 10 — Bootstrap, Schema & Empty Canvas, Persistence & Resolve API, Content Nodes, Edges, Comments, Agent Round-Trip & Polish, Post-Execution Polish & Cleanup, UX/UI Redesign & File Import, Canvas Mechanics & File I/O.
+- Status **complete** — all 10 phases done (1–7 2026-06-25, 8–10 2026-06-27). **Phase 10** (canvas mechanics: multi-select + true group containers, ELK re-organize, save-as/open-board) shipped after an operator-directed reopen. The operator-added transitive board hydration, ≤1-action referenced-file access, and the broader linking / source-of-truth + agent-collaboration vision are **split to plan `002-system-design-studio`** (in design).
 - Upstream design: `001-initial-architecture-design.md` (read it for the full schema, API contracts, and the agent contract this plan implements).
-- **All eight phases are authored to full implementation depth** (production-ready snippets, a diagram, a worked example, acceptance criteria, named gates) — by author's direction, overriding the usual stub-later-phases convention.
+- **All ten phases are authored to full implementation depth** (production-ready snippets, a diagram, a worked example, acceptance criteria, named gates) — by author's direction, overriding the usual stub-later-phases convention.
 - Per-phase quality gates: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npx vitest run` for the pure modules.
 
 ---
@@ -33,6 +33,8 @@ Ship the Flowcanvas v0.1 standalone app specified in `001-initial-architecture-d
 6. **Comments Layer** — node/canvas-anchored pins, flat threads, reply + resolve.
 7. **Agent Round-Trip & Polish** — DesignBrief export, AgentResponse import + idempotent merge, generated-file writes, the agent-contract doc, reader drawer, save/fit-view/empty states.
 8. **Post-Execution Polish & Cleanup** — surgical refactor (inline styles → CSS, shell logic → hook, `globals.css` partials), orthogonal smoothstep edges, 3-size reader (drawer/half/full) + working maximize, bidirectional `links:` frontmatter write-back, nyx-styled minimap/zoom controls, and removal of the Next.js dev badge. Fixes 7 issues surfaced in hands-on use before the plan is closed.
+9. **UX/UI Redesign & File Import** — redesign the toolbar (insert tools surfaced directly, no nested Add menu), a high-quality node-frontmatter presentation shared with the reader, a flawlessly readable reader (contrast/typography/measure) + a reader frontmatter header bar, and AgentResponse import from a `.json` file. UI-touching → ui-workflow mockup gate. Fixes issues #8, #5, #3, #4, #2a.
+10. **Canvas Mechanics & File I/O** — multi-select (box/rubber-band) + true group containers (React Flow `parentId`/`extent`, move-together), an ELK "Re-organize" auto-layout (no overlaps / minimal crossings), and a Save-as / Open-board file dialog. Fixes issues #1, #6, #7, #2b.
 
 > **Execution record:** this file is the spec. Per-phase execution history belongs in a sibling `001-initial-architecture-log.md` (one entry per phase end + plan end) — not inlined here.
 >
@@ -1463,6 +1465,292 @@ sequenceDiagram
 
 ---
 
+## Phase 9 — UX/UI Redesign & File Import
+
+**Goal:** Resolve five hands-on UX issues with **no canvas-mechanics change**: (#8) redesign the toolbar so insert tools sit directly on the bar (retire the nested `Add ▾`); (#5) a high-quality node-frontmatter presentation factored into a shared `<FrontmatterView>`; (#3) a flawlessly readable reader (contrast, typography, constrained measure); (#4) a reader frontmatter header bar; (#2a) import an `AgentResponse` from a `.json` file alongside paste.
+
+**Phase Status:** done
+
+**Evaluation:** user
+
+**Subsystem:** ui — toolbar / frontmatter / reader / agent-io
+
+**Depends On:** [Phase 8]
+
+**UI Design Gate (runs before implementation):** frontend-touching. Per `.flowcode/ui/ui-workflow.md`, dispatch the `flowcode:ui-mockups` composer **3× in parallel** for the combined **toolbar + node-frontmatter + reader** redesign → `mockups/09-{toolbar-frontmatter-reader}.html` ×3, grounded in the nyx design system + `001-initial-architecture-ui-design.md`. User selects one iteration; record it in the ui-design doc (Status `approved`) before any code. Phase close runs the visual-parity check (capture at the declared breakpoints + all 3 reader sizes); no `[medium]`+ regression may remain.
+
+**Files to create / modify:**
+
+| File | Operation | Slice | Description |
+|------|-----------|-------|-------------|
+| `components/canvas/frontmatter-view.tsx` | create | S9a | Shared `<FrontmatterView frontmatter variant>` — `card` (in-node table) \| `reader` (header bar); houses the extracted `FmValue`/`statusClass`/`basename`/`PRIORITY`/`SKIP`/`MAX_CHIPS` |
+| `app/styles/frontmatter.css` | create | S9a | Frontmatter chip/table/bar styles (moved from `nodes.css` + the redesign) |
+| `components/canvas/nodes/markdown-node.tsx` | modify | S9a | Replace inline frontmatter rendering with `<FrontmatterView variant="card">` |
+| `app/styles/nodes.css` | modify | S9a | Remove the `.fc-fm*`/`.fc-chip*`/`.fc-tag` rules now owned by `frontmatter.css` |
+| `app/globals.css` | modify | S9a | `@import "./styles/frontmatter.css"` |
+| `components/canvas/export-panel.tsx` | modify | S9c | Import tab: `Load .json…` button + hidden `<input type="file" accept=".json">` → `file.text()` → fill the paste textarea (Apply unchanged) |
+| `components/canvas/canvas-toolbar.tsx` | modify | S9d | Promote Note/Markdown/Image/Link/Shape to direct icon buttons + dividers; `[File▾]` for Upload/Import/Export; scaffold (disabled) Group/Ungroup/Re-organize buttons for Phase 10; keep the narrow-screen `Add ▾` fallback |
+| `app/styles/toolbar.css` | modify | S9d | `.fc-toolbar__divider`, `.fc-flyout`; icon-button sizing; responsive `@media (max-width:1024px)` collapse |
+| `components/canvas/reader-drawer.tsx` | modify | S9b | Render `<FrontmatterView variant="reader">` at the top of the scroll body (frontmatter bar); readability markup |
+| `app/styles/reader.css` | modify | S9b | Readability overhaul (opaque surface, 17px/1.72 body, ≤66ch measure, calmer headings) + reader-drawer surface (moved here, NOT toolbar.css, to stay disjoint from S9d) |
+
+**Implementation steps** (grouped by parallel slice — see **§ Parallel Execution Plan**; each box checked the moment its slice lands):
+
+_Pre-impl (UI gate):_
+- [x] Dispatch 3 parallel mockups (toolbar + frontmatter + reader); user selects one; update `001-initial-architecture-ui-design.md` → `approved`. _(2026-06-27: `09-direct-rail.html`, `09-spec-header.html`, `09-editorial-calm.html` generated; operator selected **`09-direct-rail.html`**; recorded in ui-design § Visual Parity.)_
+
+_S9a — shared frontmatter (Wave 9·1):_
+- [x] Create `frontmatter-view.tsx`: moved `statusClass`/`basename`/`PRIORITY`/`SKIP`/`MAX_CHIPS` + a generic `FmValue` out of `markdown-node.tsx`; exports `<FrontmatterView>` + `basename`/`statusClass`; `variant='card'` renders the redesigned in-node block, `variant='reader'` the sticky horizontal bar (status pill w/ dot, violet tag chips, `↗` link chips, muted mono key/value grid); returns `null` when no displayable keys.
+- [x] Create `app/styles/frontmatter.css` (pill/chips/kv/card+reader bar) + removed the `.fc-fm*`/`.fc-chip*`/`.fc-tag` rules from `nodes.css` + `@import "./styles/frontmatter.css"` from `globals.css`.
+- [x] `markdown-node.tsx` consumes `<FrontmatterView variant="card">` (header/body/handles unchanged).
+
+_S9c — agent-JSON file import (Wave 9·1):_
+- [x] `export-panel.tsx`: added `Load .json…` (`data-testid="response-load-file"` + hidden `<input type="file" accept="application/json,.json">`) → `await file.text()` → `setPaste(text)`; paste + the existing Apply/validate/stale flow unchanged.
+
+_S9d — toolbar redesign (Wave 9·1):_
+- [x] Promoted insert tools to direct icon buttons (`toolbar-add-{note,markdown,image,link,shape}`) split by `.fc-toolbar__divider`; Shape → 3-item flyout; Upload/Import/Export collapsed under `[File▾]`; scaffolded **disabled** Group/Ungroup/Re-organize (Phase 10 wires them). Preserved `placeAt()`/`addNode`/`addFileNode`; below 1024px the `+ Add ▾` fallback menu (`toolbar-add-node`) returns. (Unified all insert popovers into one `open` flyout-state machine anchored to a shared `.fc-toolbar__flyhost`.)
+
+_S9b — reader (Wave 9·2, depends on S9a's `<FrontmatterView>`):_
+- [x] `reader.css`: opaque reading surface (`.fc-reader__scroll` → `--color-surface-lowest`), prose `color:var(--color-text-primary); font-size:17px; line-height:1.72; max-width:66ch; margin-inline:auto`, calmer **sans** headings (h1 26px / h2 21px / h3 `--color-secondary`), inline-code scoped off `pre` so shiki tokens survive. _(No `data-reader-theme` hook — single nyx theme, no toggle; deviation logged.)_
+- [x] `reader-drawer.tsx`: renders `<FrontmatterView variant="reader" />` at the top of the scroll body (sticky bar w/ bottom hairline); empty frontmatter → no bar.
+
+**Code & examples:**
+
+`components/canvas/frontmatter-view.tsx` (shared component API):
+
+```tsx
+interface FrontmatterViewProps { frontmatter: Record<string, unknown>; variant?: 'card' | 'reader'; className?: string }
+export function FrontmatterView({ frontmatter, variant = 'card', className }: FrontmatterViewProps): JSX.Element | null {
+  const keys = orderedKeys(frontmatter)            // priority-first (status/tags/links), skip name/empties
+  if (!keys.length) return null
+  return variant === 'reader'
+    ? <div className={cn('fc-fm--reader', className)}>{/* status pill + tag chips row, then key/value rows */}</div>
+    : <table className={cn('fc-fm', className)}><tbody>{/* today's row layout */}</tbody></table>
+}
+```
+
+`export-panel.tsx` (file import — client-side, no backend):
+
+```tsx
+const fileRef = useRef<HTMLInputElement>(null)
+// in the Import tab, beside Apply:
+<button className="fc-btn" data-testid="response-load-file" onClick={() => fileRef.current?.click()}>Load .json…</button>
+<input ref={fileRef} type="file" accept="application/json,.json" hidden
+  onChange={async (e) => { const f = e.target.files?.[0]; if (f) setPaste(await f.text()); e.target.value = '' }} />
+```
+
+`app/styles/reader.css` (readability core):
+
+```css
+.fc-reader__scroll { background: var(--color-surface-lowest); }          /* opaque — no canvas bleed */
+.fc-reader__prose  { color: var(--color-text-primary); font-size: 17px; line-height: 1.72; max-width: 66ch; margin-inline: auto; }
+.fc-reader__prose h1 { font-family: var(--font-sans); color: var(--color-text-primary); font-size: 26px; margin: 0 0 .6em; }
+.fc-reader__prose h2 { color: var(--color-text-primary); font-size: 21px; margin: 1.6em 0 .5em; }
+.fc-reader__prose h3 { color: var(--color-secondary); font-size: 17px; margin: 1.4em 0 .4em; }
+```
+
+**Diagram:** Phase 9 parallel waves.
+
+```text
+[UI gate: 3 mockups ∥] → user picks
+Wave 9·1:  S9a frontmatter  ∥  S9c import-file  ∥  S9d toolbar     (disjoint files)
+Wave 9·2:  S9b reader (imports <FrontmatterView> from S9a)
+Close:     gates + CDP visual-parity (3 reader sizes, ≤66ch, 1-click inserts)
+```
+
+**Acceptance criteria:**
+- [x] **(#8)** Every insert tool (Note/Markdown/Image/Link/Shape) is reachable in ≤1 click directly from the toolbar at ≥1024px; `placeAt`/`addNode`/`addFileNode` behave identically; narrow-screen fallback works. _(CDP: 14/14 testids, inserts visible + Add-fallback hidden at 1280; insert callbacks unchanged.)_
+- [x] **(#5)** Node frontmatter renders via `<FrontmatterView variant="card">` with the redesigned chips/hierarchy; the node card is not visually regressed. _(CDP: `.fc-fm--card` pill "living"=lime + 3 tags; `09-loaded.png`.)_
+- [x] **(#3)** Reader body is high-contrast on an opaque surface, ≤66ch measure, comfortable typography at drawer/half/full; shiki code blocks stay syntax-colored. _(CDP: scroll bg `#060e20`; prose 17px/1.72/`#dae2fd`/66ch=744px; inline-code scoped off `pre`.)_
+- [x] **(#4)** Opening a markdown node shows a frontmatter header bar (status/tags/links/fields) reusing the same chips; empty frontmatter shows no bar. _(CDP: `.fc-fm--reader` sticky bar + pill; `09-reader-half.png`.)_
+- [x] **(#2a)** Picking a valid `AgentResponse` `.json` fills the textarea and Apply yields the same `MergeReport` as pasting; paste still works. _(CDP: import tab `response-load-file` + `response-apply` present; `setPaste(await f.text())` → unchanged Apply path.)_
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npx vitest run` exit 0. _(tsc 0 · lint 0 · build exit 0 · vitest 66/66.)_
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npx vitest run`; ui-workflow visual-parity at the declared breakpoints + all 3 reader sizes.
+
+> **Quality gate:** code-review sub-agent on the shared `<FrontmatterView>` extraction (no node-render regression), the reader contrast/measure, and the toolbar wiring (insert callbacks unchanged); ui-design visual-parity gate passed.
+
+**Parallel slices:** Wave 9·1 = **S9a ∥ S9c ∥ S9d** (file-disjoint: frontmatter / export-panel / toolbar). Wave 9·2 = **S9b** (reader; depends on S9a's `<FrontmatterView>` export). Reader CSS lives in `reader.css` (not `toolbar.css`) so S9b/S9d never share a file. Integration is trivial (the `globals.css` import is owned by S9a).
+
+---
+
+## Phase 10 — Canvas Mechanics & File I/O
+
+> **REACTIVATED (2026-06-27).** Plan 001 was reopened (`complete → active`) on operator direction to execute Phase 10 now. **Scope this phase = canvas mechanics only:** multi-select + true group containers (`parentId`/`extent`), ELK "Re-organize" auto-layout, and save-as/open-board. Phase 9 already shipped the disabled Group/Ungroup/Re-organize toolbar scaffolds + `[File ▾]` slot this phase wires onto.
+>
+> **Split out to a NEW plan (next design cycle) — no longer Phase 10 scope:** the operator-added **transitive board hydration** (auto-add a file's `links:` + body-referenced nodes) and **≤1-action referenced-file access** (clickable `↗` chips / reader links → focus-or-add + edge), together with the broader **linking / source-of-truth + agent-collaboration** vision (link any object to the working markdown, bidirectional, source-of-truth model, richer agent round-trip). These need their own design + UI gate; reference-nav folds in there because it is the same edge↔`links:`↔navigate loop.
+
+**Goal:** Three new canvas capabilities: (#1) multi-select (box/rubber-band + ⌘/Ctrl-click) and **true group containers** (React Flow `parentId` + `extent:'parent'`, drag-as-a-unit); (#6) an **ELK "Re-organize"** auto-layout that arranges widgets with no overlaps and minimal arrow crossings; (#7 + #2b) a **Save-as / Open-board** file dialog. Doc invariant: node `x/y` stay **ABSOLUTE**; all absolute↔relative conversion is confined to the adapter + drag write-back.
+
+**Phase Status:** done
+
+**Evaluation:** review-agent (mechanics) + user (interaction feel)
+
+**Subsystem:** canvas-store / adapter / layout / file-io
+
+**Depends On:** [Phase 9] — both phases edit `canvas-toolbar.tsx` (Phase 9 redesigns it; Phase 10 wires Group/Ungroup/Re-organize/File onto the redesigned bar), so 9 must close first.
+
+**Files to create / modify:**
+
+| File | Operation | Slice | Description |
+|------|-----------|-------|-------------|
+| `lib/canvas/jsoncanvas.ts` | modify | 10·1 core | Add optional `parentId?: string` to `NodeBase` (coords stay absolute → no migration) |
+| `lib/canvas/adapter.ts` | modify | 10·1 core | `toReactFlow`: parent-before-child ordering + absolute→relative child positions + `extent:'parent'`; `toJSONCanvas`: relative→absolute inverse |
+| `lib/canvas/store.ts` | modify | 10·1 core | `selectedIds`/`setSelection`, `groupSelection`, `ungroup`, `applyLayout` (bulk), `saveAs`, `openBoard` |
+| `lib/canvas/brief.ts` | modify | 10·1 core | Preserve `parentId` in `nodeFromAgent` (else agent updates silently un-parent) |
+| `package.json` | modify | 10·1 core | Add `elkjs` dependency |
+| `lib/canvas/layout.ts` | create | S10a | ELK graph build + `computeLayout(nodes, edges, measured)` (layered, orthogonal, separated components) |
+| `lib/canvas/layout.test.ts` | create | S10a | Finite, non-overlapping coords for a small graph (one group + an island) |
+| `components/canvas/board-dialog.tsx` | create | S10b | Open / Save-as modal reusing the `file-picker` browse pattern (`.canvas` filter; filename input) |
+| `components/canvas/use-canvas-handlers.ts` | modify | S10c | `onSelectionChange` → `setSelection`; group-aware bulk drag write-back via `internals.positionAbsolute` → `applyLayout` |
+| `components/canvas/comment-layer.tsx` | modify | S10d | Pin geometry from `useStore(s=>s.nodeLookup)` `internals.positionAbsolute` (children are relative in `useNodes()`) |
+| `components/canvas/canvas-toolbar.tsx` | modify | 10·3 integ | Wire Group/Ungroup → store; Re-organize → `computeLayout`+`applyLayout`+`fitView`+pending; `[File▾]` → Open / Save-as mounting `<BoardDialog>` |
+| `components/canvas/canvas-shell.tsx` | modify | 10·3 integ | Selection props gated on `mode` (`selectionOnDrag`/`selectionMode`/`panOnDrag`/`multiSelectionKeyCode`/`onSelectionChange`); mount `<BoardDialog>` |
+| `app/styles/toolbar.css` | modify | 10·3 integ | `<BoardDialog>` modal styles; pending-state on Re-organize |
+
+**Implementation steps** (grouped by wave — see **§ Parallel Execution Plan**):
+
+_Wave 10·1 — foundation core (single owner; the shared spine):_ — **done** (tsc + lint + vitest 76/76 green)
+- [x] `jsoncanvas.ts`: add `parentId?: string` to `NodeBase`.
+- [x] `adapter.ts`: `toReactFlow` stable-partitions parentless-first and emits relative child positions + `parentId` + `extent:'parent'` (dangling `parentId` → top-level); `toJSONCanvas` reverses.
+- [x] `store.ts`: `setSelection`, `groupSelection(ids)`, `ungroup(groupId)`, `applyLayout(positions)`, `saveAs(path)`, `openBoard(path)`.
+- [x] `brief.ts`: carry `parentId` through `nodeFromAgent`.
+- [x] `package.json`: add `elkjs` (`^0.11.1`).
+
+_Wave 10·2 — parallel slices (disjoint files; depend on 10·1):_
+- [x] **S10a** `layout.ts` + `layout.test.ts`: ELK build/run with the measured-height fallback ladder. *(top-level-only layout; grouped children shift with their group in 10·3; ELK runs in node — layout vitest 3/3.)*
+- [x] **S10b** `board-dialog.tsx`: Open (filter `.canvas` → **inline** dirty-guard → `openBoard`) / Save-as (dir browser + filename → `saveAs`). *(inline confirm bar instead of native `window.confirm`, honoring the Phase-6 no-native-dialog ruling.)*
+- [x] **S10c** `use-canvas-handlers.ts`: `onSelectionChange` + group-aware bulk drag write-back (via `getInternalNode().internals.positionAbsolute`).
+- [x] **S10d** `comment-layer.tsx`: absolute pin geometry via `getInternalNode().internals.positionAbsolute` (a grouped child's `useNodes()` position is parent-relative).
+
+_Wave 10·3 — integration (main session, after 10·2):_
+- [x] `canvas-toolbar.tsx`: enable Group/Ungroup (gated on selection), Re-organize (async + spinning `is-busy`), `[File▾]` Open/Save-as via new `onOpenBoard` callback prop.
+- [x] `canvas-shell.tsx`: selection props gated on `mode==='select'` (`selectionOnDrag`/`selectionMode=Partial`/`panOnDrag=[1,2]`/`multiSelectionKeyCode=['Meta','Control']`/`onSelectionChange`); mounts `<BoardDialog>`. *(BoardDialog mounted in the shell, not the toolbar — mirrors the ExportPanel pattern.)*
+
+**Code & examples:**
+
+`adapter.ts` — absolute↔relative (the riskiest math):
+
+```typescript
+// toReactFlow: parent BEFORE child (single nesting level), children relative to parent
+const byId = new Map(doc.nodes.map((n) => [n.id, n]))
+const ordered = [...doc.nodes].sort((a, b) => Number(!!a.parentId) - Number(!!b.parentId))
+// ...per node:
+const parent = n.parentId ? byId.get(n.parentId) : undefined
+const position = parent ? { x: n.x - parent.x, y: n.y - parent.y } : { x: n.x, y: n.y }
+return { id: n.id, type: kind, position, /* …, */ ...(parent ? { parentId: n.parentId, extent: 'parent' as const } : {}) }
+```
+
+`store.ts` — group/ungroup are pure membership changes (doc stays absolute → no coord math):
+
+```typescript
+groupSelection(ids) {
+  const { doc } = get(); if (!doc) return
+  const members = doc.nodes.filter((n) => ids.includes(n.id) && n.type !== 'group' && !n.parentId)
+  if (members.length < 2) return
+  const PAD = 28
+  const minX = Math.min(...members.map(n => n.x)),               minY = Math.min(...members.map(n => n.y))
+  const maxX = Math.max(...members.map(n => n.x + n.width)),     maxY = Math.max(...members.map(n => n.y + n.height))
+  const group: CanvasNode = { id: `n-${crypto.randomUUID().slice(0,8)}`, type: 'group', label: '',
+    x: minX - PAD, y: minY - PAD, width: (maxX-minX)+2*PAD, height: (maxY-minY)+2*PAD, meta: { origin: 'user', shape: 'rectangle' } }
+  const m = new Set(members.map(n => n.id))
+  const nodes = doc.nodes.map((n) => m.has(n.id) ? { ...n, parentId: group.id } : n)
+  set({ doc: { ...doc, nodes: [group, ...nodes] }, dirty: true })   // group prepended → parent-before-child
+},
+ungroup(groupId) {                                                 // children already absolute → just drop parentId
+  const { doc } = get(); if (!doc) return
+  const nodes = doc.nodes.filter(n => n.id !== groupId)
+    .map(n => n.parentId === groupId ? (({ parentId, ...r }) => r)(n) : n)
+  set({ doc: { ...doc, nodes }, dirty: true })
+},
+applyLayout(positions) {                                           // shared by ELK + drag write-back; one re-render
+  const { doc } = get(); if (!doc) return
+  set({ doc: { ...doc, nodes: doc.nodes.map(n => positions[n.id] ? { ...n, ...positions[n.id] } : n) }, dirty: true })
+},
+async saveAs(path) {
+  const { doc } = get(); if (!doc) return
+  doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
+  set({ path, dirty: false })
+  const u = new URL(window.location.href); u.searchParams.set('path', path); window.history.replaceState(null, '', u)
+},
+```
+
+`use-canvas-handlers.ts` — group-aware drag write-back (RF's own absolute positions):
+
+```typescript
+const { getInternalNode } = useReactFlow()
+const onNodeDragStop = useCallback((_e, node: RFNode, dragged: RFNode[]) => {
+  const set = dragged?.length ? dragged : [node]
+  const updates: Record<string, { x: number; y: number }> = {}
+  for (const d of set) {
+    const abs = getInternalNode(d.id)?.internals.positionAbsolute ?? d.position
+    updates[d.id] = { x: abs.x, y: abs.y }
+    if (isGroup(d.id)) for (const c of childrenOf(d.id)) {            // children follow a dragged group
+      const cabs = getInternalNode(c.id)?.internals.positionAbsolute
+      if (cabs && !updates[c.id]) updates[c.id] = { x: cabs.x, y: cabs.y }
+    }
+  }
+  applyLayout(updates)
+}, [doc, getInternalNode, applyLayout])
+```
+
+`lib/canvas/layout.ts` — ELK (top-level + group-cluster + measured heights):
+
+```typescript
+import ELK from 'elkjs/lib/elk.bundled.js'
+const elk = new ELK()
+export async function computeLayout(nodes, edges, measured) {
+  const parentOf = new Map(nodes.filter(n => n.parentId).map(n => [n.id, n.parentId]))
+  const resolve = (id) => parentOf.get(id) ?? id                        // edge endpoints in a group → the group
+  const graph = { id: 'root',
+    layoutOptions: { 'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120', 'elk.spacing.nodeNode': '80',
+      'elk.separateConnectedComponents': 'true', 'elk.spacing.componentComponent': '120' },
+    children: nodes.filter(n => !n.parentId).map(n => ({ id: n.id,
+      width: measured[n.id]?.width ?? n.width, height: measured[n.id]?.height ?? n.height ?? 160 })),  // fallback ladder
+    edges: edges.map(e => ({ id: e.id, s: resolve(e.fromNode), t: resolve(e.toNode) }))
+      .filter(e => e.s !== e.t).map(e => ({ id: e.id, sources: [e.s], targets: [e.t] })) }
+  const res = await elk.layout(graph)
+  const out = {}; for (const c of res.children ?? []) out[c.id] = { x: c.x ?? 0, y: c.y ?? 0 }
+  return out                                                            // caller shifts grouped children by their group's delta
+}
+```
+
+`canvas-shell.tsx` — selection gated on mode (keeps connect/comment working):
+
+```tsx
+selectionOnDrag={mode === 'select'}
+selectionMode={SelectionMode.Partial}
+panOnDrag={mode === 'select' ? [1, 2] : true}
+multiSelectionKeyCode={['Meta', 'Control']}
+onSelectionChange={handlers.onSelectionChange}     // ({nodes}) => setSelection(nodes.map(n => n.id))
+```
+
+**Diagram:** Phase 10 parallel waves.
+
+```text
+Wave 10·1 (core, 1 owner):  jsoncanvas(parentId) → adapter(abs↔rel) → store(group/ungroup/applyLayout/saveAs/openBoard) → brief → +elkjs
+Wave 10·2 (∥):  S10a layout.ts  ∥  S10b board-dialog  ∥  S10c handlers  ∥  S10d comment-pins
+Wave 10·3 (integ): canvas-toolbar (Group/Ungroup/Re-organize/File)  +  canvas-shell (selection props + BoardDialog)
+Close: gates + new vitest + CDP (group drag, ungroup, re-organize, save-as/open, pins on children)
+```
+
+**Worked example:** select two file nodes → **Group** → a container appears around them; drag the container → both move, child coords write back absolute; **Ungroup** → children stay put, container gone. **Re-organize** a tangled board → layered, non-overlapping, orthogonal edges. **Save as** `boards/draft.canvas` → writes + adopts the path (URL `?path=` updated, no reload); **Open** another `.canvas` → switches the active board (dirty-guarded).
+
+**Acceptance criteria:**
+- [x] **(#1)** Box-select fires only in select mode (`selectionOnDrag` gated on `mode==='select'`); ⌘/Ctrl-click adds (CDP: selection 1→2); grouping ≥2 nodes creates a container (CDP: group count +1) that drags as one; a child stays inside (`extent:'parent'`) and writes back correct absolute coords (adapter round-trip test); ungroup leaves children in place (CDP: dissolved; store test: children unmoved); save/reload round-trips `parentId` (adapter test + `save()` POSTs full doc); comment pins on grouped children use `internals.positionAbsolute` (S10d). *(Pin-on-child tracking covered by the absolute-geometry code fix + review; not separately CDP-scripted.)*
+- [x] **(#6)** Re-organize produces a layered, non-overlapping arrangement using measured heights (`layout.test.ts`: non-overlap + finite); groups stay intact with children following (group-delta shift); islands separated (`elk.separateConnectedComponents`); the button disables + spins during the async run; doc marked dirty once (`applyLayout`). CDP: all 8 nodes repositioned.
+- [x] **(#7 / #2b)** Save-as writes to a chosen path+name, adopts it (URL → `?path=` via `replaceState`, no reload), clears dirty — CDP round-trip wrote the file + adopted the path; Open switches the active board with an inline dirty-guard; ⌘S still quick-saves the current path.
+- [x] New vitest: adapter abs↔rel round-trip with a parented child + parent-before-child ordering; `groupSelection`/`ungroup`/`applyLayout` membership+coords; `computeLayout` finite non-overlapping coords. All green with `tsc`/`lint`/`build` (vitest 79/79).
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npx vitest run`; CDP for group-drag / ungroup / re-organize / save-as / open / pins-on-children.
+
+> **Quality gate:** code-review sub-agent on (a) the absolute↔relative adapter math + parent ordering, (b) the group/ungroup/applyLayout store actions + drag write-back durability, (c) the ELK auto-height handling + group-cluster remap, and (d) save-as/open URL handling (`replaceState`, dirty-guard).
+
+**Parallel slices:** Wave 10·1 = the shared **core** (jsoncanvas/adapter/store/brief/package.json, one owner — `store.ts` is touched by every feature). Wave 10·2 = **S10a ∥ S10b ∥ S10c ∥ S10d** (layout / board-dialog / handlers / comment-layer — all disjoint, all consume 10·1's exports). Wave 10·3 = the **integration** of the two ≥2-feature files (`canvas-toolbar.tsx`, `canvas-shell.tsx`). **Serialization points:** `store.ts` (10·1 only), `canvas-toolbar.tsx` (Phase 9 then 10·3), `canvas-shell.tsx` (10·3).
+
+---
+
 ## Post-Execution Artifacts
 
 After all phases complete:
@@ -1486,6 +1774,7 @@ Then flip this plan's frontmatter `status: active → complete`.
 | `unified` + `rehype-shiki` | external | Reader full-fidelity render pipeline |
 | `zustand` | external | Canvas store |
 | `geist` | external | Geist Sans/Mono fonts |
+| `elkjs` | external (Phase 10) | ELK layered graph layout for the "Re-organize" auto-layout (bundled JS build, no native deps) |
 | Node `fs` runtime | platform | All routes run on the Node runtime (not Edge) |
 
 ---
@@ -1496,3 +1785,7 @@ Then flip this plan's frontmatter `status: active → complete`.
 |------|--------|--------|
 | 2026-06-25 | Plan created | Initial full-depth draft (all 7 phases) for Flowcanvas v0.1 |
 | 2026-06-27 | Phase 8 added; status `complete` → `active` | Post-execution polish/cleanup of 7 issues found in hands-on use (refactor, orthogonal edges, 3-size reader + maximize, `links:` write-back, nyx minimap/controls, drop Next badge) before the plan closes |
+| 2026-06-27 | Phase 8 closed; plan re-closed 8/8 | Phase 8 shipped + post-exec artifacts updated |
+| 2026-06-27 | Phases 9 + 10 added; status `complete` → `active` | 8 more hands-on issues to resolve before a new plan (Ph9: toolbar redesign, frontmatter redesign, reader readability + frontmatter bar, `.json` import; Ph10: multi-select + true grouping, ELK re-organize, save-as/open-board). Both authored at full depth **for parallel execution** (file-disjoint slices → fan-out + integration pass) per the approved design plan. Authored only — not yet executed. |
+| 2026-06-27 | Phase 9 closed; plan re-closed 9/10; Phase 10 deferred | Phase 9 shipped + post-exec artifacts updated; Phase 10 deferred to a fresh cycle (operator decision). |
+| 2026-06-27 | Phase 10 reactivated; status `complete` → `active` | Operator resumed Phase 10 now. Scope narrowed to **canvas mechanics only** (multi-select + true groups, ELK re-organize, save-as/open-board); the operator-added transitive-hydration + referenced-file-access + the linking / source-of-truth + agent-collaboration vision are **split to a new plan**. |

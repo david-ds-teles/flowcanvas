@@ -26,10 +26,11 @@ export interface NodeMeta {
 
 interface NodeBase {
   id: string
-  x: number; y: number
+  x: number; y: number        // ABSOLUTE canvas coords — even for a grouped child (adapter converts to/from React Flow's parent-relative space)
   width: number; height: number
   color?: CanvasColor
-  meta?: NodeMeta              // Flowcanvas extension
+  parentId?: string           // Flowcanvas extension (Phase 10): id of the containing `group` node. Single nesting level. Absent → top-level.
+  meta?: NodeMeta             // Flowcanvas extension
 }
 /** type:"file" → markdown | image | other, discriminated by file extension at render. */
 export interface FileNode  extends NodeBase { type: 'file';  file: string; subpath?: string }

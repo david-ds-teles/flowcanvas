@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas — Phase 9 · 09 Editorial Calm</title>
+<!--
+  Flowcanvas v0.1 — Phase 9 redesign — iteration 09 "Editorial Calm".
+  Thesis: content-first restraint. The READER is the hero — a centered ≤66ch column on a
+  near-black OPAQUE surface; frontmatter is an understated metadata line, not a chip wall;
+  the toolbar is airy with icon-only insert targets + tooltips; status is a quiet dot + word.
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx) + mockups/04-nyx-neon.html (approved).
+  Self-contained: inline <style> only, inline SVG icons (1.5px stroke), no external URLs/fonts.
+  DESIGN MOCKUP (vanilla HTML), not production React. Desktop only (≥1024px).
+-->
+<style>
+  :root{
+    /* §2 nyx primitives */
+    --color-bg:#0b1326; --color-grid:rgba(146,143,160,.16);
+    --color-surface-lowest:#060e20; --color-surface-low:#131b2e; --color-surface:#171f33;
+    --color-surface-high:#222a3d; --color-surface-highest:#2d3449;
+    --color-primary:#c0c1ff; --color-primary-cont:#8083ff;
+    --color-secondary:#ddb7ff; --color-secondary-cont:#6f00be;
+    --color-tertiary-cont:#ff516a;
+    --color-text-primary:#dae2fd; --color-text-secondary:#c7c4d7;
+    --color-outline:#908fa0; --color-outline-variant:#464554;
+    --color-neon-cyan:#5ef2ff; --color-neon-lime:#b6f36a; --color-neon-rose:#ff8fb0;
+    --color-status-amber:#f59f00;
+    /* §2.2 glass recipe */
+    --glass-fill:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    /* §8 primary action gradient (documented stop) + active-mode gradient */
+    --grad-primary:linear-gradient(135deg, var(--color-primary-cont), #6f5bff);
+    --grad-mode:linear-gradient(135deg, rgba(128,131,255,.92), rgba(94,242,255,.45));
+    --on-grad:#fff;
+    /* §5 overlay shadows */
+    --shadow-drawer:-30px 0 80px -30px rgba(0,0,0,.75);
+    --shadow-overlay:0 24px 60px -20px rgba(0,0,0,.7);
+    /* §3 fonts (local stacks only, no CDN) */
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    /* §5 radii · §4 spacing unit */
+    --r-card:16px; --r-control:8px; --r-pill:999px; --r-sm:4px; --u:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--ui);color:var(--color-text-primary);background:var(--color-surface-lowest);
+    -webkit-font-smoothing:antialiased;min-width:1360px}
+
+  /* ───────── presentation sheet (gallery of framed artboards) ───────── */
+  .sheet{max-width:1408px;margin:0 auto;padding:40px 48px 88px}
+  .sheet-hd{display:flex;align-items:baseline;gap:16px;margin:0 0 8px;flex-wrap:wrap}
+  .sheet-hd h1{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:0}
+  .sheet-hd .iter{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-primary)}
+  .sheet-sub{font-family:var(--mono);font-size:12px;color:var(--color-text-secondary);margin:0 0 36px;line-height:1.7;max-width:74ch}
+  .sheet-sub b{color:var(--color-text-primary);font-weight:400}
+
+  .ab{margin:0 0 56px}
+  .cap{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--color-text-secondary);margin:0 0 12px;padding-left:2px}
+  .cap .cdot{width:7px;height:7px;border-radius:var(--r-pill);background:var(--color-neon-cyan);box-shadow:0 0 10px var(--color-neon-cyan)}
+  .cap b{color:var(--color-text-primary);font-weight:400}
+
+  /* artboard frame — full nyx void, fixed top toolbar */
+  .frame{position:relative;width:1280px;height:800px;border-radius:var(--r-card);overflow:hidden;
+    border:1px solid var(--color-outline-variant);box-shadow:0 40px 90px -40px rgba(0,0,0,.85)}
+  .void{position:absolute;inset:0;background:
+      radial-gradient(1200px 680px at 16% -12%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 760px at 112% 120%, rgba(111,0,190,.18), transparent 55%),
+      var(--color-bg)}
+  .grid{position:absolute;inset:56px 0 0 0;
+    background-image:radial-gradient(var(--color-grid) 1px, transparent 1.4px);
+    background-size:22px 22px;background-position:11px 11px}
+  .board{position:absolute;inset:56px 0 0 0}
+  .dim{filter:saturate(.9) brightness(.78)}
+
+  /* ───────── redesigned toolbar (issue #8) — airy, icon-only, tooltips ───────── */
+  .bar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:8px;padding:0 16px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--color-outline-variant)}
+  .brand{display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--color-text-primary);
+    text-decoration:none;letter-spacing:-.01em;padding:0 4px;white-space:nowrap}
+  .brand svg{width:17px;height:17px}
+  .brand:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--r-sm)}
+  .gap{width:20px;flex:0 0 auto}          /* airy gap between clusters (not a hairline) */
+  .spacer{margin-left:auto}
+  .cluster{display:inline-flex;align-items:center;gap:6px}
+
+  /* icon-only target — larger, calm */
+  .ico{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;
+    border-radius:var(--r-control);border:1px solid transparent;background:transparent;color:var(--color-text-secondary);
+    cursor:pointer;transition:background-color .14s ease,box-shadow .14s ease,border-color .14s ease,color .14s ease}
+  .ico svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .ico .chev{width:11px;height:11px;margin-left:1px}
+  .ico:hover{background:rgba(34,42,61,.55);color:var(--color-text-primary)}
+  .ico:active{transform:scale(.97)}
+  .ico:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .ico.has-chev{width:auto;padding:0 9px;gap:1px}
+
+  /* segmented mode cluster */
+  .seg{display:inline-flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;flex:0 0 auto}
+  .seg .ico{border-radius:0;height:40px}
+  .seg .ico + .ico{border-left:1px solid var(--color-outline-variant)}
+  .ico[aria-pressed="true"]{color:var(--on-grad);background:var(--grad-mode);box-shadow:0 0 18px -4px rgba(94,242,255,.5)}
+
+  /* text pill controls (File / Save) */
+  .pill{position:relative;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:var(--r-control);
+    border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.5);color:var(--color-text-primary);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:background-color .14s ease,box-shadow .14s ease,border-color .14s ease}
+  .pill .chev{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .pill:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .pill:active{transform:scale(.97)}
+  .pill:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .pill.save{background:var(--grad-primary);color:var(--on-grad);border-color:transparent}
+  .pill.save .kbd{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.3);border-radius:var(--r-sm);padding:1px 5px}
+  .ddot{width:8px;height:8px;border-radius:var(--r-pill);background:var(--color-status-amber);box-shadow:0 0 9px var(--color-status-amber)}
+
+  /* disabled Phase-10 scaffold (visibly disabled, keeps tooltip discoverable) */
+  .ico.dis{opacity:.38;cursor:not-allowed;color:var(--color-outline)}
+  .ico.dis:hover{background:transparent;color:var(--color-outline)}
+  .ico.dis:active{transform:none}
+
+  /* tooltips (specific-prop transition only) */
+  [data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--color-text-primary);white-space:nowrap;
+    padding:5px 9px;border-radius:var(--r-control);background:rgba(6,14,32,.94);border:1px solid var(--color-outline-variant);
+    box-shadow:var(--shadow-overlay);opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:70}
+  [data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1}
+
+  /* flyouts (Shape switcher · File menu) */
+  .fly-wrap{position:relative;display:inline-flex}
+  .flyout{position:absolute;top:48px;left:0;z-index:62;min-width:188px;padding:6px;display:none;flex-direction:column;gap:2px;
+    border:1px solid transparent;border-radius:var(--r-control);box-shadow:var(--shadow-overlay),var(--glow-indigo);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px)}
+  .flyout.open{display:flex}
+  .flyout button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);
+    background:transparent;color:var(--color-text-primary);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .flyout button svg{width:16px;height:16px;stroke:var(--color-primary);fill:none;stroke-width:1.5;flex:0 0 auto}
+  .flyout button:hover{background:rgba(255,255,255,.06)}
+  .flyout button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+  .flyout button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--color-text-secondary);letter-spacing:.04em}
+
+  /* ───────── node (glass fc-node) ───────── */
+  .node{position:absolute;z-index:10;border-radius:var(--r-card);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;
+    transition:box-shadow .14s ease,border-color .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node.selected{box-shadow:0 0 0 2px var(--color-primary),0 0 26px -4px rgba(192,193,255,.6)}
+  .node .hd{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--color-outline-variant)}
+  .node .name{font-size:13px;font-weight:600;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-secondary);
+    border:1px solid var(--color-outline-variant);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto}
+  .hbtn{flex:0 0 auto;width:24px;height:24px;border-radius:var(--r-sm);border:1px solid var(--color-outline-variant);background:transparent;
+    color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;
+    transition:color .14s ease,border-color .14s ease}
+  .hbtn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.5}
+  .hbtn:hover{color:var(--color-text-primary);border-color:var(--color-primary)}
+  .hbtn:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}
+
+  /* editorial-calm frontmatter (issue #5): muted mono key/value, status = dot + word */
+  .fm{display:flex;flex-direction:column;gap:9px;padding:12px 14px;border-bottom:1px solid var(--color-outline-variant)}
+  .fm .row{display:grid;grid-template-columns:50px 1fr;gap:14px;align-items:baseline;font-family:var(--mono);font-size:11px;line-height:1.5}
+  .fm .k{color:var(--color-outline);letter-spacing:.04em}
+  .fm .v{color:var(--color-text-secondary)}
+  .fm .v.strong{color:var(--color-text-primary)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:var(--r-pill);margin-right:8px;vertical-align:middle}
+  .dot.ok{background:var(--color-neon-lime);box-shadow:0 0 8px -1px var(--color-neon-lime)}
+  .dot.act{background:var(--color-neon-cyan);box-shadow:0 0 8px -1px var(--color-neon-cyan)}
+  .dot.stale{background:var(--color-status-amber);box-shadow:0 0 8px -1px var(--color-status-amber)}
+  .tagtext{color:var(--color-secondary)}
+  .lnk{color:var(--color-secondary);text-decoration:none}
+  .lnk:hover{text-decoration:underline;text-underline-offset:2px}
+  .lnk + .lnk{margin-left:12px}
+
+  /* node body — rendered markdown (never raw markers), calm */
+  .nbody{position:relative;padding:11px 14px 14px;overflow:hidden;flex:1}
+  .nbody::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(transparent,rgba(23,31,51,.9))}
+  .nbody h3{margin:0 0 6px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-neon-cyan)}
+  .nbody p{margin:0 0 8px;font-size:12.5px;line-height:1.6;color:var(--color-text-secondary)}
+  .nbody strong{color:var(--color-text-primary);font-weight:600}
+  .nbody ul{margin:0;padding:0;list-style:none}
+  .nbody li{position:relative;padding-left:15px;font-size:12px;line-height:1.55;color:var(--color-text-secondary);margin-bottom:4px}
+  .nbody li::before{content:"";position:absolute;left:2px;top:8px;width:4px;height:4px;border-radius:1px;background:var(--color-neon-cyan);box-shadow:0 0 6px -1px var(--color-neon-cyan)}
+  .node.collapsed .nbody{display:none}
+
+  /* note node (calm, cyan eyebrow) */
+  .note{position:absolute;z-index:10;border-radius:var(--r-card);padding:16px 18px;backdrop-filter:blur(16px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.5),rgba(13,21,40,.5)),linear-gradient(135deg,rgba(94,242,255,.4),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box}
+  .note .eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-neon-cyan)}
+  .note h3{margin:8px 0 5px;font-size:13px;color:var(--color-text-primary)}
+  .note p{margin:0;font-size:12.5px;line-height:1.6;color:var(--color-text-secondary)}
+
+  /* edge label (fc-edge-label) */
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+    color:var(--color-text-secondary);padding:3px 8px;border-radius:var(--r-pill);white-space:nowrap;display:flex;gap:6px;align-items:center;
+    background:rgba(13,21,40,.85);border:1px solid var(--color-outline-variant)}
+  .elabel.user{color:var(--color-text-primary);border-color:rgba(128,131,255,.5)}
+  .elabel .lock{font-size:9px;opacity:.85}
+
+  /* minimap */
+  .minimap{position:absolute;z-index:30;border-radius:var(--r-control);backdrop-filter:blur(16px);
+    border:1px solid var(--color-outline-variant);background:rgba(6,14,32,.6);overflow:hidden}
+  .minimap .mm-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:14px 14px}
+  .minimap b{position:absolute;border-radius:3px;display:block}
+
+  /* ───────── reader drawer — THE HERO (issues #3 + #4) ───────── */
+  .reader{position:absolute;top:0;right:0;bottom:0;width:800px;z-index:46;display:flex;flex-direction:column;
+    border-left:1px solid transparent;box-shadow:var(--shadow-drawer);backdrop-filter:blur(40px);
+    background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(200deg,rgba(128,131,255,.4),rgba(255,255,255,.03));
+    background-origin:border-box;background-clip:padding-box,border-box}
+  .rhd{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--color-outline-variant)}
+  .rhd .fn{font-size:14px;font-weight:600;letter-spacing:-.01em}
+  .rhd .fp{font-family:var(--mono);font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+  .rseg{display:inline-flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;margin-left:auto}
+  .rseg button{height:34px;padding:0 13px;border:0;background:transparent;color:var(--color-text-secondary);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:background-color .14s ease,color .14s ease}
+  .rseg button + button{border-left:1px solid var(--color-outline-variant)}
+  .rseg button[aria-pressed="true"]{color:var(--on-grad);background:var(--grad-mode)}
+  .rseg button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+  .x{flex:0 0 auto;width:34px;height:34px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:transparent;
+    color:var(--color-text-primary);cursor:pointer;font-size:15px;line-height:1;transition:box-shadow .14s ease}
+  .x:hover{box-shadow:var(--glow-indigo)}
+  .x:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+
+  /* (#4) understated frontmatter bar — one quiet line above a hairline */
+  .fmbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 22px;font-family:var(--mono);font-size:11px;
+    color:var(--color-text-secondary);border-bottom:1px solid var(--color-outline-variant);background:rgba(6,14,32,.4)}
+  .fmbar .meta{display:inline-flex;align-items:center}
+  .fmbar .sep{color:var(--color-outline-variant)}
+  .fmbar .tagtext{letter-spacing:.02em}
+
+  /* (#3) OPAQUE near-black reading surface — no canvas bleed; centered ≤66ch measure */
+  .rsurface{flex:1;overflow:auto;background:var(--color-surface-lowest);padding:44px 56px 64px}
+  .prose{max-width:66ch;margin-inline:auto;font-size:17px;line-height:1.72;color:var(--color-text-primary)}
+  .prose > :first-child{margin-top:0}
+  .prose h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin:0 0 12px;color:var(--color-text-primary)}
+  .prose .lede{font-size:17.5px;line-height:1.62;color:var(--color-text-secondary);margin:0 0 30px}
+  .prose h2{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:36px 0 14px;color:var(--color-text-primary)}
+  .prose h3{font-size:17px;font-weight:600;margin:26px 0 10px;color:var(--color-secondary)}
+  .prose p{margin:0 0 18px;color:var(--color-text-primary)}
+  .prose strong{font-weight:600}
+  .prose em{color:var(--color-secondary);font-style:italic}
+  .prose a{color:var(--color-secondary);text-decoration:underline;text-underline-offset:2px}
+  .prose ul{margin:0 0 20px;padding:0;list-style:none}
+  .prose li{position:relative;padding-left:26px;margin:0 0 11px;color:var(--color-text-primary)}
+  .prose ul li::before{content:"";position:absolute;left:6px;top:12px;width:6px;height:6px;border-radius:2px;
+    background:linear-gradient(135deg,var(--color-neon-cyan),var(--color-primary));box-shadow:0 0 8px -1px var(--color-neon-cyan)}
+  .prose blockquote{margin:0 0 22px;padding:14px 20px;border-left:2px solid var(--color-primary);background:rgba(128,131,255,.08);
+    border-radius:0 var(--r-control) var(--r-control) 0}
+  .prose blockquote p{margin:0;font-style:italic;color:var(--color-text-secondary)}
+  .prose code{font-family:var(--mono);font-size:14px;background:rgba(94,242,255,.1);color:var(--color-neon-cyan);
+    padding:1px 6px;border-radius:var(--r-sm);border:1px solid rgba(94,242,255,.18)}
+  .prose pre{margin:0 0 22px;padding:18px 20px;border-radius:var(--r-control);background:var(--color-surface-low);
+    border:1px solid var(--color-outline-variant);overflow:auto}
+  .prose pre code{font-family:var(--mono);font-size:13.5px;line-height:1.7;background:none;border:0;padding:0;color:var(--color-text-primary)}
+  /* shiki-style highlight: cyan keywords · lime strings · rose numbers */
+  .kw{color:var(--color-neon-cyan)} .st{color:var(--color-neon-lime)} .nm{color:var(--color-neon-rose)}
+  .cm{color:var(--color-outline)} .fn{color:var(--color-secondary)} .ty{color:var(--color-primary)}
+
+  /* ───────── agent panel (issue #2a) ───────── */
+  .agent{position:absolute;top:0;right:0;bottom:0;width:640px;z-index:48;display:flex;flex-direction:column;
+    border-left:1px solid transparent;box-shadow:var(--shadow-drawer);backdrop-filter:blur(40px);
+    background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(200deg,rgba(94,242,255,.35),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box}
+  .ahd{display:flex;align-items:center;gap:10px;padding:16px 22px;border-bottom:1px solid var(--color-outline-variant)}
+  .ahd b{font-size:14px}
+  .atabs{display:flex;gap:6px;padding:14px 22px 0}
+  .atabs button{flex:1;height:38px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.4);
+    color:var(--color-text-secondary);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:background-color .14s ease,color .14s ease,border-color .14s ease}
+  .atabs button[aria-selected="true"]{color:var(--on-grad);border-color:transparent;background:var(--grad-primary)}
+  .atabs button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .abody{padding:20px 22px;overflow:auto}
+  .abody .hint{margin:0 0 16px;font-size:13.5px;line-height:1.6;color:var(--color-text-secondary)}
+  .abody .hint code{font-family:var(--mono);font-size:12px;color:var(--color-neon-cyan)}
+  .abody textarea{width:100%;min-height:184px;resize:vertical;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);
+    background:rgba(6,14,32,.6);color:var(--color-text-primary);font-family:var(--mono);font-size:12px;line-height:1.6;padding:14px;
+    transition:border-color .14s ease,box-shadow .14s ease}
+  .abody textarea::placeholder{color:var(--color-outline)}
+  .abody textarea:focus{outline:0;border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary)}
+  .arow{display:flex;gap:10px;margin-top:16px;align-items:center}
+  .arow .pill.ghost{background:rgba(34,42,61,.4)}
+  .arow .pill.primary{background:var(--grad-primary);color:var(--on-grad);border-color:transparent}
+  .arow .pill svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .arow .pill.primary svg{stroke:var(--on-grad)}
+  .report{margin-top:20px;font-family:var(--mono);font-size:11.5px;line-height:1.7;border-radius:var(--r-control);padding:14px 16px;
+    border:1px solid rgba(182,243,106,.4);background:rgba(182,243,106,.08);color:var(--color-neon-lime)}
+  .report .muted{color:var(--color-text-secondary)}
+  .report .b{color:var(--color-text-primary)}
+
+  @media (prefers-reduced-motion: reduce){
+    .ico:active,.pill:active{transform:none}
+    [data-tip]::after{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="sheet-hd">
+    <h1>Flowcanvas — Phase 9 redesign</h1>
+    <span class="iter">iteration 09 · editorial calm</span>
+  </div>
+  <p class="sheet-sub">Content-first restraint. The <b>reader is the hero</b> — a centered ≤66ch column on a near-black opaque
+    surface — frontmatter is a quiet metadata line rather than a chip wall, status reads as a colored dot + word, and the
+    redesigned toolbar separates clusters by air, not hairlines. Three labeled artboards on the full nyx void.</p>
+
+  <!-- ═══════════════════ ARTBOARD A — loaded board + redesigned toolbar ═══════════════════ -->
+  <figure class="ab">
+    <figcaption class="cap"><span class="cdot"></span>A <b>· loaded board + redesigned toolbar</b> · 1280×800</figcaption>
+    <div class="frame">
+      <div class="void"></div><div class="grid"></div>
+
+      <header class="bar">
+        <!-- brand ◐ flowcanvas -->
+        <a class="brand" href="#" data-testid="toolbar-brand" aria-label="flowcanvas home">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--color-primary)" stroke-width="1.5"/><path d="M12 3a9 9 0 010 18z" fill="var(--color-primary)" stroke="none"/></svg>
+          flowcanvas</a>
+
+        <!-- mode cluster (segmented) — Select active -->
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="ico" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move" data-tip="Select &amp; move">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="ico" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect — draw edges" data-tip="Connect — draw edges">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="ico" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode" data-tip="Comment mode">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+
+        <span class="gap"></span>
+
+        <!-- insert tools — direct icon-only buttons -->
+        <div class="cluster">
+          <button class="ico" data-testid="toolbar-add-note" aria-label="Add note" data-tip="Add note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-markdown" aria-label="Add markdown file" data-tip="Add markdown file">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-image" aria-label="Add image" data-tip="Add image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-link" aria-label="Add link" data-tip="Add link">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <!-- Shape — opens rectangle/ellipse/diamond flyout (shown open here) -->
+          <div class="fly-wrap">
+            <button class="ico has-chev js-fly" data-fly="shapeA" data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="true" aria-label="Add shape" data-tip="Add shape">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-3 8 3-8 3z"/><path d="M4 7v8l8 3 8-3V7"/></svg>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout open" id="shapeA" role="menu" aria-label="Shape">
+              <button role="menuitem" data-testid="shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+            </div>
+          </div>
+        </div>
+
+        <span class="gap"></span>
+
+        <!-- File flyout -->
+        <div class="fly-wrap">
+          <button class="pill js-fly" data-fly="fileA" data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="false">
+            File<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="flyout" id="fileA" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>img · md</small></button>
+            <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+
+        <!-- DISABLED Phase-10 scaffold (placeholders) -->
+        <div class="cluster">
+          <button class="ico dis" data-testid="toolbar-group" aria-disabled="true" aria-label="Group — coming soon" data-tip="Group · coming soon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h4v6"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup — coming soon" data-tip="Ungroup · coming soon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1" stroke-dasharray="2 2"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize — coming soon" data-tip="Re-organize · coming soon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/><path d="M17 9l3 3-3 3"/></svg></button>
+        </div>
+
+        <span class="spacer"></span>
+
+        <button class="ico" data-testid="toolbar-fit-view" aria-label="Fit view" data-tip="Fit view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="pill save" data-testid="toolbar-save" aria-label="Save board (unsaved changes)" data-tip="Save  ⌘S">
+          <span class="ddot" title="unsaved changes"></span>Save<span class="kbd">⌘S</span></button>
+      </header>
+
+      <!-- board -->
+      <div class="board">
+        <!-- edges -->
+        <svg width="1280" height="744" viewBox="0 0 1280 744" style="position:absolute;inset:0;z-index:5;pointer-events:none" aria-hidden="true">
+          <defs>
+            <marker id="a-link" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#908fa0" stroke-width="1.4"/></marker>
+            <marker id="a-user" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#c0c1ff" stroke-width="1.6"/></marker>
+          </defs>
+          <!-- comments-layer → canvas-store (derived from links:, dashed + lock) -->
+          <path d="M460,250 C520,250 548,186 600,186" fill="none" stroke="#908fa0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a-link)"/>
+          <!-- canvas-store → anchors (user, solid) -->
+          <path d="M760,276 L760,372" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#a-user)"/>
+        </svg>
+        <div class="elabel" style="left:534px;top:214px"><span class="lock">&#128274;</span>links</div>
+        <div class="elabel user" style="left:760px;top:324px">imports</div>
+
+        <!-- markdown node — Editorial-Calm frontmatter card (issue #5), expanded + selected -->
+        <article class="node selected" style="left:88px;top:96px;width:372px;height:332px">
+          <div class="hd">
+            <span class="name">Comments Layer</span><span class="kind">md</span>
+            <button class="hbtn" data-testid="node-maximize" aria-label="Open in reader" title="Open in reader">
+              <svg viewBox="0 0 24 24"><path d="M9 4H4v5M20 15v5h-5M15 4h5v5M4 15v5h5"/></svg></button>
+            <button class="hbtn" data-testid="node-collapse-toggle" aria-label="Collapse node">&#8211;</button>
+          </div>
+          <div class="fm">
+            <div class="row"><span class="k">status</span><span class="v strong"><span class="dot ok"></span>approved</span></div>
+            <div class="row"><span class="k">tags</span><span class="v"><span class="tagtext">comments · anchors</span></span></div>
+            <div class="row"><span class="k">links</span><span class="v"><a class="lnk" href="#">↗ store.md</a><a class="lnk" href="#">↗ adapter.ts</a></span></div>
+            <div class="row"><span class="k">phase</span><span class="v">6 · comments</span></div>
+          </div>
+          <div class="nbody">
+            <h3>Anchoring model</h3>
+            <p>A thread is pinned to a <strong>node</strong> (binds to a file) or to bare <strong>canvas coordinates</strong> (binds to a point in space).</p>
+            <ul>
+              <li>Node anchors follow the node when it moves.</li>
+              <li>Point anchors stay put — notes about empty space.</li>
+              <li>Threads serialise into the canvas file verbatim.</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- second markdown node — active -->
+        <article class="node" style="left:600px;top:96px;width:320px;height:180px">
+          <div class="hd">
+            <span class="name">canvas-store</span><span class="kind">md</span>
+            <button class="hbtn" data-testid="node-maximize" aria-label="Open in reader" title="Open in reader">
+              <svg viewBox="0 0 24 24"><path d="M9 4H4v5M20 15v5h-5M15 4h5v5M4 15v5h5"/></svg></button>
+            <button class="hbtn" data-testid="node-collapse-toggle" aria-label="Collapse node">&#8211;</button>
+          </div>
+          <div class="fm" style="border-bottom:0">
+            <div class="row"><span class="k">status</span><span class="v strong"><span class="dot act"></span>active</span></div>
+            <div class="row"><span class="k">tags</span><span class="v"><span class="tagtext">state · zustand</span></span></div>
+            <div class="row"><span class="k">links</span><span class="v"><a class="lnk" href="#">↗ comments.ts</a></span></div>
+          </div>
+        </article>
+
+        <!-- note node -->
+        <div class="note" style="left:600px;top:372px;width:320px;height:152px">
+          <span class="eyebrow">text · note</span>
+          <h3>anchors.ts</h3>
+          <p>Resolves each anchor against the live node set at render time — a deleted target degrades to its <strong>last known point</strong>, never orphaning the thread.</p>
+        </div>
+
+        <!-- minimap -->
+        <div class="minimap" style="left:1048px;top:584px;width:192px;height:130px" aria-hidden="true">
+          <span class="mm-grid"></span>
+          <b style="left:14px;top:16px;width:46px;height:42px;background:rgba(192,193,255,.7)"></b>
+          <b style="left:78px;top:16px;width:40px;height:22px;background:rgba(94,242,255,.55)"></b>
+          <b style="left:78px;top:46px;width:40px;height:20px;background:rgba(94,242,255,.4)"></b>
+        </div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ═══════════════════ ARTBOARD B — reader open (HERO) ═══════════════════ -->
+  <figure class="ab">
+    <figcaption class="cap"><span class="cdot"></span>B <b>· reader open — readability overhaul (hero)</b> · 1280×800</figcaption>
+    <div class="frame">
+      <div class="void"></div><div class="grid dim"></div>
+
+      <!-- same redesigned toolbar (condensed markup, full data-testid coverage) -->
+      <header class="bar">
+        <a class="brand" href="#" data-testid="toolbar-brand" aria-label="flowcanvas home">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--color-primary)" stroke-width="1.5"/><path d="M12 3a9 9 0 010 18z" fill="var(--color-primary)" stroke="none"/></svg>
+          flowcanvas</a>
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="ico" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move" data-tip="Select &amp; move"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="ico" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect — draw edges" data-tip="Connect — draw edges"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="ico" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode" data-tip="Comment mode"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+        <span class="gap"></span>
+        <div class="cluster">
+          <button class="ico" data-testid="toolbar-add-note" aria-label="Add note" data-tip="Add note"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-markdown" aria-label="Add markdown file" data-tip="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-image" aria-label="Add image" data-tip="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-link" aria-label="Add link" data-tip="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <div class="fly-wrap">
+            <button class="ico has-chev js-fly" data-fly="shapeB" data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="false" aria-label="Add shape" data-tip="Add shape">
+              <svg viewBox="0 0 24 24"><path d="M4 7l8-3 8 3-8 3z"/><path d="M4 7v8l8 3 8-3V7"/></svg><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout" id="shapeB" role="menu" aria-label="Shape">
+              <button role="menuitem" data-testid="shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+            </div>
+          </div>
+        </div>
+        <span class="gap"></span>
+        <div class="fly-wrap">
+          <button class="pill js-fly" data-fly="fileB" data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="false">File<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="flyout" id="fileB" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…</button>
+            <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+        <div class="cluster">
+          <button class="ico dis" data-testid="toolbar-group" aria-disabled="true" aria-label="Group — coming soon" data-tip="Group · coming soon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h4v6"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup — coming soon" data-tip="Ungroup · coming soon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1" stroke-dasharray="2 2"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize — coming soon" data-tip="Re-organize · coming soon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><path d="M17 9l3 3-3 3"/></svg></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="ico" data-testid="toolbar-fit-view" aria-label="Fit view" data-tip="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="pill save" data-testid="toolbar-save" aria-label="Save board (unsaved changes)" data-tip="Save  ⌘S"><span class="ddot"></span>Save<span class="kbd">⌘S</span></button>
+      </header>
+
+      <!-- dimmed board peeking behind the reader -->
+      <div class="board dim">
+        <article class="node" style="left:60px;top:120px;width:300px;height:168px">
+          <div class="hd"><span class="name">Comments Layer</span><span class="kind">md</span></div>
+          <div class="fm" style="border-bottom:0">
+            <div class="row"><span class="k">status</span><span class="v strong"><span class="dot ok"></span>approved</span></div>
+            <div class="row"><span class="k">tags</span><span class="v"><span class="tagtext">comments · anchors</span></span></div>
+          </div>
+        </article>
+      </div>
+
+      <!-- READER DRAWER (hero) — Full size active -->
+      <aside class="reader" aria-label="Reader">
+        <div class="rhd">
+          <div>
+            <div class="fn">Comments Layer</div>
+            <div class="fp">design/comments-layer.md</div>
+          </div>
+          <div class="rseg" role="group" aria-label="Reader size">
+            <button data-testid="reader-mode-drawer" aria-pressed="false">Drawer</button>
+            <button data-testid="reader-mode-half" aria-pressed="false">Half</button>
+            <button data-testid="reader-mode-full" aria-pressed="true">Full</button>
+          </div>
+          <button class="x" data-testid="reader-close" aria-label="Close reader">✕</button>
+        </div>
+
+        <!-- (#4) understated frontmatter bar — one quiet line above a hairline.
+             empty frontmatter → this bar is omitted entirely. -->
+        <div class="fmbar" data-testid="reader-frontmatter">
+          <span class="meta"><span class="dot ok"></span>approved</span>
+          <span class="sep">·</span>
+          <span class="meta"><span class="tagtext">comments · anchors</span></span>
+          <span class="sep">·</span>
+          <span class="meta"><a class="lnk" href="#">↗ store.md</a><a class="lnk" href="#">↗ adapter.ts</a></span>
+        </div>
+
+        <!-- (#3) opaque near-black surface · centered ≤66ch measure -->
+        <div class="rsurface" data-testid="reader-surface">
+          <article class="prose">
+            <h1>Comments Layer</h1>
+            <p class="lede">Human comments live on the board as flat threads — pinned to a node or to bare canvas
+              coordinates — and they survive every save, agent round-trip, and re-layout.</p>
+
+            <h2>Anchoring</h2>
+            <p>A comment is anchored one of two ways. A <strong>node anchor</strong> binds the thread to a file; when the
+              node moves, the pin moves with it. A <strong>point anchor</strong> binds it to canvas coordinates, so notes
+              about empty space — a gap in the architecture, a question about a module that does not exist yet — stay
+              exactly where you left them.</p>
+            <p>Anchors are resolved at render time against the live node set. A node anchor whose target was deleted
+              degrades gracefully to its last known point, so a conversation is never orphaned by a layout change.</p>
+
+            <h3>Thread shape</h3>
+            <p>Threads are intentionally flat: one root comment, a list of replies, an optional <code>resolved</code> flag.
+              No nesting, no reactions, no rich text — the value is the conversation, not the ceremony.</p>
+            <ul>
+              <li>Every reply carries an author identity — <code>human:david</code> or <code>agent:opus-4.8</code>.</li>
+              <li>Resolving a thread dims its pin to 45% and drops the glow; the thread is never deleted.</li>
+              <li>Threads serialise into the canvas file, so the agent reads them verbatim in the <em>DesignBrief</em>.</li>
+            </ul>
+
+            <blockquote>
+              <p>The agent answers in the same thread it was asked in — a reply by id, not a new artefact. The
+                conversation is the unit of work.</p>
+            </blockquote>
+
+            <h2>Persistence</h2>
+            <p>Comments are stored on the document itself, never in a side channel, so a round-trip through an agent
+              cannot lose them. The model is a small, exhaustive union:</p>
+            <pre><code><span class="cm">// lib/canvas/comments.ts</span>
+<span class="kw">export type</span> <span class="ty">Anchor</span> =
+  | { kind: <span class="st">"node"</span>; nodeId: <span class="ty">string</span> }
+  | { kind: <span class="st">"point"</span>; x: <span class="ty">number</span>; y: <span class="ty">number</span> }
+
+<span class="kw">export function</span> <span class="fn">place</span>(anchor: <span class="ty">Anchor</span>, text: <span class="ty">string</span>): <span class="ty">Comment</span> {
+  <span class="kw">return</span> {
+    id: <span class="fn">nanoid</span>(<span class="nm">8</span>),
+    anchor,
+    text,
+    replies: [],
+    resolved: <span class="kw">false</span>,
+    createdAt: <span class="nm">1719500400000</span>,
+  }
+}</code></pre>
+            <p>The renderer never touches this shape directly — it reads through a selector so an unresolved anchor and a
+              resolved one share one code path.</p>
+          </article>
+        </div>
+      </aside>
+    </div>
+  </figure>
+
+  <!-- ═══════════════════ ARTBOARD C — agent import · load .json ═══════════════════ -->
+  <figure class="ab">
+    <figcaption class="cap"><span class="cdot"></span>C <b>· agent import — load .json</b> · 1280×800</figcaption>
+    <div class="frame">
+      <div class="void"></div><div class="grid dim"></div>
+
+      <header class="bar">
+        <a class="brand" href="#" data-testid="toolbar-brand" aria-label="flowcanvas home">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--color-primary)" stroke-width="1.5"/><path d="M12 3a9 9 0 010 18z" fill="var(--color-primary)" stroke="none"/></svg>
+          flowcanvas</a>
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="ico" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move" data-tip="Select &amp; move"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="ico" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect — draw edges" data-tip="Connect — draw edges"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="ico" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode" data-tip="Comment mode"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+        <span class="gap"></span>
+        <div class="cluster">
+          <button class="ico" data-testid="toolbar-add-note" aria-label="Add note" data-tip="Add note"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-markdown" aria-label="Add markdown file" data-tip="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-image" aria-label="Add image" data-tip="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="ico" data-testid="toolbar-add-link" aria-label="Add link" data-tip="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <div class="fly-wrap">
+            <button class="ico has-chev js-fly" data-fly="shapeC" data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="false" aria-label="Add shape" data-tip="Add shape">
+              <svg viewBox="0 0 24 24"><path d="M4 7l8-3 8 3-8 3z"/><path d="M4 7v8l8 3 8-3V7"/></svg><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout" id="shapeC" role="menu" aria-label="Shape">
+              <button role="menuitem" data-testid="shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+            </div>
+          </div>
+        </div>
+        <span class="gap"></span>
+        <!-- File flyout shown OPEN here (Upload / Import / Export) -->
+        <div class="fly-wrap">
+          <button class="pill js-fly" data-fly="fileC" data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="true">File<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="flyout open" id="fileC" role="menu" aria-label="File">
+            <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>img · md</small></button>
+            <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…</button>
+            <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…</button>
+          </div>
+        </div>
+        <div class="cluster">
+          <button class="ico dis" data-testid="toolbar-group" aria-disabled="true" aria-label="Group — coming soon" data-tip="Group · coming soon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h4v6"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup — coming soon" data-tip="Ungroup · coming soon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1" stroke-dasharray="2 2"/></svg></button>
+          <button class="ico dis" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize — coming soon" data-tip="Re-organize · coming soon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><path d="M17 9l3 3-3 3"/></svg></button>
+        </div>
+        <span class="spacer"></span>
+        <button class="ico" data-testid="toolbar-fit-view" aria-label="Fit view" data-tip="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="pill save" data-testid="toolbar-save" aria-label="Save board (unsaved changes)" data-tip="Save  ⌘S"><span class="ddot"></span>Save<span class="kbd">⌘S</span></button>
+      </header>
+
+      <div class="board dim"></div>
+
+      <!-- AGENT PANEL — Import tab active -->
+      <aside class="agent" aria-label="Agent round-trip">
+        <div class="ahd"><b>Agent round-trip</b><button class="x" data-testid="agent-close" aria-label="Close agent panel" style="margin-left:auto">✕</button></div>
+        <div class="atabs" role="tablist">
+          <button role="tab" data-testid="agent-tab-import" aria-selected="true">Import</button>
+          <button role="tab" data-testid="agent-tab-export" aria-selected="false">Export</button>
+        </div>
+        <div class="abody">
+          <p class="hint">Paste the agent's <code>AgentResponse</code> JSON, or load it from a file. The merge is idempotent —
+            it upserts nodes and edges, attaches replies by id, writes generated files, and re-derives <code>links:</code> edges.</p>
+          <textarea data-testid="response-paste" aria-label="Paste agent response JSON"
+            placeholder='{ "responseVersion":"0.1", "briefId":"brief-3f9c", "upsertNodes":[…], "generatedFiles":[…] }'></textarea>
+
+          <!-- button row: Load .json… (file) + Apply response (primary). hidden native file input wired to the label. -->
+          <div class="arow">
+            <label class="pill ghost" data-testid="response-load-file" tabindex="0" role="button" aria-label="Load response from .json file">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Load .json…
+              <input type="file" accept="application/json,.json" hidden>
+            </label>
+            <button class="pill primary" data-testid="response-apply" aria-label="Apply response">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 7"/></svg>Apply response</button>
+          </div>
+
+          <!-- sample merge report -->
+          <div class="report" data-testid="merge-report">
+            ✓ Applied · <span class="b">briefId brief-3f9c</span><br>
+            <span class="muted">created</span> 2 · <span class="muted">updated</span> 3 · <span class="muted">removed</span> 1<br>
+            <span class="muted">wrote</span> design/comments-layer.md · lib/canvas/comments.ts
+          </div>
+        </div>
+      </aside>
+    </div>
+  </figure>
+</div>
+
+<script>
+  // flyout toggles (Shape switcher · File menu) — scoped per artboard, no shared ids needed for logic
+  function closeAllFlyouts(except){
+    document.querySelectorAll('.flyout.open').forEach(function(f){ if(f!==except) f.classList.remove('open'); });
+    document.querySelectorAll('.js-fly').forEach(function(b){
+      var t=document.getElementById(b.dataset.fly); if(!t||!t.classList.contains('open')) b.setAttribute('aria-expanded','false');
+    });
+  }
+  document.querySelectorAll('.js-fly').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var menu=document.getElementById(btn.dataset.fly);
+      var willOpen=!menu.classList.contains('open');
+      closeAllFlyouts(willOpen?menu:null);
+      menu.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', String(willOpen));
+    });
+  });
+  document.addEventListener('click', function(){ closeAllFlyouts(null); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAllFlyouts(null); });
+
+  // node collapse toggles
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(){
+      var n=t.closest('.node'); n.classList.toggle('collapsed');
+      t.innerHTML = n.classList.contains('collapsed') ? '+' : '–';
+      t.setAttribute('aria-label', n.classList.contains('collapsed') ? 'Expand node' : 'Collapse node');
+    });
+  });
+</script>
+</body>
+</html>

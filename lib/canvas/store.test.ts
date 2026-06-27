@@ -27,7 +27,7 @@ function seed(): FlowcanvasDoc {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer' })
+  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [] })
 })
 
 describe('store / onConnect', () => {
@@ -271,5 +271,65 @@ describe('store / comments', () => {
     useCanvasStore.getState().addComment({ kind: 'canvas', x: 1, y: 1 }, 'x', 'human:you')
     expect(useCanvasStore.getState().doc!.flowcanvas.comments).not.toBe(before)
     expect(before).toHaveLength(0)
+  })
+})
+
+describe('store / Phase 10 — selection, grouping, bulk layout', () => {
+  it('setSelection sets the ids and is equality-guarded against a churning re-set', () => {
+    useCanvasStore.getState().setSelection(['a', 'b'])
+    expect(useCanvasStore.getState().selectedIds).toEqual(['a', 'b'])
+    const ref = useCanvasStore.getState().selectedIds
+    useCanvasStore.getState().setSelection(['a', 'b']) // identical → no state churn
+    expect(useCanvasStore.getState().selectedIds).toBe(ref) // same reference (no set fired)
+    useCanvasStore.getState().setSelection([])
+    expect(useCanvasStore.getState().selectedIds).toEqual([])
+  })
+
+  it('groupSelection wraps ≥2 nodes: container sized to bounds+PAD, members parented, group selected', () => {
+    useCanvasStore.getState().groupSelection(['a', 'b'])
+    const { doc, selectedIds, dirty } = useCanvasStore.getState()
+    const group = doc!.nodes.find((n) => n.type === 'group')!
+    expect(group).toBeTruthy()
+    expect(doc!.nodes[0].id).toBe(group.id) // prepended → parent precedes children in doc order
+    expect({ x: group.x, y: group.y, width: group.width, height: group.height }).toEqual({ x: -28, y: -28, width: 356, height: 156 })
+    expect(doc!.nodes.find((n) => n.id === 'a')!.parentId).toBe(group.id)
+    expect(doc!.nodes.find((n) => n.id === 'b')!.parentId).toBe(group.id)
+    expect(selectedIds).toEqual([group.id])
+    expect(dirty).toBe(true)
+  })
+
+  it('groupSelection is a no-op for <2 eligible nodes and for already-grouped nodes', () => {
+    useCanvasStore.getState().groupSelection(['a']) // only one
+    expect(useCanvasStore.getState().doc!.nodes.some((n) => n.type === 'group')).toBe(false)
+    expect(useCanvasStore.getState().dirty).toBe(false)
+    // group a+b, then try to group them again — both now carry parentId, so they're ineligible
+    useCanvasStore.getState().groupSelection(['a', 'b'])
+    const firstCount = useCanvasStore.getState().doc!.nodes.filter((n) => n.type === 'group').length
+    useCanvasStore.getState().groupSelection(['a', 'b'])
+    expect(useCanvasStore.getState().doc!.nodes.filter((n) => n.type === 'group').length).toBe(firstCount)
+  })
+
+  it('ungroup removes the container and clears children parentId, leaving their absolute coords intact', () => {
+    useCanvasStore.getState().groupSelection(['a', 'b'])
+    const groupId = useCanvasStore.getState().doc!.nodes.find((n) => n.type === 'group')!.id
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().ungroup(groupId)
+    const { doc, dirty } = useCanvasStore.getState()
+    expect(doc!.nodes.some((n) => n.id === groupId)).toBe(false)
+    const a = doc!.nodes.find((n) => n.id === 'a')!
+    const b = doc!.nodes.find((n) => n.id === 'b')!
+    expect(a.parentId).toBeUndefined()
+    expect(b.parentId).toBeUndefined()
+    expect({ x: a.x, y: a.y }).toEqual({ x: 0, y: 0 })   // children unmoved
+    expect({ x: b.x, y: b.y }).toEqual({ x: 200, y: 0 })
+    expect(dirty).toBe(true)
+  })
+
+  it('applyLayout writes absolute coords to the named nodes only', () => {
+    useCanvasStore.getState().applyLayout({ a: { x: 500, y: 600 } })
+    const { doc, dirty } = useCanvasStore.getState()
+    expect({ x: doc!.nodes.find((n) => n.id === 'a')!.x, y: doc!.nodes.find((n) => n.id === 'a')!.y }).toEqual({ x: 500, y: 600 })
+    expect({ x: doc!.nodes.find((n) => n.id === 'b')!.x, y: doc!.nodes.find((n) => n.id === 'b')!.y }).toEqual({ x: 200, y: 0 }) // untouched
+    expect(dirty).toBe(true)
   })
 })

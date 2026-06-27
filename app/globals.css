@@ -5,6 +5,7 @@
    Phase-1 eslint scoping that excludes the same framework dirs. */
 @import "tailwindcss" source(none);
 @import "./styles/nodes.css";
+@import "./styles/frontmatter.css";
 @import "./styles/edges.css";
 @import "./styles/controls.css";
 @import "./styles/reader.css";
@@ -61,7 +62,16 @@ html, body { height: 100%; }
 }
 .react-flow { --xy-background-color: var(--color-bg); }
 .react-flow__edge-path { stroke: var(--color-outline); stroke-width: 1.5; }
-.react-flow__node.selected { box-shadow: 0 0 0 2px var(--color-primary), 0 0 26px -4px rgba(192,193,255,.6); }
+/* Selection ring rides the rounded CARD, not the square RF wrapper — so it conforms to the 16px
+   corners instead of fencing a gap around them. A crisp 2px primary ring + a tight indigo halo
+   gives it contrast on the glass (the old wide soft glow read fuzzy). Link/note cards don't carry
+   the base .fc-node class, so they're listed explicitly; shape/group nodes opt out (handled in nodes.css). */
+.react-flow__node.selected { box-shadow: none; }
+.react-flow__node.selected .fc-node,
+.react-flow__node.selected .fc-node--link,
+.react-flow__node.selected .fc-node--note {
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px rgba(128,131,255,.28), 0 0 20px -4px rgba(192,193,255,.65);
+}
 
 /* canvas root — full-viewport wrapper for the React Flow pane (Phase 8, Fix 1: was an inline style). */
 .fc-canvas-root { width: 100vw; height: 100vh; }

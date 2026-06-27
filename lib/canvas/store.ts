@@ -22,12 +22,19 @@ interface CanvasState {
   editingEdgeId: string | null       // UI-only: edge whose label is being edited inline (transient)
   readerNodeId: string | null        // UI-only: markdown node open in the reader drawer (transient)
   readerSize: ReaderSize             // UI-only: reader width preset (transient, never persisted)
+  selectedIds: string[]              // UI-only: ids in the current multi-selection (transient, never persisted)
   load: (path: string) => Promise<void>
   save: () => Promise<void>
   bodyFor: (id: string) => string | undefined
   toggleCollapsed: (id: string) => void
   onConnect: (conn: Connection) => void
   removeEdgeWriteback: (id: string) => void
+  setSelection: (ids: string[]) => void                                            // Phase 10: multi-select
+  groupSelection: (ids: string[]) => void                                          // Phase 10: wrap ≥2 nodes in a container
+  ungroup: (groupId: string) => void                                               // Phase 10: dissolve a container, keep children
+  applyLayout: (positions: Record<string, { x: number; y: number }>) => void       // Phase 10: bulk absolute-coord write (ELK + group drag)
+  saveAs: (path: string) => Promise<void>                                          // Phase 10: write to a new path + adopt it
+  openBoard: (path: string) => Promise<void>                                       // Phase 10: switch the active board
   setNodePosition: (id: string, x: number, y: number) => void
   setNodeSize: (id: string, width: number, height: number) => void
   setNodeText: (id: string, text: string) => void
@@ -82,7 +89,7 @@ async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>)
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer',
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [],
   bodyFor: (id) => get().bodies[id],
   async load(path) {
     const doc = await api.getCanvas(path)
@@ -152,6 +159,87 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const tgt = fileOf(doc, e.toNode)
     set({ doc: { ...doc, edges: doc.edges.filter((x) => x.id !== id) }, dirty: true })
     if (src && tgt) void api.patchLinks(src, { remove: [tgt] }).catch((e) => console.error('patchLinks(remove) failed', e))
+  },
+  // ─── Phase 10: multi-select, true group containers, bulk layout, board file I/O ───
+  // Selection is UI-only (never persisted, never dirties). Equality-guarded so React Flow's
+  // onSelectionChange (which fires on every render) doesn't churn subscribers.
+  setSelection(ids: string[]) {
+    const cur = get().selectedIds
+    if (cur.length === ids.length && cur.every((id, i) => id === ids[i])) return
+    set({ selectedIds: ids })
+  },
+  // Wrap ≥2 ungrouped, non-group nodes in a new container. The doc stays ABSOLUTE, so grouping is a pure
+  // membership change (set parentId) — no coordinate math. The group is sized to the members' bounds + PAD
+  // and prepended so it precedes its children in doc order (parent-before-child).
+  groupSelection(ids: string[]) {
+    const { doc } = get()
+    if (!doc) return
+    const idset = new Set(ids)
+    const members = doc.nodes.filter((n) => idset.has(n.id) && n.type !== 'group' && !n.parentId)
+    if (members.length < 2) return
+    const PAD = 28
+    const minX = Math.min(...members.map((n) => n.x))
+    const minY = Math.min(...members.map((n) => n.y))
+    const maxX = Math.max(...members.map((n) => n.x + n.width))
+    const maxY = Math.max(...members.map((n) => n.y + n.height))
+    const group: CanvasNode = {
+      id: nodeId(), type: 'group', label: '',
+      x: minX - PAD, y: minY - PAD, width: maxX - minX + 2 * PAD, height: maxY - minY + 2 * PAD,
+      meta: { origin: 'user', shape: 'rectangle' },
+    }
+    const m = new Set(members.map((n) => n.id))
+    const nodes = doc.nodes.map((n) => (m.has(n.id) ? { ...n, parentId: group.id } : n))
+    set({ doc: { ...doc, nodes: [group, ...nodes] }, dirty: true, selectedIds: [group.id] })
+  },
+  // Dissolve a container: drop the group node and clear its children's parentId. Children already hold
+  // absolute coords, so they stay exactly where they were.
+  ungroup(groupId: string) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes
+      .filter((n) => n.id !== groupId)
+      .map((n) => {
+        if (n.parentId !== groupId) return n
+        const next: CanvasNode = { ...n }
+        delete (next as { parentId?: string }).parentId
+        return next
+      })
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Bulk absolute-position write — shared by the ELK "Re-organize" result and group-aware drag write-back,
+  // so a multi-node move is one re-render + one dirty flip.
+  applyLayout(positions: Record<string, { x: number; y: number }>) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => {
+      const p = positions[n.id]
+      return p ? { ...n, x: p.x, y: p.y } : n
+    })
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Save the current board to a NEW path and adopt it: write, sync the revision, clear dirty, and update
+  // the URL `?path=` in place (no reload) so a refresh reopens the new board.
+  async saveAs(path: string) {
+    const { doc } = get()
+    if (!doc) return
+    doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
+    set({ path, dirty: false })
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href)
+      u.searchParams.set('path', path)
+      window.history.replaceState(null, '', u.toString())
+    }
+  },
+  // Switch the active board (the caller — BoardDialog — owns the unsaved-changes guard): load the doc,
+  // clear selection, and update the URL `?path=` so a refresh stays on it.
+  async openBoard(path: string) {
+    await get().load(path)
+    set({ selectedIds: [] })
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href)
+      u.searchParams.set('path', path)
+      window.history.replaceState(null, '', u.toString())
+    }
   },
   setNodePosition(id: string, x: number, y: number) {
     const { doc } = get()

@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas — Phase 9 · 09 "Spec Header"</title>
+<!--
+  Flowcanvas v0.1 — Phase 9 redesign iteration 09 — "Spec Header" (metadata as identity).
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx) + mockups/04-nyx-neon.html (approved board).
+  THESIS: frontmatter is a first-class SPEC HEADER. In the node card it is a BANDED header block —
+  a bold status-pill anchor + a horizontal tag/link chip row, then secondary key/values in a compact
+  two-column mono grid. The reader's frontmatter bar MIRRORS it (same chips, larger) as a STICKY
+  spec header pinned above the prose. Toolbar groups inserts under a mono "INSERT" eyebrow as a
+  labeled segmented cluster. A node's metadata IS its identity — make it sing.
+  Three labeled artboards (~1280x800), each the full nyx void + fixed glass toolbar.
+  Self-contained: inline <style>, inline SVG icons, no external CSS/JS/fonts/images.
+-->
+<style>
+  :root{
+    /* §2 nyx primitives — verbatim tokens, zero stray hex in components */
+    --color-bg:#0b1326; --color-grid:rgba(146,143,160,.16);
+    --color-surface-lowest:#060e20; --color-surface-low:#131b2e; --color-surface:#171f33;
+    --color-surface-high:#222a3d; --color-surface-highest:#2d3449;
+    --color-primary:#c0c1ff; --color-primary-cont:#8083ff;
+    --color-secondary:#ddb7ff; --color-secondary-cont:#6f00be;
+    --color-tertiary-cont:#ff516a;
+    --color-text-primary:#dae2fd; --color-text-secondary:#c7c4d7;
+    --color-outline:#908fa0; --color-outline-variant:#464554;
+    --color-neon-cyan:#5ef2ff; --color-neon-lime:#b6f36a; --color-neon-rose:#ff8fb0;
+    --color-status-amber:#f59f00;
+    /* §2.2 glass */
+    --glass-fill:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --shadow-drawer:-30px 0 80px -30px rgba(0,0,0,.75);
+    --shadow-overlay:0 24px 60px -20px rgba(0,0,0,.7);
+    /* §3 type */
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    /* §5 radii */
+    --r-card:16px; --r-control:8px; --r-pill:999px; --r-sm:4px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--ui);color:var(--color-text-primary);background:var(--color-surface-lowest);
+    -webkit-font-smoothing:antialiased;padding:0;min-height:100%}
+
+  /* ───── page chrome (mockup framing, not part of the product) ───── */
+  .page{max-width:1344px;margin:0 auto;padding:32px}
+  .page-hd{margin:0 0 24px;display:flex;flex-direction:column;gap:8px}
+  .page-hd h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--color-text-primary)}
+  .page-hd h1 b{color:var(--color-primary)}
+  .page-hd p{margin:0;max-width:96ch;font-size:13px;line-height:1.6;color:var(--color-text-secondary)}
+  .page-hd .toks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .tok{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--color-text-secondary);
+    border:1px solid var(--color-outline-variant);border-radius:var(--r-pill);padding:3px 9px;background:rgba(23,31,51,.4)}
+  .cap{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-secondary);
+    margin:32px 0 10px;display:flex;align-items:center;gap:10px}
+  .cap .n{color:var(--color-neon-cyan)}
+  .cap .ix{color:var(--color-outline);font-size:10px;letter-spacing:.06em;text-transform:none}
+
+  /* ───── artboard = framed ~1280x800 nyx void ───── */
+  .artboard{position:relative;width:100%;height:800px;border-radius:var(--r-card);overflow:hidden;
+    border:1px solid var(--color-outline-variant);
+    background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%),
+      var(--color-bg);
+    box-shadow:var(--shadow-overlay)}
+  .grid{position:absolute;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(var(--color-grid) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+
+  /* ───── §7 toolbar (redesign — issue #8) ───── */
+  .toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:8px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--color-outline-variant)}
+  .brand{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;letter-spacing:.02em;color:var(--color-text-primary);white-space:nowrap}
+  .brand svg{width:18px;height:18px;color:var(--color-primary)}
+  .brand b{font-weight:600;color:var(--color-text-primary)}
+  .tdiv{width:1px;height:30px;background:var(--color-outline-variant);flex:0 0 auto;margin:0 2px}
+  .tspring{margin-left:auto}
+
+  /* labeled segmented cluster: mono eyebrow over a segmented group */
+  .tcluster{display:flex;flex-direction:column;gap:3px;align-items:flex-start;flex:0 0 auto}
+  .eyebrow{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--color-text-secondary);padding-left:2px;line-height:1}
+  .eyebrow .soon{color:var(--color-status-amber)}
+  .seg{display:flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;background:rgba(34,42,61,.35)}
+  .seg .tbtn{border:0;border-radius:0;background:transparent;height:34px;min-width:38px}
+  .seg .tbtn + .tbtn{border-left:1px solid var(--color-outline-variant)}
+
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 11px;
+    border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.5);color:var(--color-text-primary);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:border-color .14s ease, box-shadow .14s ease, background-color .14s ease, transform .1s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .tbtn .caret{width:11px;height:11px}
+  .tbtn .kbd{font-family:var(--mono);font-size:10px;color:var(--color-text-secondary);border:1px solid var(--color-outline-variant);border-radius:var(--r-sm);padding:1px 5px}
+  .tbtn.primary{background:linear-gradient(135deg,var(--color-primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .tbtn.primary:hover{box-shadow:0 0 24px -6px rgba(128,131,255,.8)}
+  .tbtn[aria-pressed="true"]{border-color:transparent;color:var(--color-surface-lowest);
+    background:linear-gradient(135deg,rgba(128,131,255,.95),rgba(94,242,255,.6));box-shadow:0 0 18px -4px rgba(94,242,255,.5)}
+  .tbtn.is-disabled{opacity:.42;cursor:not-allowed;color:var(--color-text-secondary)}
+  .tbtn.is-disabled:hover{box-shadow:none;border-color:var(--color-outline-variant)}
+  .save-dot{width:8px;height:8px;border-radius:var(--r-pill);background:var(--color-status-amber);box-shadow:0 0 10px var(--color-status-amber)}
+
+  /* tooltip (works on aria-disabled via class, not the disabled attribute) */
+  [data-tip]{position:relative}
+  [data-tip]:hover::after,[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);
+    white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:.03em;color:var(--color-text-primary);
+    background:rgba(6,14,32,.96);border:1px solid var(--color-outline-variant);border-radius:var(--r-control);padding:5px 9px;z-index:70;box-shadow:var(--shadow-overlay)}
+
+  /* flyout (Shape ▾, File ▾) — §5 menu: glass blur40 + ambient shadow + glow */
+  .flyout-wrap{position:relative}
+  .flyout{position:absolute;top:50px;left:0;z-index:60;min-width:200px;padding:6px;display:none;
+    border:1px solid transparent;border-radius:var(--r-control);
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);
+    box-shadow:var(--shadow-overlay),var(--glow-indigo)}
+  .flyout-wrap.open .flyout{display:block}
+  .flyout.right{left:auto;right:0}
+  .flyout button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);
+    background:transparent;color:var(--color-text-primary);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .flyout button:hover{background:rgba(255,255,255,.06)}
+  .flyout button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+  .flyout button svg{width:15px;height:15px;stroke:var(--color-primary);fill:none;stroke-width:1.5;flex:0 0 auto}
+  .flyout button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--color-text-secondary);letter-spacing:.04em}
+  .flyout .fy-hd{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-text-secondary);padding:6px 10px 4px}
+
+  /* ───── board layer ───── */
+  .board{position:absolute;left:0;right:0;top:56px;bottom:0;z-index:1}
+  .board.dim{filter:saturate(.9) brightness(.8)}
+  .edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+
+  /* edge label pill (§8 fc-edge-label) */
+  .fc-edge-label{position:absolute;z-index:3;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+    color:var(--color-text-secondary);padding:3px 8px;border-radius:var(--r-pill);white-space:nowrap;display:inline-flex;gap:5px;align-items:center;
+    background:rgba(13,21,40,.85);border:1px solid var(--color-outline-variant)}
+  .fc-edge-label.user{color:var(--color-text-primary);border-color:rgba(128,131,255,.5)}
+  .fc-edge-label svg{width:9px;height:9px;stroke:currentColor;fill:none;stroke-width:1.8;opacity:.85}
+
+  /* ───── §8 node (glass) ───── */
+  .fc-node{position:absolute;z-index:10;border-radius:var(--r-card);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;color:var(--color-text-primary);display:flex;flex-direction:column;
+    transition:box-shadow .14s ease, border-color .14s ease}
+  .fc-node:hover{box-shadow:var(--glow-indigo)}
+  .fc-node.selected{box-shadow:0 0 0 2px var(--color-primary),0 0 26px -4px rgba(192,193,255,.6)}
+
+  .fc-node .hd{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--color-outline-variant)}
+  .fc-node .title{font-weight:600;font-size:13px;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+  .kind-chip{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-secondary);
+    border:1px solid var(--color-outline-variant);border-radius:var(--r-sm);padding:1px 5px;flex:0 0 auto}
+  .nbtn{flex:0 0 auto;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);
+    border:1px solid var(--color-outline-variant);background:transparent;color:var(--color-text-secondary);cursor:pointer;
+    transition:color .14s ease, border-color .14s ease}
+  .nbtn:hover{color:var(--color-text-primary);border-color:var(--color-primary)}
+  .nbtn:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}
+  .nbtn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+  /* THE SPEC-HEADER BAND — banded frontmatter block (issue #5) */
+  .fc-fm{padding:11px 12px 12px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--color-outline-variant);
+    background:linear-gradient(180deg, rgba(19,27,46,.55), rgba(19,27,46,.18))}
+  .fm-anchor{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .status-pill{display:inline-flex;align-items:center;gap:7px;height:24px;padding:0 12px;border-radius:var(--r-pill);
+    font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+  .status-pill .pdot{width:7px;height:7px;border-radius:var(--r-pill)}
+  .status-pill.active{color:var(--color-neon-cyan);background:rgba(94,242,255,.14);box-shadow:inset 0 0 0 1px rgba(94,242,255,.4),0 0 16px -6px rgba(94,242,255,.8)}
+  .status-pill.active .pdot{background:var(--color-neon-cyan);box-shadow:0 0 8px var(--color-neon-cyan)}
+  .status-pill.approved{color:var(--color-neon-lime);background:rgba(182,243,106,.14);box-shadow:inset 0 0 0 1px rgba(182,243,106,.4),0 0 16px -6px rgba(182,243,106,.8)}
+  .status-pill.approved .pdot{background:var(--color-neon-lime);box-shadow:0 0 8px var(--color-neon-lime)}
+  .status-pill.stale{color:var(--color-status-amber);background:rgba(245,159,0,.16);box-shadow:inset 0 0 0 1px rgba(245,159,0,.45),0 0 16px -6px rgba(245,159,0,.85)}
+  .status-pill.stale .pdot{background:var(--color-status-amber);box-shadow:0 0 8px var(--color-status-amber)}
+
+  .chip-row{display:flex;flex-wrap:wrap;gap:5px}
+  .tag-chip{font-family:var(--mono);font-size:10px;letter-spacing:.02em;color:var(--color-secondary);
+    background:rgba(221,183,255,.16);border:1px solid rgba(221,183,255,.3);border-radius:var(--r-pill);padding:2px 8px}
+  .link-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--color-primary);text-decoration:none;
+    background:rgba(128,131,255,.12);border:1px solid rgba(128,131,255,.28);border-radius:var(--r-pill);padding:2px 8px;
+    transition:box-shadow .14s ease, border-color .14s ease}
+  .link-chip:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .link-chip:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .link-chip svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+  .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;font-family:var(--mono);font-size:10.5px;margin-top:1px}
+  .kv{display:flex;gap:8px;align-items:baseline;min-width:0}
+  .kv .k{color:var(--color-text-secondary);letter-spacing:.04em;min-width:48px;flex:0 0 auto}
+  .kv .v{color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* rendered markdown body — node */
+  .fc-body{padding:8px 12px 12px;overflow:hidden;position:relative;flex:1}
+  .fc-body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(transparent,rgba(23,31,51,.7));pointer-events:none}
+  .fc-body h1,.fc-body h2,.fc-body h3{margin:0 0 5px;font-family:var(--mono);font-weight:600;font-size:12px;color:var(--color-neon-cyan);letter-spacing:.01em}
+  .fc-body p{margin:0 0 6px;font-size:12px;line-height:1.5;color:var(--color-text-secondary)}
+  .fc-body p:last-child{margin-bottom:0}
+  .fc-body strong{color:var(--color-text-primary);font-weight:600}
+  .fc-body em{color:var(--color-secondary);font-style:italic}
+  .fc-body ul{margin:0 0 6px;padding:0;list-style:none}
+  .fc-body li{position:relative;padding-left:14px;font-size:11.5px;line-height:1.45;color:var(--color-text-secondary);margin-bottom:3px}
+  .fc-body li::before{content:"";position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:1px;background:var(--color-neon-cyan);box-shadow:0 0 6px -1px var(--color-neon-cyan)}
+  .fc-body code{font-family:var(--mono);font-size:11px;color:var(--color-neon-cyan);background:rgba(94,242,255,.1);padding:0 4px;border-radius:3px;border:1px solid rgba(94,242,255,.18)}
+  .fc-node.collapsed .fc-body{display:none}
+
+  /* handles (loose mode dots) */
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-pill);background:var(--color-surface-highest);border:1px solid var(--color-primary);z-index:11}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+
+  /* §7 minimap */
+  .minimap{position:absolute;z-index:30;border-radius:var(--r-control);backdrop-filter:blur(16px);border:1px solid var(--color-outline-variant);
+    background:rgba(6,14,32,.6);overflow:hidden}
+  .minimap .mm-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:14px 14px}
+  .minimap b{position:absolute;border-radius:3px;display:block}
+  .minimap .mm-cap{position:absolute;top:6px;left:8px;font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-text-secondary)}
+
+  /* legend (edge-origin key) */
+  .legend{position:absolute;z-index:30;display:flex;gap:16px;align-items:center;height:34px;padding:0 14px;border-radius:var(--r-pill);
+    backdrop-filter:blur(16px);border:1px solid var(--color-outline-variant);background:rgba(6,14,32,.6);
+    font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--color-text-secondary)}
+  .legend i{display:inline-block;width:22px;height:0;margin-right:7px;vertical-align:middle}
+  .legend .lk{border-top:2px dashed var(--color-outline)}
+  .legend .us{border-top:2px solid var(--color-primary)}
+
+  /* controls bottom-left */
+  .controls{position:absolute;z-index:30;display:flex;flex-direction:column;gap:6px}
+  .controls button{width:34px;height:34px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.55);
+    backdrop-filter:blur(16px);color:var(--color-text-primary);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;
+    transition:box-shadow .14s ease}
+  .controls button:hover{box-shadow:var(--glow-indigo)}
+  .controls button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+
+  /* ───── §8 reader drawer (issues #3 + #4) ───── */
+  .reader{position:absolute;top:56px;right:0;bottom:0;width:608px;z-index:45;display:flex;flex-direction:column;
+    border-left:1px solid transparent;
+    background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(200deg,rgba(128,131,255,.4),rgba(255,255,255,.03));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:var(--shadow-drawer)}
+  .reader .rhd{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--color-outline-variant);flex:0 0 auto}
+  .reader .rhd .rtitle{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .reader .rhd .fn{font-size:14px;font-weight:600;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reader .rhd .fp{font-family:var(--mono);font-size:11px;color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .size-seg{display:flex;border:1px solid var(--color-outline-variant);border-radius:var(--r-control);overflow:hidden;flex:0 0 auto}
+  .size-seg button{height:30px;padding:0 11px;border:0;background:transparent;color:var(--color-text-secondary);cursor:pointer;
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;transition:color .14s ease, background-color .14s ease}
+  .size-seg button + button{border-left:1px solid var(--color-outline-variant)}
+  .size-seg button[aria-pressed="true"]{color:var(--color-surface-lowest);background:linear-gradient(135deg,var(--color-primary-cont),#6f5bff)}
+  .size-seg button:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+  .x{flex:0 0 auto;width:34px;height:34px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:transparent;
+    color:var(--color-text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:box-shadow .14s ease}
+  .x:hover{box-shadow:var(--glow-indigo)}
+  .x:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round}
+
+  /* OPAQUE reading surface — no canvas bleed (issue #3) */
+  .r-scroll{flex:1;overflow:auto;background:var(--color-surface-lowest)}
+
+  /* STICKY frontmatter spec bar — mirrors node header, larger (issue #4) */
+  .r-fmbar{position:sticky;top:0;z-index:5;padding:18px 28px 16px;display:flex;flex-direction:column;gap:11px;
+    background:linear-gradient(180deg, rgba(19,27,46,.96), rgba(6,14,32,.98));border-bottom:1px solid var(--color-outline-variant)}
+  .r-fmbar .anchor{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .r-fmbar .status-pill{height:28px;font-size:12px;padding:0 14px}
+  .r-fmbar .status-pill .pdot{width:8px;height:8px}
+  .r-fmbar .tag-chip{font-size:11px;padding:3px 10px}
+  .r-fmbar .link-chip{font-size:11px;padding:3px 10px}
+  .r-fmbar .link-chip svg{width:12px;height:12px}
+  .r-fmbar .kv-row{display:flex;flex-wrap:wrap;gap:8px 24px;font-family:var(--mono);font-size:11px}
+  .r-fmbar .kv-row .kv .k{min-width:0}
+
+  /* §8 nyx prose — readability overhaul (issue #3) */
+  .prose{max-width:66ch;margin-inline:auto;padding:34px 0 56px;font-size:17px;line-height:1.72;color:var(--color-text-primary)}
+  .prose > :first-child{margin-top:0}
+  .prose h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.22;color:var(--color-text-primary);margin:0 0 10px}
+  .prose .lede{font-size:16px;line-height:1.6;color:var(--color-text-secondary);margin:0 0 26px}
+  .prose h2{font-size:21px;font-weight:600;line-height:1.3;color:var(--color-text-primary);margin:34px 0 14px}
+  .prose h3{font-size:17px;font-weight:600;line-height:1.3;color:var(--color-secondary);margin:24px 0 10px}
+  .prose p{margin:0 0 18px;color:var(--color-text-primary)}
+  .prose strong{color:var(--color-text-primary);font-weight:600}
+  .prose em{color:var(--color-secondary);font-style:italic}
+  .prose a{color:var(--color-secondary);text-decoration:underline;text-underline-offset:3px}
+  .prose ul{margin:0 0 18px;padding:0;list-style:none}
+  .prose li{position:relative;padding-left:26px;margin:0 0 10px;color:var(--color-text-primary)}
+  .prose ul li::before{content:"";position:absolute;left:6px;top:12px;width:6px;height:6px;border-radius:2px;
+    background:linear-gradient(135deg,var(--color-neon-cyan),var(--color-primary));box-shadow:0 0 8px -1px var(--color-neon-cyan)}
+  .prose blockquote{margin:0 0 18px;padding:12px 18px;border-left:2px solid var(--color-primary);background:rgba(128,131,255,.08);
+    border-radius:0 var(--r-control) var(--r-control) 0;color:var(--color-text-secondary)}
+  .prose blockquote p{margin:0;font-style:italic}
+  .prose :not(pre) > code{font-family:var(--mono);font-size:14px;color:var(--color-neon-cyan);
+    background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.18);border-radius:var(--r-sm);padding:1px 6px}
+  .prose pre{margin:0 0 20px;padding:16px 18px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);
+    background:var(--color-surface-low);overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.65}
+  .prose pre code{font-family:var(--mono);color:var(--color-text-primary);background:none;border:0;padding:0}
+  /* shiki-emulated syntax: cyan keywords / lime strings / rose numbers */
+  .kw{color:var(--color-neon-cyan)} .st{color:var(--color-neon-lime)} .nm{color:var(--color-neon-rose)}
+  .cm{color:var(--color-outline)} .fn{color:var(--color-secondary)} .pn{color:var(--color-text-secondary)}
+
+  /* ───── §8 agent panel (issue #2a) ───── */
+  .agent-panel{position:absolute;top:56px;right:0;bottom:0;width:624px;z-index:48;display:flex;flex-direction:column;
+    border-left:1px solid transparent;
+    background-image:linear-gradient(rgba(11,19,38,.92),rgba(11,19,38,.92)),linear-gradient(200deg,rgba(94,242,255,.35),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:var(--shadow-drawer)}
+  .agent-panel .ap-hd{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--color-outline-variant)}
+  .agent-panel .ap-hd b{font-size:14px;flex:1}
+  .agent-panel .ap-hd .sub{font-family:var(--mono);font-size:10px;color:var(--color-text-secondary);letter-spacing:.04em}
+  .ap-tabs{display:flex;gap:8px;padding:14px 20px 0}
+  .ap-tabs button{flex:1;height:38px;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);background:rgba(34,42,61,.4);
+    color:var(--color-text-secondary);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:color .14s ease, background-color .14s ease, border-color .14s ease}
+  .ap-tabs button[aria-selected="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--color-primary-cont),#6f5bff)}
+  .ap-tabs button:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .ap-body{padding:18px 20px;overflow:auto}
+  .ap-body .hint{margin:0 0 14px;font-size:13px;line-height:1.55;color:var(--color-text-secondary)}
+  .ap-body .hint code{font-family:var(--mono);font-size:12px;color:var(--color-neon-cyan)}
+  .ap-body textarea{width:100%;min-height:184px;resize:vertical;border-radius:var(--r-control);border:1px solid var(--color-outline-variant);
+    background:rgba(6,14,32,.65);color:var(--color-text-primary);font-family:var(--mono);font-size:12px;line-height:1.55;padding:12px}
+  .ap-body textarea::placeholder{color:var(--color-outline)}
+  .ap-body textarea:focus{outline:0;border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary)}
+  .ap-actions{display:flex;gap:10px;margin-top:14px;align-items:center}
+  .ap-actions .tbtn{height:40px}
+  .filenote{font-family:var(--mono);font-size:10px;color:var(--color-text-secondary);margin:10px 0 0;letter-spacing:.02em}
+  .report{margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.7;border-radius:var(--r-control);padding:12px 14px;
+    border:1px solid rgba(182,243,106,.4);background:rgba(182,243,106,.08);color:var(--color-neon-lime)}
+  .report .r-line{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+  .report .c-up{color:var(--color-neon-cyan)} .report .c-rm{color:var(--color-status-amber)}
+  .report .wrote{display:block;margin-top:6px;color:var(--color-text-secondary)}
+
+  @media (prefers-reduced-motion: reduce){
+    .tbtn,.x,.link-chip,.size-seg button,.ap-tabs button{transition:none}
+    .tbtn:active{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="page-hd">
+    <h1><b>Flowcanvas</b> · Phase 9 redesign — iteration 09 “Spec Header”</h1>
+    <p>Thesis: a node’s metadata <strong>is its identity</strong>. Frontmatter is rendered as a first-class
+      <em>spec header</em> — a bold semantic status pill anchoring a horizontal tag/link chip row, with secondary
+      fields in a compact two-column mono grid. The reader mirrors it as a <em>sticky</em> spec bar above readable prose;
+      the toolbar groups inserts under a mono “INSERT” eyebrow. Three labeled artboards, full nyx void + fixed glass toolbar.</p>
+    <div class="toks">
+      <span class="tok">--color-bg #0b1326</span>
+      <span class="tok">glass blur 16/20/40</span>
+      <span class="tok">Geist + JetBrains Mono</span>
+      <span class="tok">status: lime·cyan·amber</span>
+      <span class="tok">tags --secondary · links --primary</span>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ARTBOARD A — Loaded board + redesigned toolbar + spec-header nodes
+       ════════════════════════════════════════════════════════════════ -->
+  <p class="cap"><span class="n">Artboard A</span> — Loaded board · redesigned toolbar (#8) · spec-header markdown nodes (#5)
+    <span class="ix">state: loaded · Select mode active · Shape flyout open</span></p>
+  <section class="artboard" aria-label="Artboard A — loaded board with redesigned toolbar">
+    <div class="grid"></div>
+
+    <!-- ░░ TOOLBAR ░░ -->
+    <header class="toolbar">
+      <!-- brand: half-moon glyph -->
+      <span class="brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3a9 9 0 010 18z" fill="currentColor" stroke="none"/></svg>
+        <b>flowcanvas</b>
+      </span>
+      <span class="tdiv"></span>
+
+      <!-- MODE cluster -->
+      <div class="tcluster">
+        <span class="eyebrow">Mode</span>
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="tbtn" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move" data-tip="Select / move">
+            <svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect nodes" data-tip="Connect (draw edge)">
+            <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode" data-tip="Comment">
+            <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+
+      <!-- INSERT cluster — direct icon buttons + Shape flyout -->
+      <div class="tcluster">
+        <span class="eyebrow">Insert</span>
+        <div class="seg" role="group" aria-label="Insert node">
+          <button class="tbtn" data-testid="toolbar-add-note" aria-label="Add note" data-tip="Note (text)">
+            <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-markdown" aria-label="Add markdown file" data-tip="Markdown file…">
+            <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M7 15v-4l2.2 2 2.2-2v4"/><path d="M15 11v4M13.2 13l1.8 2 1.8-2"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-image" aria-label="Add image" data-tip="Image…">
+            <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-link" aria-label="Add link" data-tip="Link…">
+            <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <span class="flyout-wrap open">
+            <button class="tbtn" data-flyout data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="true" aria-label="Add shape" data-tip="Shape ▾">
+              <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+              <svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout" role="menu" aria-label="Shape">
+              <div class="fy-hd">Shape</div>
+              <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button>
+            </div>
+          </span>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+
+      <!-- FILE flyout -->
+      <span class="flyout-wrap">
+        <button class="tbtn" data-flyout data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="false" aria-label="File menu">
+          <svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2z"/></svg>
+          <span>File</span>
+          <svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="flyout" role="menu" aria-label="File">
+          <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>img · .md</small></button>
+          <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…<small>agent .json</small></button>
+          <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…<small>DesignBrief</small></button>
+        </div>
+      </span>
+      <span class="tdiv"></span>
+
+      <!-- ARRANGE cluster — disabled Phase-10 scaffolds -->
+      <div class="tcluster">
+        <span class="eyebrow">Arrange · <span class="soon">soon</span></span>
+        <div class="seg" role="group" aria-label="Arrange (coming in Phase 10)">
+          <button class="tbtn is-disabled" data-testid="toolbar-group" aria-disabled="true" aria-label="Group (coming soon)" data-tip="Group — coming in Phase 10">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><rect x="8" y="8" width="4" height="4"/><rect x="13" y="12" width="4" height="4"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup (coming soon)" data-tip="Ungroup — coming in Phase 10">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke-dasharray="3 3"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize (coming soon)" data-tip="Re-organize — coming in Phase 10">
+            <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><path d="M17 5l3 2-3 2"/></svg></button>
+        </div>
+      </div>
+
+      <span class="tspring"></span>
+
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view" data-tip="Fit view">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="tbtn primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)">
+        <span class="save-dot" title="Unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+    </header>
+
+    <!-- ░░ BOARD ░░ -->
+    <div class="board">
+      <!-- edges -->
+      <svg class="edges" viewBox="0 0 1280 744" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <marker id="ar-user" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#c0c1ff" stroke-width="1.6"/></marker>
+          <marker id="ar-link" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#908fa0" stroke-width="1.4"/></marker>
+        </defs>
+        <!-- hero -> spec node (user, solid) -->
+        <path d="M468,212 C500,212 506,196 532,196" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#ar-user)"/>
+        <!-- hero -> store node (links, dashed) -->
+        <path d="M360,452 C360,500 470,470 532,470" fill="none" stroke="#908fa0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar-link)"/>
+      </svg>
+      <div class="fc-edge-label user" style="left:500px;top:204px">implements</div>
+      <div class="fc-edge-label" style="left:446px;top:486px"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>links</div>
+
+      <!-- HERO node: full spec-header markdown card (selected) -->
+      <article class="fc-node selected" style="left:88px;top:88px;width:364px;height:380px" aria-label="Schema & Adapter node">
+        <div class="hd">
+          <span class="title">Schema &amp; Adapter</span>
+          <span class="kind-chip">md</span>
+          <button class="nbtn" data-testid="node-maximize" aria-label="Open in reader (maximize)">
+            <svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+          <button class="nbtn" data-testid="node-collapse-toggle" aria-label="Collapse node">
+            <svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+        </div>
+        <!-- BANDED spec header -->
+        <div class="fc-fm">
+          <div class="fm-anchor">
+            <span class="status-pill active"><span class="pdot"></span>active</span>
+            <a class="link-chip" href="#" data-testid="fm-link-jsoncanvas" aria-label="Open jsoncanvas.md"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>jsoncanvas.md</a>
+            <a class="link-chip" href="#" data-testid="fm-link-store" aria-label="Open store.md"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>store.md</a>
+          </div>
+          <div class="chip-row">
+            <span class="tag-chip">#schema</span><span class="tag-chip">#canvas</span><span class="tag-chip">#react-flow</span><span class="tag-chip">#adapter</span>
+          </div>
+          <div class="kv-grid">
+            <div class="kv"><span class="k">kind</span><span class="v">markdown</span></div>
+            <div class="kv"><span class="k">owner</span><span class="v">lib/canvas</span></div>
+            <div class="kv"><span class="k">updated</span><span class="v">2d ago</span></div>
+            <div class="kv"><span class="k">size</span><span class="v">4.1 kb</span></div>
+          </div>
+        </div>
+        <!-- rendered markdown body -->
+        <div class="fc-body">
+          <h3>Adapter contract</h3>
+          <p>Maps a <code>FlowcanvasDoc</code> onto React&nbsp;Flow nodes — edges are <strong>derived</strong> from each file’s <code>links:</code> frontmatter.</p>
+          <ul>
+            <li>Parse YAML frontmatter into the spec header</li>
+            <li>Render the body with <em>remark-gfm</em></li>
+            <li>Re-derive <code>links:</code> edges on every load</li>
+          </ul>
+        </div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- second node: approved (lime) -->
+      <article class="fc-node" style="left:532px;top:108px;width:300px;height:222px" aria-label="JSONCanvas Spec node">
+        <div class="hd">
+          <span class="title">JSONCanvas Spec</span>
+          <span class="kind-chip">md</span>
+          <button class="nbtn" data-testid="node-maximize" aria-label="Open in reader (maximize)"><svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+          <button class="nbtn" data-testid="node-collapse-toggle" aria-label="Collapse node"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+        </div>
+        <div class="fc-fm">
+          <div class="fm-anchor"><span class="status-pill approved"><span class="pdot"></span>approved</span></div>
+          <div class="chip-row"><span class="tag-chip">#spec</span><span class="tag-chip">#jsoncanvas</span><span class="tag-chip">#v1.0</span></div>
+          <div class="kv-grid">
+            <div class="kv"><span class="k">kind</span><span class="v">markdown</span></div>
+            <div class="kv"><span class="k">ext</span><span class="v">.canvas</span></div>
+          </div>
+        </div>
+        <div class="fc-body">
+          <p>The open spec Flowcanvas extends — nodes, edges, and <code>color</code> presets <strong>1–6</strong>.</p>
+        </div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- third node: stale (amber), collapsed body -->
+      <article class="fc-node collapsed" style="left:532px;top:382px;width:300px;height:160px" aria-label="Canvas Store node">
+        <div class="hd">
+          <span class="title">Canvas Store</span>
+          <span class="kind-chip">md</span>
+          <button class="nbtn" data-testid="node-maximize" aria-label="Open in reader (maximize)"><svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+          <button class="nbtn" data-testid="node-collapse-toggle" aria-label="Expand node"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></button>
+        </div>
+        <div class="fc-fm">
+          <div class="fm-anchor">
+            <span class="status-pill stale"><span class="pdot"></span>stale</span>
+            <a class="link-chip" href="#" data-testid="fm-link-adapter" aria-label="Open adapter.md"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>adapter.md</a>
+          </div>
+          <div class="chip-row"><span class="tag-chip">#zustand</span><span class="tag-chip">#state</span></div>
+          <div class="kv-grid">
+            <div class="kv"><span class="k">kind</span><span class="v">markdown</span></div>
+            <div class="kv"><span class="k">updated</span><span class="v">3w ago</span></div>
+          </div>
+        </div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- chrome -->
+      <div class="controls" style="left:24px;bottom:24px">
+        <button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button>
+      </div>
+      <div class="legend" style="left:96px;bottom:27px">
+        <span><i class="lk"></i>links (derived)</span><span><i class="us"></i>user</span>
+      </div>
+      <div class="minimap" style="right:24px;bottom:24px;width:204px;height:132px" aria-hidden="true">
+        <span class="mm-grid"></span><span class="mm-cap">Map</span>
+        <b style="left:14px;top:34px;width:50px;height:48px;background:rgba(94,242,255,.55)"></b>
+        <b style="left:80px;top:30px;width:40px;height:26px;background:rgba(182,243,106,.55)"></b>
+        <b style="left:80px;top:66px;width:40px;height:22px;background:rgba(245,159,0,.5)"></b>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ARTBOARD B — Reader open · sticky spec bar (#4) + readable prose (#3)
+       ════════════════════════════════════════════════════════════════ -->
+  <p class="cap"><span class="n">Artboard B</span> — Reader open · sticky spec-header bar (#4) · readability overhaul (#3)
+    <span class="ix">state: reader-open · Half size active</span></p>
+  <section class="artboard" aria-label="Artboard B — reader drawer open">
+    <div class="grid"></div>
+
+    <!-- same toolbar shell (one toolbar in the real app; repeated per artboard state) -->
+    <header class="toolbar">
+      <span class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3a9 9 0 010 18z" fill="currentColor" stroke="none"/></svg><b>flowcanvas</b></span>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Mode</span>
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="tbtn" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect nodes"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Insert</span>
+        <div class="seg" role="group" aria-label="Insert node">
+          <button class="tbtn" data-testid="toolbar-add-note" aria-label="Add note"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-markdown" aria-label="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M7 15v-4l2.2 2 2.2-2v4"/><path d="M15 11v4M13.2 13l1.8 2 1.8-2"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-image" aria-label="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-link" aria-label="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <span class="flyout-wrap"><button class="tbtn" data-flyout data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="false" aria-label="Add shape"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout" role="menu" aria-label="Shape"><div class="fy-hd">Shape</div>
+              <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button></div>
+          </span>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+      <span class="flyout-wrap"><button class="tbtn" data-flyout data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="false" aria-label="File menu"><svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2z"/></svg><span>File</span><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="flyout" role="menu" aria-label="File">
+          <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>img · .md</small></button>
+          <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…<small>agent .json</small></button>
+          <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…<small>DesignBrief</small></button></div>
+      </span>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Arrange · <span class="soon">soon</span></span>
+        <div class="seg" role="group" aria-label="Arrange (coming in Phase 10)">
+          <button class="tbtn is-disabled" data-testid="toolbar-group" aria-disabled="true" aria-label="Group (coming soon)" data-tip="Group — coming in Phase 10"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><rect x="8" y="8" width="4" height="4"/><rect x="13" y="12" width="4" height="4"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup (coming soon)" data-tip="Ungroup — coming in Phase 10"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke-dasharray="3 3"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize (coming soon)" data-tip="Re-organize — coming in Phase 10"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><path d="M17 5l3 2-3 2"/></svg></button>
+        </div>
+      </div>
+      <span class="tspring"></span>
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="tbtn primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)"><span class="save-dot"></span><span>Save</span><span class="kbd">⌘S</span></button>
+    </header>
+
+    <!-- board dimmed under the drawer -->
+    <div class="board dim">
+      <article class="fc-node" style="left:88px;top:96px;width:300px;height:150px" aria-hidden="true">
+        <div class="hd"><span class="title">Schema &amp; Adapter</span><span class="kind-chip">md</span></div>
+        <div class="fc-fm"><div class="fm-anchor"><span class="status-pill active"><span class="pdot"></span>active</span></div>
+          <div class="chip-row"><span class="tag-chip">#schema</span><span class="tag-chip">#canvas</span></div></div>
+      </article>
+      <article class="fc-node collapsed" style="left:420px;top:300px;width:280px;height:120px" aria-hidden="true">
+        <div class="hd"><span class="title">Canvas Store</span><span class="kind-chip">md</span></div>
+        <div class="fc-fm"><div class="fm-anchor"><span class="status-pill stale"><span class="pdot"></span>stale</span></div></div>
+      </article>
+    </div>
+
+    <!-- ░░ READER DRAWER ░░ -->
+    <aside class="reader" aria-label="Reader drawer">
+      <div class="rhd">
+        <div class="rtitle">
+          <span class="fn">Schema &amp; Adapter.md</span>
+          <span class="fp">lib/canvas/adapter.ts · references/</span>
+        </div>
+        <div class="size-seg" role="group" aria-label="Reader size">
+          <button data-testid="reader-size-drawer" aria-pressed="false">Drawer</button>
+          <button data-testid="reader-size-half" aria-pressed="true">Half</button>
+          <button data-testid="reader-size-full" aria-pressed="false">Full</button>
+        </div>
+        <button class="x" data-testid="reader-close" aria-label="Close reader"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+
+      <div class="r-scroll">
+        <!-- STICKY spec bar — mirrors the node spec header, larger.
+             (When frontmatter is empty this bar is omitted entirely — no empty bar.) -->
+        <div class="r-fmbar">
+          <div class="anchor">
+            <span class="status-pill active"><span class="pdot"></span>active</span>
+            <span class="tag-chip">#schema</span><span class="tag-chip">#canvas</span><span class="tag-chip">#react-flow</span><span class="tag-chip">#adapter</span>
+            <a class="link-chip" href="#" data-testid="reader-fm-link-jsoncanvas"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>jsoncanvas.md</a>
+            <a class="link-chip" href="#" data-testid="reader-fm-link-store"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>store.md</a>
+          </div>
+          <div class="kv-row">
+            <div class="kv"><span class="k">kind</span><span class="v">markdown</span></div>
+            <div class="kv"><span class="k">owner</span><span class="v">lib/canvas</span></div>
+            <div class="kv"><span class="k">updated</span><span class="v">2d ago</span></div>
+            <div class="kv"><span class="k">size</span><span class="v">4.1 kb</span></div>
+          </div>
+        </div>
+
+        <!-- readable prose: 17px/1.72, 66ch centered, opaque surface -->
+        <div class="prose">
+          <h1>Schema &amp; Adapter</h1>
+          <p class="lede">The adapter maps a stored <code>FlowcanvasDoc</code> onto React&nbsp;Flow nodes and edges — the single boundary between persisted JSONCanvas and the live board.</p>
+
+          <h2>Responsibilities</h2>
+          <p>The adapter is pure and deterministic: given the same document it returns the same nodes and edges, so re-renders never drift.</p>
+          <ul>
+            <li>Translate each node’s frontmatter into the <strong>spec header</strong> shown on the card.</li>
+            <li>Derive <code>links:</code> edges, deduplicating against user-drawn ones.</li>
+            <li>Resolve JSONCanvas <code>color</code> presets <em>1–6</em> through <code>colorVar()</code>, never inline hex.</li>
+          </ul>
+
+          <h2>Adapter</h2>
+          <p>The mapping reads as plain data in, plain data out:</p>
+          <pre><code><span class="cm">// lib/canvas/adapter.ts</span>
+<span class="kw">export function</span> <span class="fn">toReactFlow</span><span class="pn">(</span>doc<span class="pn">:</span> FlowcanvasDoc<span class="pn">)</span> <span class="pn">{</span>
+  <span class="kw">const</span> nodes <span class="pn">=</span> doc<span class="pn">.</span>nodes<span class="pn">.</span><span class="fn">map</span><span class="pn">((</span>n<span class="pn">)</span> <span class="kw">=&gt;</span> <span class="pn">({</span>
+    id<span class="pn">:</span> n<span class="pn">.</span>id<span class="pn">,</span> type<span class="pn">:</span> <span class="fn">nodeKind</span><span class="pn">(</span>n<span class="pn">),</span>
+    position<span class="pn">:</span> <span class="pn">{</span> x<span class="pn">:</span> n<span class="pn">.</span>x<span class="pn">,</span> y<span class="pn">:</span> n<span class="pn">.</span>y <span class="pn">},</span>
+    width<span class="pn">:</span> n<span class="pn">.</span>width <span class="pn">??</span> <span class="nm">360</span><span class="pn">,</span>
+    data<span class="pn">:</span> <span class="pn">{</span> frontmatter<span class="pn">:</span> n<span class="pn">.</span>fm<span class="pn">,</span> status<span class="pn">:</span> <span class="st">"active"</span> <span class="pn">},</span>
+  <span class="pn">}))</span>
+  <span class="kw">return</span> <span class="pn">{</span> nodes<span class="pn">,</span> edges<span class="pn">:</span> <span class="fn">deriveLinks</span><span class="pn">(</span>doc<span class="pn">)</span> <span class="pn">}</span>
+<span class="pn">}</span></code></pre>
+          <p>Node bodies use a lightweight client renderer; full <code>rehype-shiki</code> highlighting runs only here in the reader — proven by the colored tokens above.</p>
+
+          <blockquote><p>The board is the medium: every file is a node, every relationship an edge, every frontmatter a spec header the agent can read without filesystem access.</p></blockquote>
+
+          <h3>Edge derivation</h3>
+          <p>Off-board <code>links:</code> targets draw no edge; only in-board references resolve, so the graph never points into nothing.</p>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ARTBOARD C — Agent Import · Load .json beside paste + Apply (#2a)
+       ════════════════════════════════════════════════════════════════ -->
+  <p class="cap"><span class="n">Artboard C</span> — Agent panel · Import tab · Load .json beside paste + Apply (#2a)
+    <span class="ix">state: agent-io · Import active</span></p>
+  <section class="artboard" aria-label="Artboard C — agent import">
+    <div class="grid"></div>
+
+    <header class="toolbar">
+      <span class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3a9 9 0 010 18z" fill="currentColor" stroke="none"/></svg><b>flowcanvas</b></span>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Mode</span>
+        <div class="seg" role="group" aria-label="Canvas mode">
+          <button class="tbtn" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move"><svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect nodes"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Insert</span>
+        <div class="seg" role="group" aria-label="Insert node">
+          <button class="tbtn" data-testid="toolbar-add-note" aria-label="Add note"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-markdown" aria-label="Add markdown file"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M7 15v-4l2.2 2 2.2-2v4"/><path d="M15 11v4M13.2 13l1.8 2 1.8-2"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-image" aria-label="Add image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+          <button class="tbtn" data-testid="toolbar-add-link" aria-label="Add link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg></button>
+          <span class="flyout-wrap"><button class="tbtn" data-flyout data-testid="toolbar-add-shape" aria-haspopup="true" aria-expanded="false" aria-label="Add shape"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="flyout" role="menu" aria-label="Shape"><div class="fy-hd">Shape</div>
+              <button role="menuitem" data-testid="add-shape-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle</button>
+              <button role="menuitem" data-testid="add-shape-ellipse"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</button>
+              <button role="menuitem" data-testid="add-shape-diamond"><svg viewBox="0 0 24 24"><path d="M12 4l8 8-8 8-8-8z"/></svg>Diamond</button></div>
+          </span>
+        </div>
+      </div>
+      <span class="tdiv"></span>
+      <span class="flyout-wrap open"><button class="tbtn" data-flyout data-testid="toolbar-file-menu" aria-haspopup="true" aria-expanded="true" aria-label="File menu"><svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2z"/></svg><span>File</span><svg class="caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="flyout" role="menu" aria-label="File">
+          <button role="menuitem" data-testid="file-upload"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg>Upload…<small>img · .md</small></button>
+          <button role="menuitem" data-testid="file-import"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>Import response…<small>agent .json</small></button>
+          <button role="menuitem" data-testid="file-export"><svg viewBox="0 0 24 24"><path d="M12 21V9M8 13l4-4 4 4M5 3h14"/></svg>Export brief…<small>DesignBrief</small></button></div>
+      </span>
+      <span class="tdiv"></span>
+      <div class="tcluster"><span class="eyebrow">Arrange · <span class="soon">soon</span></span>
+        <div class="seg" role="group" aria-label="Arrange (coming in Phase 10)">
+          <button class="tbtn is-disabled" data-testid="toolbar-group" aria-disabled="true" aria-label="Group (coming soon)" data-tip="Group — coming in Phase 10"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><rect x="8" y="8" width="4" height="4"/><rect x="13" y="12" width="4" height="4"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-ungroup" aria-disabled="true" aria-label="Ungroup (coming soon)" data-tip="Ungroup — coming in Phase 10"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke-dasharray="3 3"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="tbtn is-disabled" data-testid="toolbar-reorganize" aria-disabled="true" aria-label="Re-organize (coming soon)" data-tip="Re-organize — coming in Phase 10"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><path d="M17 5l3 2-3 2"/></svg></button>
+        </div>
+      </div>
+      <span class="tspring"></span>
+      <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="tbtn primary" data-testid="toolbar-save" aria-label="Save board (unsaved changes)"><span class="save-dot"></span><span>Save</span><span class="kbd">⌘S</span></button>
+    </header>
+
+    <div class="board dim">
+      <article class="fc-node" style="left:88px;top:96px;width:300px;height:150px" aria-hidden="true">
+        <div class="hd"><span class="title">Schema &amp; Adapter</span><span class="kind-chip">md</span></div>
+        <div class="fc-fm"><div class="fm-anchor"><span class="status-pill active"><span class="pdot"></span>active</span></div>
+          <div class="chip-row"><span class="tag-chip">#schema</span><span class="tag-chip">#canvas</span></div></div>
+      </article>
+    </div>
+
+    <!-- ░░ AGENT PANEL — Import tab ░░ -->
+    <aside class="agent-panel" aria-label="Agent round-trip">
+      <div class="ap-hd"><b>Agent round-trip</b><span class="sub">brief-3f9c</span>
+        <button class="x" data-testid="agent-close" aria-label="Close agent panel"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="ap-tabs" role="tablist" aria-label="Agent tabs">
+        <button role="tab" data-testid="agent-tab-export" aria-selected="false">Export brief</button>
+        <button role="tab" data-testid="agent-tab-import" aria-selected="true">Import response</button>
+      </div>
+      <div class="ap-body" role="tabpanel" aria-label="Import response">
+        <p class="hint">Paste the agent’s <code>AgentResponse</code> JSON <strong>or</strong> load it straight from a file. The merge is idempotent — it writes generated files, upserts nodes/edges, attaches replies by id, and re-derives <code>links:</code> edges.</p>
+
+        <textarea data-testid="response-paste" aria-label="Paste agent response JSON" placeholder='{ "responseVersion":"0.1", "briefId":"brief-3f9c", "upsertNodes":[…], "generatedFiles":[…] }'></textarea>
+
+        <!-- Load .json sits in the same action row as Apply, so file-load is a first-class peer of paste.
+             A hidden <input type="file" accept="application/json" data-testid="response-file-input"> is triggered by this button. -->
+        <div class="ap-actions">
+          <button class="tbtn" data-testid="response-load-file" aria-label="Load response from a .json file">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 20h14"/></svg><span>Load .json…</span></button>
+          <button class="tbtn primary" data-testid="response-apply" aria-label="Apply agent response">
+            <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg><span>Apply response</span></button>
+        </div>
+        <p class="filenote">Reads <code>response.json</code> from disk — no clipboard step required.</p>
+
+        <!-- sample merge report -->
+        <div class="report" role="status">
+          <div class="r-line">
+            <span>✓ applied · brief-3f9c</span>
+            <span><strong>2</strong> created</span>
+            <span class="c-up"><strong>3</strong> updated</span>
+            <span class="c-rm"><strong>1</strong> removed</span>
+          </div>
+          <span class="wrote">wrote 001-…-test-notes.md · upserted n-adapter, n-store · +1 reply on c-1 · re-derived 4 links</span>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+</div><!-- /page -->
+
+<script>
+  // ── flyout toggles (Shape ▾, File ▾) ────────────────────────────────
+  document.querySelectorAll('[data-flyout]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var wrap = btn.closest('.flyout-wrap');
+      var willOpen = !wrap.classList.contains('open');
+      document.querySelectorAll('.flyout-wrap.open').forEach(function(w){
+        if(w!==wrap){ w.classList.remove('open'); var b=w.querySelector('[data-flyout]'); if(b) b.setAttribute('aria-expanded','false'); }
+      });
+      wrap.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', String(willOpen));
+    });
+  });
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.flyout-wrap.open').forEach(function(w){
+      w.classList.remove('open'); var b=w.querySelector('[data-flyout]'); if(b) b.setAttribute('aria-expanded','false');
+    });
+  });
+  document.querySelectorAll('.flyout').forEach(function(f){ f.addEventListener('click', function(e){ e.stopPropagation(); }); });
+
+  // ── node collapse toggle ────────────────────────────────────────────
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(){
+      var n = t.closest('.fc-node'); if(!n) return;
+      var collapsed = n.classList.toggle('collapsed');
+      t.setAttribute('aria-label', collapsed ? 'Expand node' : 'Collapse node');
+    });
+  });
+
+  // ── disabled scaffolds: block activation, keep tooltip on focus ──────
+  document.querySelectorAll('.tbtn.is-disabled').forEach(function(b){
+    b.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); });
+  });
+</script>
+</body>
+</html>

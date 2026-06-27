@@ -1,15 +1,153 @@
 {
   "nodes": [
-    { "id": "n-welcome", "type": "file", "file": "examples/welcome.md", "x": -540, "y": -280, "width": 400, "height": 360, "color": "5", "meta": { "origin": "user" } },
-    { "id": "n-schema", "type": "file", "file": "examples/schema.md", "x": -100, "y": -280, "width": 380, "height": 320, "meta": { "origin": "user" } },
-    { "id": "n-spec", "type": "link", "url": "https://jsoncanvas.org", "x": 320, "y": -280, "width": 240, "height": 110, "color": "6", "meta": { "origin": "user" } },
-    { "id": "n-note", "type": "text", "text": "## Pinned note\nComments and edges land in the next phases — for now, **content nodes** are live.", "x": 320, "y": -130, "width": 260, "height": 170, "color": "#5ef2ff", "meta": { "origin": "user" } },
-    { "id": "n-arch", "type": "file", "file": "examples/architecture.svg", "x": -540, "y": 120, "width": 420, "height": 280, "meta": { "origin": "user" } }
+    {
+      "id": "n-welcome",
+      "type": "file",
+      "file": "examples/welcome.md",
+      "x": -575.1173708920188,
+      "y": -296.76056338028167,
+      "width": 400,
+      "height": 360,
+      "color": "5",
+      "meta": {
+        "origin": "user",
+        "frontmatter": {
+          "name": "Welcome to Flowcanvas",
+          "status": "living",
+          "tags": [
+            "canvas",
+            "markdown",
+            "getting-started"
+          ],
+          "description": "This board is what loads by default — it is itself a .canvas file on disk.",
+          "links": [
+            "examples/schema.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-schema",
+      "type": "file",
+      "file": "examples/schema.md",
+      "x": -100,
+      "y": -280,
+      "width": 380,
+      "height": 320,
+      "meta": {
+        "origin": "user",
+        "frontmatter": {
+          "name": "Extended JSONCanvas",
+          "status": "stable",
+          "tags": [
+            "schema",
+            "jsoncanvas",
+            "adapter"
+          ],
+          "description": "Flowcanvas stores boards as an extended JSONCanvas document."
+        }
+      }
+    },
+    {
+      "id": "n-spec",
+      "type": "link",
+      "url": "https://jsoncanvas.org",
+      "x": 320,
+      "y": -280,
+      "width": 240,
+      "height": 110,
+      "color": "6",
+      "meta": {
+        "origin": "user"
+      }
+    },
+    {
+      "id": "n-note",
+      "type": "text",
+      "text": "## Pinned note\nComments and edges land in the next phases — for now, **content nodes** are live.",
+      "x": 320,
+      "y": -130,
+      "width": 260,
+      "height": 170,
+      "color": "#5ef2ff",
+      "meta": {
+        "origin": "user"
+      }
+    },
+    {
+      "id": "n-arch",
+      "type": "file",
+      "file": "examples/architecture.svg",
+      "x": -540,
+      "y": 120,
+      "width": 420,
+      "height": 280,
+      "meta": {
+        "origin": "user"
+      }
+    },
+    {
+      "id": "n-e9343ca2",
+      "type": "file",
+      "file": "README.md",
+      "x": 210.77656371531398,
+      "y": 13.350084591842958,
+      "width": 380,
+      "height": 320,
+      "meta": {
+        "origin": "user",
+        "frontmatter": {}
+      }
+    },
+    {
+      "id": "n-af995d24",
+      "type": "file",
+      "file": "assets/008-parallel-aware-plan-execution.md",
+      "x": -195.03391580296687,
+      "y": 7.227943737041315,
+      "width": 380,
+      "height": 320,
+      "meta": {
+        "origin": "user",
+        "frontmatter": {}
+      }
+    },
+    {
+      "id": "n-560e117c",
+      "type": "group",
+      "label": "",
+      "x": 564.1769293563156,
+      "y": -67.28968413707908,
+      "width": 272,
+      "height": 132,
+      "meta": {
+        "origin": "user",
+        "shape": "diamond"
+      }
+    }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "lk:n-welcome->n-schema",
+      "fromNode": "n-welcome",
+      "toNode": "n-schema",
+      "toEnd": "arrow",
+      "label": "links",
+      "color": "6",
+      "meta": {
+        "origin": "links"
+      }
+    }
+  ],
   "flowcanvas": {
     "schemaVersion": "0.1",
-    "session": { "title": "Flowcanvas — Welcome", "intent": "Default demo board for content nodes", "createdAt": "2026-06-26T00:00:00Z", "updatedAt": "2026-06-26T00:00:00Z", "revision": 0 },
+    "session": {
+      "title": "Flowcanvas — Welcome",
+      "intent": "Default demo board for content nodes",
+      "createdAt": "2026-06-26T00:00:00Z",
+      "updatedAt": "2026-06-27T16:06:24.454Z",
+      "revision": 2
+    },
     "comments": []
   }
 }
