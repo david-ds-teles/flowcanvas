@@ -61,6 +61,7 @@ function Inner({ id, data }: NodeProps) {
   ]
 
   return (
+    <>
     <div className={cn('fc-node', 'fc-node--md', collapsed && 'is-collapsed')}>
       <header className="fc-node__head">
         <span className="fc-node__title" title={title}>
@@ -95,11 +96,13 @@ function Inner({ id, data }: NodeProps) {
       <div className="fc-node__body">
         <CanvasMarkdown basePath={node.file}>{body ?? '_resolving…_'}</CanvasMarkdown>
       </div>
-
-      {SIDES.map((p) => (
-        <Handle key={p} type="source" position={p} id={p} />
-      ))}
     </div>
+    {/* Handles are siblings of the card (not nested in it) so they paint above the whole card
+        subtree and stay grabbable on every side — nesting them clipped the right/bottom hit areas. */}
+    {SIDES.map((p) => (
+      <Handle key={p} type="source" position={p} id={p} />
+    ))}
+    </>
   )
 }
 

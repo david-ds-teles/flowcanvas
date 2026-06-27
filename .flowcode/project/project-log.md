@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 001-initial-architecture — Flowcanvas v0.1 — 2026-06-26
+
+**Dev:** david-ds-teles
+**Delivered:** A standalone Next.js 16 / React Flow canvas that maps flowcode markdown into spatial nodes with `links:`-derived + manual edges, pinned comment threads, and a bidirectional, idempotent human↔agent JSON round-trip — persisted to a `.canvas` file behind seven guarded fs routes.
+**Artifacts:** `001-initial-architecture-technical-overview.md`, `001-initial-architecture-changelog.md`, `001-initial-architecture-test-notes.md`, `001-initial-architecture-qa-report.md`
+**Follow-ups:** autosave; per-node revision tracking (conflicts); symlink-aware path guard; reader image-src rewriting; node-body inline editing
+
+---
+
 ## [FEEDBACK] UI design gate + nyx pivot — 2026-06-26
 
 **Dev:** david-ds-teles

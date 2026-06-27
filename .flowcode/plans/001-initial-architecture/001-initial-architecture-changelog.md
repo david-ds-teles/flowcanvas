@@ -111,6 +111,86 @@ One-line intro: derives `lk:` edges from `links:` frontmatter on each load and l
 
 ---
 
+## Phase 6 — Comments Layer
+
+One-line intro: adds node- or canvas-anchored pinned comments with flat threads (reply + resolve) as a teardrop-pin overlay projected from live React Flow geometry, plus a minimal comment-mode toggle in the shell.
+
+| File | Type | Summary |
+|------|------|---------|
+| `lib/canvas/comments.ts` | created | Pure anchor geometry: `anchorForPoint` (flow-space click → node/canvas `CommentAnchor`; top-most hit; clamped 0..1 fractions; zero-size guard) + `anchorToFlowPoint` (projects anchor back to a flow point against live node geometry; returns null when the node has left the board). |
+| `lib/canvas/comments.test.ts` | created | 9 unit tests: hit-test inside / outside / corner-clamp / topmost / zero-size; projection canvas / node / round-trip / missing-node. |
+| `lib/canvas/store.ts` | modified | Added `commentMode` + `setCommentMode`; immutable `addComment` (root, sequential `badge`, returns new id), `replyComment` (copies root anchor, no badge), `resolveComment` (root-only, true no-op on unknown/reply/already-resolved); new `commentId()` helper (`crypto.randomUUID`). |
+| `lib/canvas/store.test.ts` | modified | 7 new `store / comments` tests: badge sequence, no-doc guard, reply anchor copy, unknown-root ignore, resolve stamp, resolve no-op stays clean, immutability. |
+| `components/canvas/comment-layer.tsx` | created | Absolute pin overlay; projects pins via `flowToScreenPosition` over live measured geometry (`useNodes` + `useViewport`); places pins on click in comment mode (anchor math from `comments.ts`); manages open-thread + draft state; Esc + render-phase draft reset; `LOCAL_AUTHOR = 'human:you'`. |
+| `components/canvas/comment-thread.tsx` | created | Glass popover; root + flat replies (avatar rows), reply box, resolve toggle; doubles as the draft composer for a freshly-placed pin. |
+| `components/canvas/canvas-shell.tsx` | modified | Mounts `<CommentLayer/>`; minimal floating comment-mode toggle (`data-testid=toolbar-comment-mode`). |
+| `app/globals.css` | modified | Comment pin teardrop / thread popover / comment rows / reply / resolve / mode-toggle styles (ported from mockup 04); ALSO added `@import "tailwindcss" source(none)` + explicit `@source "../app\|../components\|../lib"` to stop Tailwind v4 auto-source-detection walking symlinked `.flowcode/*` dirs (which 500'd the dev server). |
+| `.flowcode/project/project-overview.md` | modified | Added `lib/canvas/comments.ts` ("Comment anchors") module row; updated Store + Comments rows. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md` | modified | Plan artifacts updated this phase (file table, snippets). |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-ui-design.md` | modified | Visual-parity Phase-6 row added. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md` | modified | QA findings for Phase 6 recorded. |
+
+**Follow-up — UX fix (operator feedback, post-close):** the shipped build used a native `window.prompt` for edge labels and an awkward floating comment affordance. Reworked (polish only, no toolbar): edge labels now edited via an inline in-canvas glass `<input>`; comment-mode control is a compact 38×38 icon toggle; the thread popover is tethered to its pin with a connector beak.
+
+| File | Type | Summary |
+|------|------|---------|
+| `lib/canvas/store.ts` | modified | `onConnect(conn)` mints an **empty-label** edge + opens its inline editor (was `onConnect(conn, label)` from a prompt); added transient `editingEdgeId` + `setEditingEdge`. |
+| `lib/canvas/store.test.ts` | modified | `onConnect` tests updated (empty label + editor opens); new `setEditingEdge` test; `beforeEach` resets `commentMode`/`editingEdgeId`. |
+| `components/canvas/edges/labeled-edge.tsx` | modified | New `EdgeLabelEditor` (inline `EdgeLabelRenderer` `<input>`; Enter/blur commit via `relabelEdge`, Esc cancels; `closed` ref guards double-fire; `nodrag nopan`); static label double-click opens it. Replaces `window.prompt`. |
+| `components/canvas/canvas-shell.tsx` | modified | Removed both `window.prompt` call sites; `onConnect` passed through; `onEdgeDoubleClick`→`setEditingEdge`; comment-mode control → compact icon button. |
+| `components/canvas/comment-layer.tsx` | modified | `placePopover` computes tethered placement (aims at pin badge, flips near right edge, clamps, returns `{pos, side, beakTop}`). |
+| `components/canvas/comment-thread.tsx` | modified | Takes `pos`/`side`/`beakTop`; renders connector `.fc-cpop__beak` toward the pin. |
+| `app/globals.css` | modified | Compact `.fc-modebtn` (square icon, cyan when pressed); `.fc-cpop__beak`; `.fc-edge-input`; removed the popover's old fixed `translate` offset. |
+| `.flowcode/project/project-overview.md` | modified | Store / Edge / Comments rows re-synced (inline edge editor, `editingEdgeId`, tethered thread, compact toggle). |
+
+**Follow-up 2 — connection reliability (operator feedback, post-close):** edge connections were intermittent ("sometimes works, sometimes doesn't") and a node could connect to itself ("reference itself infinity"). Root cause (found via live CDP hit-testing): the `<Handle>`s were rendered *inside* the `.fc-node` card, so the `right` + `bottom` handles were occluded by the card (`elementFromPoint` returned `.fc-node`, not the handle) — only 2 of 4 sides could start a connection. Fixes:
+
+| File | Type | Summary |
+|------|------|---------|
+| `components/canvas/nodes/markdown-node.tsx`, `image-node.tsx`, `link-node.tsx`, `note-node.tsx`, `fallback-node.tsx` | modified | Handles moved out of the card into a fragment sibling, so they paint above the whole card subtree — all four sides now grabbable (CDP-verified `isHandle=true` for top/right/bottom/left). |
+| `lib/canvas/store.ts` | modified | `onConnect` rejects self-connections (`conn.source === conn.target`). |
+| `lib/canvas/store.test.ts` | modified | New test: self-connection is a no-op (no edge minted, no editor). |
+| `components/canvas/canvas-shell.tsx` | modified | `isValidConnection` rejects self-loops at drag time (line never snaps to the source); `connectionRadius={34}` for forgiving drops. |
+| `app/globals.css` | modified | Handle rules prefixed with `.react-flow ` to outrank @xyflow/react's stylesheet — 12px neon dot, `z-index:5`, ~20px invisible grab target (`::before`), valid-target cyan highlight. |
+
+---
+
+## Phase 7 — Agent Round-Trip & Polish
+
+Closes Flowcanvas v0.1: the bidirectional human↔agent JSON loop (`DesignBrief` export → `AgentResponse` import → idempotent merge) plus the full plan-complete chrome — top toolbar, agent panel, shiki reader drawer, add-node menu + file picker, drag-drop dropzone, and a render error boundary.
+
+| File | Type | Summary |
+|------|------|---------|
+| `lib/canvas/brief.ts` | created | Agent round-trip schema types + pure `buildBrief` (embeds each markdown node's frontmatter+body, edges with `origin`, comments by id, `intent`) + pure `applyResponse` (8-step idempotent merge → `{next, report}`) + the `AGENT_CONTRACT` string. Idempotency hardened beyond the design: comments dedup by `id` else by `(parentId,author,text)` signature; id-less agent edges that duplicate a directed pair already on the board are skipped. |
+| `lib/canvas/brief.test.ts` | created | 9 tests — build shape (frontmatter/body/url/text/edges/comments/intent), idempotent double-apply, id-less reply/edge dedup, stale flag, removals, update-by-id. |
+| `lib/canvas/store.ts` | modified | Unified `commentMode` → `mode: CanvasMode` (`select`\|`connect`\|`comment`) + `setMode`; added `addNode` (immutable append for text/link/group) + `addFileNode` (async resolve+re-derive); `buildBrief()` (resolve all md → brief, stamp `session.lastBriefId`) + `applyResponse()` (pure merge → write generated files → re-resolve/re-derive → persist); extracted the shared `hydrateFiles` helper (now also used by `load`). |
+| `lib/canvas/store.test.ts` | modified | `commentMode`→`mode` reset; new `setMode` + `addNode` tests. |
+| `lib/render-md.ts` | created | Server unified pipeline `remark-parse → remark-gfm → remark-rehype → rehype-sanitize → @shikijs/rehype → rehype-stringify` (shiki tokenizes AFTER sanitize so its inline-styled spans survive). `@shikijs/rehype` is the Phase-1 WASM replacement for the design's native `rehype-shiki`. |
+| `app/api/render/route.ts` | created | `GET ?path=` → `{ html }`; guarded (`guardPath` + `.md` check), `../` + non-md → 400, ENOENT → 404. |
+| `components/canvas/reader-drawer.tsx` | created | Right glass drawer; fetches `/api/render`, renders full-fidelity shiki prose + the node's comment thread; opens on a markdown-node click (`reader-close`). |
+| `components/canvas/export-panel.tsx` | created | Agent I/O right drawer (Export/Import tabs): Export builds + copies/downloads the `DesignBrief`; Import validates `responseVersion`/`briefId`, applies, and renders an inline merge report + amber stale banner. Builds the brief once per open (`builtRef` guard). |
+| `components/canvas/canvas-toolbar.tsx` | created | Top glass toolbar: mode group, `+ Add ▾` menu, upload (with transient error chip), Import/Export, fit-view, save + dirty dot; `useSaveShortcut` (⌘S). |
+| `components/canvas/file-picker.tsx` | created | Glass dir-browser popover over guarded `/api/files` for add-node markdown/image. |
+| `components/canvas/dropzone.tsx` | created | Full-canvas drag-drop overlay (gated on `dataTransfer.types` ∋ `Files`); drop → `uploadFile` → `addFileNode` at the projected point. |
+| `components/canvas/comment-layer.tsx` | modified | Reads the unified `mode === 'comment'` (was `commentMode`); Esc exits via `setMode('select')`. |
+| `components/canvas/canvas-shell.tsx` | modified | Mounts the toolbar/dropzone/reader/agent panel; `onNodeClick` → reader for markdown nodes; `connect`-mode adds `.fc-rf--connect`; removed the Phase-6 mode-bar. |
+| `docs/flowcanvas-agent-contract.md` | created | Human-readable agent output contract — loop, rules, `AgentResponse` schema, worked example (mirrors `AGENT_CONTRACT`). |
+| `app/globals.css` | modified | Phase-7 styles (toolbar / add-node menu / file-picker / agent drawer / reader prose 16-px / dropzone / upload-error chip); replaced the dead `.fc-modebar`/`.fc-modebtn` block; comment hint nudged below the toolbar. |
+| `app/page.tsx` | modified | Client error boundary around the canvas shell (degrades to the nyx error card on a render-time fault). |
+| `.flowcode/project/project-overview.md` | modified | Store/API/Export-Import/Reader/Comments/Canvas-shell rows refreshed; Toolbar/File-picker/Dropzone rows added (qa Finding 1). |
+
+---
+
 ## Reconciliation
 
-{Written at plan completion after the Code Explorer audit. Correct any divergence between per-phase entries and the final code state; flag anomalies. If none: write "None — per-phase entries match the code."}
+Reconciled at plan completion against the committed source (audit run **inline** — the Post-Execution `flowcode:code-explorer-agent` stalled on the background-agent stream watchdog; see the technical-overview audit note).
+
+**Per-phase entries match the code**, with these confirmations of the cross-phase rewrites that touched files named in earlier phases:
+
+- **`commentMode` → `mode`.** Phase 6 introduced `commentMode`/`setCommentMode`; Phase 7 replaced them with the unified `mode: CanvasMode` + `setMode`. The final tree has **no store `commentMode`/`setCommentMode` field** — the only `commentMode` occurrences are a local derived boolean (`mode === 'comment'`) inside `components/canvas/comment-layer.tsx`. The Phase-6 changelog/log entries describe the state at that phase; this is the intended supersession, not drift.
+- **`window.prompt` fully removed.** The Phase-5 entry mentions an `onConnect` label prompt; the Phase-6 follow-up replaced it with the inline edge editor, and Phase 7 added no new prompts. The final tree has **zero `window.prompt` call sites** (only comments documenting the removal).
+- **`.fc-modebar`/`.fc-modebtn` CSS** (Phase 6) was removed in Phase 7 when the toolbar superseded the mode-bar — confirmed absent from `app/globals.css`.
+- **`store.ts` / `globals.css` / `canvas-shell.tsx`** appear in several phase sections (2–7) because each phase extended them; the final state is the union, consistent with every entry.
+- **File-count note:** `components/canvas/file-picker.tsx` shipped in Phase 7 beyond the plan's original file table (the plan table was updated in the same close).
+
+No anomalies. The 56-test suite, `tsc`/`lint`/`build`, and the Phase-7 CDP visual-parity run (18/18) all pass on the reconciled tree.

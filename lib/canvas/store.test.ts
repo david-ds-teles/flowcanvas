@@ -17,20 +17,37 @@ function seed(): FlowcanvasDoc {
   }
 }
 
-beforeEach(() => useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false }))
+beforeEach(() => useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null }))
 
 describe('store / onConnect', () => {
-  it('mints a user edge with the given label and marks the doc dirty', () => {
-    useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'right', targetHandle: 'left' }, 'depends on')
-    const { doc, dirty } = useCanvasStore.getState()
+  it('mints an empty-label user edge, opens its inline editor, and marks the doc dirty', () => {
+    useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
+    const { doc, dirty, editingEdgeId } = useCanvasStore.getState()
     const minted = doc!.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
-    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', fromSide: 'right', toSide: 'left', label: 'depends on', toEnd: 'arrow', meta: { origin: 'user' } })
+    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', fromSide: 'right', toSide: 'left', label: '', toEnd: 'arrow', meta: { origin: 'user' } })
+    expect(editingEdgeId).toBe(minted.id)  // editor opens on the freshly-minted edge — no native prompt
     expect(dirty).toBe(true)
   })
 
   it('ignores a connection with a missing endpoint', () => {
-    useCanvasStore.getState().onConnect({ source: '', target: 'a', sourceHandle: null, targetHandle: null }, 'x')
+    useCanvasStore.getState().onConnect({ source: '', target: 'a', sourceHandle: null, targetHandle: null })
     expect(useCanvasStore.getState().doc!.edges).toHaveLength(1) // unchanged
+    expect(useCanvasStore.getState().editingEdgeId).toBeNull()
+  })
+
+  it('rejects a self-connection (node referencing itself)', () => {
+    useCanvasStore.getState().onConnect({ source: 'a', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
+    expect(useCanvasStore.getState().doc!.edges).toHaveLength(1) // unchanged — no self-edge minted
+    expect(useCanvasStore.getState().editingEdgeId).toBeNull()
+  })
+})
+
+describe('store / setEditingEdge', () => {
+  it('opens and clears the inline edge-label editor', () => {
+    useCanvasStore.getState().setEditingEdge('lk:a->b')
+    expect(useCanvasStore.getState().editingEdgeId).toBe('lk:a->b')
+    useCanvasStore.getState().setEditingEdge(null)
+    expect(useCanvasStore.getState().editingEdgeId).toBeNull()
   })
 })
 
@@ -56,11 +73,96 @@ describe('store / relabelEdge', () => {
   })
 })
 
+describe('store / setMode', () => {
+  it('switches the canvas interaction mode', () => {
+    useCanvasStore.getState().setMode('connect')
+    expect(useCanvasStore.getState().mode).toBe('connect')
+    useCanvasStore.getState().setMode('comment')
+    expect(useCanvasStore.getState().mode).toBe('comment')
+  })
+})
+
+describe('store / addNode', () => {
+  it('appends a fully-formed node and marks the doc dirty', () => {
+    useCanvasStore.getState().addNode({ id: 'n-new', type: 'text', text: '## Note', x: 20, y: 40, width: 260, height: 140, meta: { origin: 'user' } })
+    const nodes = useCanvasStore.getState().doc!.nodes
+    expect(nodes).toHaveLength(3)
+    expect(nodes.find((n) => n.id === 'n-new')).toMatchObject({ type: 'text', text: '## Note', meta: { origin: 'user' } })
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('is a no-op when no doc is loaded', () => {
+    useCanvasStore.setState({ doc: null })
+    useCanvasStore.getState().addNode({ id: 'x', type: 'group', x: 0, y: 0, width: 100, height: 100 })
+    expect(useCanvasStore.getState().doc).toBeNull()
+  })
+})
+
 describe('store / setNodePosition', () => {
   it('writes the dropped position back to the doc node and marks dirty', () => {
     useCanvasStore.getState().setNodePosition('a', 42, -17)
     const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
     expect({ x: n.x, y: n.y }).toEqual({ x: 42, y: -17 })
     expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+})
+
+describe('store / comments', () => {
+  it('adds a root comment with a sequential badge, null parent, and marks dirty', () => {
+    const s = useCanvasStore.getState()
+    const id1 = s.addComment({ kind: 'node', nodeId: 'a', offsetX: 0.5, offsetY: 0.9 }, 'reuse file API?', 'human:you')
+    const id2 = s.addComment({ kind: 'canvas', x: 10, y: 20 }, 'standalone note', 'human:you')
+    const comments = useCanvasStore.getState().doc!.flowcanvas.comments
+    expect(comments).toHaveLength(2)
+    expect(comments[0]).toMatchObject({ id: id1, parentId: null, badge: 1, resolvedAt: null, author: 'human:you' })
+    expect(comments[1]).toMatchObject({ id: id2, parentId: null, badge: 2 })
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('returns "" and is a no-op when no doc is loaded', () => {
+    useCanvasStore.setState({ doc: null })
+    expect(useCanvasStore.getState().addComment({ kind: 'canvas', x: 0, y: 0 }, 'x', 'human:you')).toBe('')
+  })
+
+  it('replies copy the root anchor, set parentId, and carry no badge', () => {
+    const rootId = useCanvasStore.getState().addComment({ kind: 'node', nodeId: 'a', offsetX: 0.2, offsetY: 0.2 }, 'root', 'human:you')
+    useCanvasStore.getState().replyComment(rootId, 'agent answer', 'agent:opus')
+    const reply = useCanvasStore.getState().doc!.flowcanvas.comments.find((c) => c.parentId === rootId)!
+    expect(reply).toMatchObject({ parentId: rootId, author: 'agent:opus', text: 'agent answer' })
+    expect(reply.anchor).toEqual({ kind: 'node', nodeId: 'a', offsetX: 0.2, offsetY: 0.2 })
+    expect(reply.badge).toBeUndefined()
+  })
+
+  it('ignores a reply to an unknown root', () => {
+    useCanvasStore.getState().replyComment('c-missing', 'x', 'human:you')
+    expect(useCanvasStore.getState().doc!.flowcanvas.comments).toHaveLength(0)
+  })
+
+  it('resolve stamps resolvedAt on the root only', () => {
+    const rootId = useCanvasStore.getState().addComment({ kind: 'canvas', x: 0, y: 0 }, 'root', 'human:you')
+    useCanvasStore.getState().resolveComment(rootId)
+    const root = useCanvasStore.getState().doc!.flowcanvas.comments.find((c) => c.id === rootId)!
+    expect(root.resolvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  })
+
+  it('resolve is a no-op (stays clean) for a reply id, unknown id, or an already-resolved root', () => {
+    const rootId = useCanvasStore.getState().addComment({ kind: 'canvas', x: 0, y: 0 }, 'root', 'human:you')
+    useCanvasStore.getState().replyComment(rootId, 'r', 'human:you')
+    const replyId = useCanvasStore.getState().doc!.flowcanvas.comments.find((c) => c.parentId === rootId)!.id
+    useCanvasStore.getState().resolveComment(rootId)                       // first resolve → stamps
+    const stamped = useCanvasStore.getState().doc!.flowcanvas.comments.find((c) => c.id === rootId)!.resolvedAt
+    useCanvasStore.setState({ dirty: false })                             // observe whether the no-ops re-dirty
+    useCanvasStore.getState().resolveComment(replyId)                     // a reply id
+    useCanvasStore.getState().resolveComment('c-missing')                 // unknown id
+    useCanvasStore.getState().resolveComment(rootId)                      // already resolved
+    expect(useCanvasStore.getState().dirty).toBe(false)
+    expect(useCanvasStore.getState().doc!.flowcanvas.comments.find((c) => c.id === rootId)!.resolvedAt).toBe(stamped)
+  })
+
+  it('does not mutate the prior comments array (immutable update)', () => {
+    const before = useCanvasStore.getState().doc!.flowcanvas.comments
+    useCanvasStore.getState().addComment({ kind: 'canvas', x: 1, y: 1 }, 'x', 'human:you')
+    expect(useCanvasStore.getState().doc!.flowcanvas.comments).not.toBe(before)
+    expect(before).toHaveLength(0)
   })
 })

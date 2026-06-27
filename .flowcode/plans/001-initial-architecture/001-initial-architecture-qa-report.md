@@ -19,6 +19,381 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ---
 
+## Check 2026-06-26 23:00 — Plan completion
+
+**Reviewer:** main agent (inline) — the Post-Execution `flowcode:code-reviewer-agent` and `flowcode:code-explorer-agent` were dispatched in parallel but **both stalled on the background-agent stream watchdog** (600 s no-progress, infrastructure — not a task failure); per `flowcode:execute` / `plan-instructions.md § Post-Execution Pipeline`, the main agent ran the final review + audit inline.
+**Scope:** Plan-completion review of the whole shipped Flowcanvas v0.1 app across all 7 phases — cross-phase integration coherence, contract drift, dead/duplicated code, and design-contract satisfaction. Per-phase findings (Phases 1–7) are already resolved in the sections below and were not re-litigated.
+**Baseline conformance:** pass — `project-overview.md` module table re-synced at the Phase 7 close (Store `mode`/`addNode`/`addFileNode`/`hydrateFiles`; API all-seven-live; new Toolbar/File-picker/Dropzone/Reader rows); `lib/canvas/*` remains DOM-free (`brief.ts`/`edges.ts`/`comments.ts`/`adapter.ts`/`jsoncanvas.ts`/`frontmatter.ts` import no `window`/`document`); immutable store updates throughout; pure modules unit-tested.
+**Gate outcome:** PASS
+**Summary:** All four gates green on a clean tree (tsc 0 · lint 0 · build ok · vitest 56/56). The design's contracts are all realized: the extended-JSONCanvas schema + `nodeKind`/`isFileNode` (`lib/canvas/jsoncanvas.ts`), the bidirectional adapter (`adapter.ts`), all **seven** guarded fs routes (`canvas`/`resolve`/`asset`/`file`/`files`/`upload`/`render`) over the lexical `guardPath`, links-derivation + reconciliation (`edges.ts`), pure comment anchoring (`comments.ts`), the 8-step idempotent agent merge (`brief.ts`), and the full chrome. Cross-cutting cleanliness scan is clean: no leftover store `commentMode`/`setCommentMode` field (the only `commentMode` references are a local derived boolean alias inside `comment-layer.tsx`), no `window.prompt` call sites (only comments noting its removal), zero `console.log`/`TODO`/`FIXME` in `app`/`lib`/`components`, no dead `.fc-modebar`/`.fc-modebtn` CSS, and no references to the never-built `markdown-renderer.tsx` (the reader uses `lib/render-md.ts`). The integration surface (Phase 7 brief/merge tying schema↔adapter↔edges↔comments↔persistence) holds together: `applyResponse` re-runs `hydrateFiles` + `reconcileEdges(deriveLinkEdges)` so an agent-generated file's `links:` auto-derive, exactly as `load`/`addFileNode` do. No new findings; the eight cross-phase divergences are documented (and accepted) in the technical-overview + the per-phase logs.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 (zero error/warning) |
+| Build | pass | `npm run build` — compiled, 11/11 static pages, all 7 `/api/*` routes registered incl. `/api/render` |
+| Unit | pass | `npx vitest run` — 56/56 (adapter 9 · edges 11 · comments 9 · store 18 · brief 9) |
+| Dev boot | pass | `GET / 200`; full CDP visual-parity run 18/18 (`mockups/captures/phase-7/`); `/api/render` curl → real shiki HTML |
+| Integration | n/a | no declared integration gate for this scope |
+| E2E | n/a | no declared e2e gate; interactive flows covered by the CDP driver |
+
+### Review Findings
+
+None — plan-completion review surfaced no new findings. All per-phase `≥ medium` findings (below) carry a `**Resolution:**`. Three `info`-level items remain deliberately deferred/accepted (Phase 7 Findings 5 contract-doc sync, 6 import revision double-bump; Phase 5 selection-clear) — none block completion.
+
+---
+
+## Check 2026-06-26 22:30 — Phase 7 (Agent Round-Trip & Polish)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 7 — `lib/canvas/brief.ts` (new), `lib/canvas/brief.test.ts` (new), `lib/canvas/store.ts` (modified: `mode`/`setMode`, `addNode`/`addFileNode`, `buildBrief`/`applyResponse` orchestration, `hydrateFiles`), `lib/canvas/store.test.ts` (modified), `lib/render-md.ts` (new), `app/api/render/route.ts` (new), `components/canvas/reader-drawer.tsx` (new), `components/canvas/export-panel.tsx` (new), `components/canvas/canvas-toolbar.tsx` (new), `components/canvas/file-picker.tsx` (new), `components/canvas/dropzone.tsx` (new), `components/canvas/comment-layer.tsx` (modified: reads unified `mode`), `components/canvas/canvas-shell.tsx` (modified: toolbar/dropzone/reader/agent panel mounted), `docs/flowcanvas-agent-contract.md` (new), `app/globals.css` (modified: Phase 7 styles), `app/page.tsx` (modified: error boundary)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `project-overview.md` Store module row references removed `commentMode`/`setCommentMode`; new actions `mode`, `setMode`, `addNode`, `addFileNode` absent; API row still says `/api/render` pending
+**Gate outcome:** PASS
+**Summary:** All four Phase 7 gates pass (tsc 0 · lint 0 · build ok · vitest 56/56). Merge idempotency is sound: `applyResponse` keys nodes/edges by id, deduplicates id-less comments by content signature (`parentId|author|text`), and skips id-less edges that duplicate a directed pair already on the board — 7-test suite confirms all paths. `/api/render` guards with `guardPath` then the `.md` extension check; `../` + non-md both return 400 (curl-verified). The `render-md.ts` pipeline (remark-parse → remark-gfm → remark-rehype → rehype-sanitize → @shikijs/rehype → rehype-stringify) is deliberate and safe: shiki runs after sanitize on an already-clean hast tree, and its inline-styled spans are deterministic highlighter output, not user-controlled. `ExportPanel` validates `responseVersion === '0.1'` and `briefId` presence before calling `applyResponse`. One medium finding (project-overview baseline staleness), two low findings (silent upload errors; briefId overwritten on re-open export tab), and three info findings — no blockers.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 (reported) |
+| Lint | pass | `npm run lint` — exit 0 (reported) |
+| Build | pass | `npm run build` — exit 0 (reported) |
+| Unit | pass | `npx vitest run` — 56/56 (9 new brief tests + 3 new store tests over 44 prior) |
+| Dev boot | pass | `GET / 200`; `/api/render` curl-verified: real `<pre class="shiki">` output; `../` + non-md → 400 |
+| Integration | n/a | Phase 7 scope |
+| Coverage | n/a | Phase 7 scope |
+| E2E | n/a | Phase 7 scope |
+
+### Review Findings
+
+#### Finding 1 — [medium] `project-overview.md` Store row stale: removed `commentMode`/`setCommentMode` still listed; new `mode`, `setMode`, `addNode`, `addFileNode` absent; `/api/render` still marked pending
+
+**Files:** `.flowcode/project/project-overview.md:66`, `.flowcode/project/project-overview.md:73`
+
+Phase 7 replaced Phase-6's `commentMode: boolean` + `setCommentMode` pair with a unified `mode: CanvasMode` ('select'|'connect'|'comment') + `setMode`, and added `addNode` (synchronous immutable append for text/link/group) and `addFileNode` (async path: resolve frontmatter + re-derive links graph). The Store module row (`project-overview.md:66`) still reads "...`commentMode`/`setCommentMode` (transient UI placement-mode flag — never persisted)..." — those fields no longer exist in `CanvasState`. The new `mode`, `setMode`, `addNode`, and `addFileNode` are not listed. Additionally the API row (`project-overview.md:73`) says "`render` pending (Phase 7)" — the route shipped in this phase and all seven routes are now live.
+
+**Suggested fix:** In the Store module row, remove `commentMode`/`setCommentMode` and add `mode: CanvasMode` (transient unified mode — select / connect / comment, never persisted), `setMode`, `addNode` (immutable append for text/link/group), `addFileNode` (async: hydrates frontmatter via `/api/canvas/resolve` + re-derives links graph). Update the API row to say all seven routes live; remove the "render pending" qualifier.
+
+**Resolution:** fixed — `project-overview.md` updated in the same close: the Store row now lists `mode: CanvasMode`/`setMode`/`addNode`/`addFileNode` + the shared `hydrateFiles` (no more `commentMode`/`setCommentMode`); the API row reads "`render` shipped Phase 7; all seven live"; the Export/Import, Reader (`+ lib/render-md.ts`), Comments, and Canvas-shell rows were refreshed, and new **Toolbar**, **File picker**, and **Dropzone** module rows were added.
+
+---
+
+#### Finding 2 — [low] Upload errors silently discarded in `canvas-toolbar.tsx` and `dropzone.tsx` with no user feedback
+
+**Files:** `components/canvas/canvas-toolbar.tsx:93`, `components/canvas/dropzone.tsx:29`
+
+Both upload paths catch errors and drop them with only a code comment:
+
+`canvas-toolbar.tsx:93`: `} catch { /* surfaced by the route; skip the bad file */ }`
+`dropzone.tsx:29`: `} catch { /* disallowed/oversize is rejected by the route; skip it */ }`
+
+Per `error-handling.md`: "Don't swallow errors. A `catch` without action is a bug unless a comment explains why." The comment explains the server's guard role, but the user receives zero visual indication that an upload was rejected. A user dropping a `.bmp` (disallowed extension), a file exceeding `UPLOAD_MAX`, or hitting a `GuardError` sees the upload button return to normal and no node appears — an indistinguishable no-op. Both the multi-file toolbar loop and the dropzone handler share this gap.
+
+**Suggested fix:** Surface per-file failures via a local `uploadError` state (cleared after ~3 s) rendered below the upload button (toolbar) and as an overlay message in the dropzone. At minimum, emit `console.error(file.name, e)` per rejected file so developers can trace silent failures during development.
+
+**Resolution:** fixed — the toolbar now sets a transient `uploadError` (auto-cleared after 3.5 s) rendered as a rose `[data-testid="upload-error"]` chip (`.fc-toolbar__err`, `role="alert"`), and **both** upload paths `console.error(file.name, e)` per rejected file (toolbar loop + dropzone handler) so failures are visible and traceable.
+
+---
+
+#### Finding 3 — [low] `ExportPanel` re-runs `buildBrief()` on every export-tab focus, overwriting `session.lastBriefId` and making subsequent imports appear stale
+
+**Files:** `components/canvas/export-panel.tsx:31-38`
+
+The effect runs whenever `tab === 'export'`:
+
+```typescript
+useEffect(() => {
+  if (tab !== 'export') return
+  buildBrief().then(...)
+}, [tab, buildBrief])
+```
+
+`buildBrief()` mints a new `briefId` and stamps it into `session.lastBriefId` on every call. If the user opens Export (agent uses `briefId = 'brief-aaa'`), then switches to Import to paste the response, then switches back to Export for any reason (re-reading the JSON, checking a field), a second call stamps `lastBriefId = 'brief-bbb'`. The agent's response carries `briefId: 'brief-aaa'`, so the import reports "Stale — briefId mismatch" even though the response is current. Every round-trip where the user visits the export tab more than once before importing will generate a false stale warning.
+
+**Suggested fix:** Cache the built brief in the panel's local state and only rebuild on panel mount or on a user-triggered "Rebuild" action, not on every tab switch. The minimal fix: add a guard that skips `buildBrief()` when `briefJson` is already populated and the doc has not changed since the last build (e.g., compare `doc.flowcanvas.session.revision` to a cached value).
+
+**Resolution:** fixed — added a `builtRef` guard so the brief is built **once per panel open** (the panel remounts on each open, which rebuilds against the current positions); toggling Export↔Import within a session no longer re-mints `lastBriefId`, so a freshly-pasted response no longer reads as stale. On a build error the ref resets so a retry is possible.
+
+---
+
+#### Finding 4 — [info] `canvas-toolbar.tsx` references `React.ReactNode` type without importing the `React` namespace
+
+**Files:** `components/canvas/canvas-toolbar.tsx:105`
+
+The `modeBtn` helper is typed `(m: typeof mode, testid: string, label: string, icon: React.ReactNode)`. The file's only React import is named: `import { useCallback, useEffect, useRef, useState } from 'react'` — no `import React from 'react'` or `import type { ReactNode } from 'react'`. `React.ReactNode` as a type reference requires the `React` namespace in scope. The current tsconfig resolves it (tsc exits 0), but it is non-idiomatic and would fail under a tsconfig that removes the global React namespace, which future Next.js major upgrades may enforce.
+
+**Suggested fix:** Add `import type { ReactNode } from 'react'` and change the parameter type to `icon: ReactNode`.
+
+**Resolution:** fixed — `canvas-toolbar.tsx` now imports `type ReactNode` and `modeBtn`'s `icon` param is typed `ReactNode` (no `React` namespace reference).
+
+---
+
+#### Finding 5 — [info] `AGENT_CONTRACT` inline string and `docs/flowcanvas-agent-contract.md` are consistent on rules but the doc is a superset with no explicit sync contract
+
+**Files:** `lib/canvas/brief.ts:129-135`, `docs/flowcanvas-agent-contract.md`
+
+The design says "keep the two in sync." All core rules match across both: one JSON object only, echo briefId, `ag-` prefix for new ids, `generatedFiles` + `upsertNodes` pair for file additions, `parentId` copy for replies, frontmatter `links:` preference, 20px grid. The doc additionally includes a loop description, the full `AgentResponse`/`AgentNode`/`AgentEdge`/`AgentComment` schema types, and a worked example — none of which conflict with the inline string. The divergence is additive and intentional. The risk is that a rule added to `AGENT_CONTRACT` in the future may not be propagated to the doc, or vice versa.
+
+**Suggested fix (deferred):** Add a header comment above `AGENT_CONTRACT` and a note in the doc: "AGENT_CONTRACT (brief.ts) is the machine-readable compact form sent in every brief; this doc is the human-readable expanded form — any rule change in either must be mirrored in the other."
+
+**Resolution:** accepted — additive divergence is intentional; maintenance risk acknowledged.
+
+---
+
+#### Finding 6 — [info] `revision` increments twice per import: once in `applyResponsePure` step 8, once by the server's POST handler
+
+**Files:** `lib/canvas/brief.ts:315`, `lib/canvas/store.ts:212-213`, `app/api/canvas/route.ts:53`
+
+`applyResponsePure` bumps `session.revision` by 1 (step 8). The store's `applyResponse` then calls `get().save()`, which POSTs the doc to `/api/canvas`. The server's POST handler does `doc.flowcanvas.session.revision += 1` and returns the new value. `save()` assigns it back via direct mutation: `doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)`. Net result: a single import advances revision by 2 (N → N+2) instead of the design's intended 1 (N → N+1). Since revision is an optimistic-concurrency token and in-memory + server values always converge after save, no data consistency issue exists. The double-bump is an inherent consequence of the existing Phase-3 server design (the server always increments on write).
+
+**Suggested fix (deferred):** Remove the revision bump from `applyResponsePure` step 8 and treat the server as the single authority on revision via the `save()` echo. This makes "one durable write = one revision bump" consistent across all paths. Deferred to a future polish pass.
+
+**Resolution:** accepted — no correctness impact in v0.1; deferred.
+
+
+---
+
+## Check 2026-06-26 21:36 — Phase 6 (connection reliability: handle occlusion + self-loop)
+
+**Reviewer:** main agent (operator-reported defect; root-caused + verified via live CDP, not an agent review)
+**Scope:** `components/canvas/nodes/{markdown,image,link,note,fallback}-node.tsx` (handles → fragment siblings), `lib/canvas/store.ts` (self-connection guard in `onConnect`), `lib/canvas/store.test.ts` (self-reject test), `components/canvas/canvas-shell.tsx` (`isValidConnection`, `connectionRadius={34}`), `app/globals.css` (handle rules prefixed `.react-flow ` to win the cascade: 12px dot, `z-index:5`, `::before` grab target, valid-target highlight)
+**Gate outcome:** PASS
+**Summary:** Operator reported intermittent edge connections and self-referencing. Root cause found by CDP `elementFromPoint` hit-testing on the live board: `<Handle>`s nested inside the `overflow:hidden` `.fc-node` card left the `right`/`bottom` handles occluded by the card (hit returned `.fc-node`, not the handle) — only `top`/`left` could start a connection, so ~half of connection attempts failed. Moving handles to fragment siblings makes all four paint above the card subtree; CDP re-verified `isHandle=true` on all four sides and the enlarged `::before` grab target (`out12=true`). Self-connections are now rejected both declaratively (`isValidConnection`, so the drag line never snaps to the source) and in the store (`onConnect` guard, unit-tested). No findings.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 |
+| Build | pass | `npm run build` — exit 0 |
+| Unit | pass | `npx vitest run` — 44/44 (+1 self-connection-reject test) |
+| Dev boot | pass | `GET / 200`; CDP: all four handle sides `isHandle=true`, dot 12px / z-index 5, self-connection rejected (`mockups/captures/phase-6/06d-handles.png`) |
+
+### Review Findings
+
+None — operator-reported defect fixed and empirically verified; no new findings.
+
+---
+
+## Check 2026-06-26 21:00 — Phase 6 (UX fix: inline edge editor + tethered comments)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 6 UX-fix pass — `lib/canvas/store.ts` (onConnect mints empty-label edge + opens inline editor, `editingEdgeId` state + `setEditingEdge`), `lib/canvas/store.test.ts` (updated `onConnect` tests, `setEditingEdge` test, `beforeEach` resets `commentMode`/`editingEdgeId`), `components/canvas/edges/labeled-edge.tsx` (new `EdgeLabelEditor`: closed-ref guard, Enter/blur commit, Esc cancel, `nodrag nopan` + `stopPropagation`; static label `onDoubleClick` → `setEditingEdge`), `components/canvas/canvas-shell.tsx` (both `window.prompt` call sites removed, `onConnect` passed straight through, `onEdgeDoubleClick` → `setEditingEdge`, compact 38×38 icon button), `components/canvas/comment-layer.tsx` (new `placePopover`: tethered placement, flip + clamp + beakTop), `components/canvas/comment-thread.tsx` (takes `pos`/`side`/`beakTop`, renders `fc-cpop__beak`), `app/globals.css` (`.fc-modebtn`, `.fc-edge-input`, `.fc-cpop__beak`; old fixed translate offset removed), `.flowcode/project/project-overview.md` (Store/Edge/Comments rows synced)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** pass — Store row updated with `editingEdgeId`/`setEditingEdge`; Edge component row updated with `EdgeLabelEditor` + prompt-removal note; Comments row updated with tethered-popover description; `lib/canvas/store.ts` is now fully DOM-free (`window` absent from all `lib/canvas/*` modules, resolving the open Phase-5 baseline flag)
+**Gate outcome:** PASS
+**Summary:** All five reported gates pass (tsc 0 · lint 0 · build ok · vitest 43/43 · dev 200). The `window.prompt` removal is clean and complete — the store is DOM-free, and the two shell call sites are gone with no stubs needed in tests. The `closed` ref guard in `EdgeLabelEditor` correctly prevents double-fire on Enter→blur (saves once) and Esc→blur (Esc cannot accidentally commit). `placePopover` reads `window.innerWidth/Height` during client render only — safe under `ssr:false`. Projection null-check and `draftPlace &&` guard handle off-board anchors. Pointer-event discipline is correct throughout (input `nodrag nopan` + keydown `stopPropagation`, popover `onClick` stopPropagation, layer `pointer-events:none` with pin/popover opt-in). `deleteKeyCode={null}` from the Phase-5 fix ensures no Backspace conflict while typing in the edge input. Three low findings (blur-on-unmount race in rapid back-to-back connects, unclamped horizontal popover left, stale CSS comment) and three info findings — none block sign-off.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 (reported) |
+| Lint | pass | `npm run lint` — exit 0 (reported) |
+| Build | pass | `npm run build` — exit 0 (reported) |
+| Unit | pass | `npx vitest run` — 43/43 (2 updated `onConnect` tests + 1 new `setEditingEdge` test over the prior 42/42 baseline; `beforeEach` resets `editingEdgeId`) |
+| Dev boot | pass | `npm run dev` — GET / 200; inline `.fc-edge-input` verified interactive; thread beak tethered; compact 38×38 icon button (reported) |
+| Integration | n/a | UX-fix scope |
+| Coverage | n/a | UX-fix scope |
+| E2E | n/a | UX-fix scope |
+
+### Review Findings
+
+#### Finding 1 — [low] `EdgeLabelEditor.finish()` does not guard `setEditingEdge(null)` against a concurrent `editingEdgeId` change
+
+**Files:** `components/canvas/edges/labeled-edge.tsx:26-27`
+
+`finish()` always calls `setEditingEdge(null)` regardless of the current store value. In the normal single-editor path this is correct. However if a second `onConnect` fires while the first editor is open (e.g., user rapidly connects two edges), `editingEdgeId` advances to the second edge's id. When the first `EdgeLabelEditor` unmounts, the browser fires `blur` on its focused input. `closed.current` is still `false` for the first editor (it was never committed), so `finish(true)` runs: `relabelEdge('e-first', '')` (no-op — saves empty string) then `setEditingEdge(null)` — which overwrites `editingEdgeId` from the second edge's id to `null`, collapsing the second editor before the user can type.
+
+This race requires two rapid `onConnect` drags without any intervening commit. `deleteKeyCode={null}` does not prevent it. The `closed` ref guards the Enter→blur and Esc→blur double-fire correctly for the normal single-path case; the gap is only in the cross-editor cleanup.
+
+**Suggested fix:** Add a store-state check before clearing: `if (useCanvasStore.getState().editingEdgeId === id) setEditingEdge(null)`. Alternatively read `editingEdgeId` from the store inside `finish` via `useCanvasStore.getState()` and short-circuit the clear if it no longer matches.
+
+**Resolution:** Fixed — `finish` now clears the editor only when `useCanvasStore.getState().editingEdgeId === id`, so a detached input's blur can no longer null out a newer editor opened by a rapid second connect.
+
+---
+
+#### Finding 2 — [low] `placePopover` does not clamp the horizontal `left` position
+
+**Files:** `components/canvas/comment-layer.tsx:72-75`
+
+The vertical axis clamps correctly: `top = Math.max(12, Math.min(aimY - 26, vh - 300))`. The horizontal axis does not clamp. For a pin projected near the left viewport edge (`aimX ≈ 0`), `side = 'right'` is chosen (because `0 + 14 + 320 < vw - 12` is true for any reasonable viewport) and `left = aimX + GAP = 14px` — this is fine. But for a pin near the right viewport edge when the popover can still fit on the right (`aimX + 14 + 320 < vw - 12` barely), `left = aimX + GAP` could produce a popover that extends past the right edge. The flip condition handles the main case but the horizontal coordinate after flip is not clamped: if `side = 'left'` and `aimX` is very small, `left = aimX - GAP - W = aimX - 334`, which is negative for any `aimX < 334` — the popover renders off-screen to the left.
+
+In Phase 6 this is unlikely in practice (most pins are placed on visible canvas content), but the gap exists for boards where nodes are near the far-left viewport margin.
+
+**Suggested fix:** After computing `left`, add: `const clampedLeft = Math.max(8, Math.min(left, vw - W - 8))` and use `clampedLeft` in the returned `pos`.
+
+**Resolution:** Fixed — `left` is now clamped to `[8, vw - W - 8]` in `placePopover`, keeping the popover fully on-screen regardless of pin position / side.
+
+---
+
+#### Finding 3 — [low] Stale CSS comment for `.fc-edge-label` block — says "user = neutral outline"
+
+**Files:** `app/globals.css:362-363`
+
+```css
+/* edges (Phase 5) — provenance carried by stroke (set inline in labeled-edge) + a glass label.
+   links = dashed indigo + lock (auto-derived), user = neutral outline, agent = neon cyan. */
+```
+
+Phase-5 QA Finding 4 corrected the `user`-edge stroke from `var(--color-outline)` (neutral gray) to `var(--color-primary)` (electric indigo). The implementation is correct — `labeled-edge.tsx:11` has `user: 'var(--color-primary)'` — but this CSS comment was not updated and still says "user = neutral outline", contradicting both the design spec and the live code.
+
+**Suggested fix:** Update the comment to: `links = dashed muted+lock (auto-derived), user = solid indigo, agent = neon cyan` — matching the design spec and the `STROKE` record in `labeled-edge.tsx`.
+
+**Resolution:** Fixed — `globals.css` comment updated to "links = dashed muted + lock (auto-derived), user = solid indigo, agent = neon cyan".
+
+---
+
+#### Finding 4 — [info] Esc-cancelled freshly-minted edge retains `label: ''` in the store — no `removeEdge` action exists yet
+
+**Files:** `components/canvas/edges/labeled-edge.tsx:42`, `lib/canvas/store.ts:80`
+
+When `onConnect` mints an edge with `label: ''` and the user immediately presses Esc, `finish(false)` is called: `setEditingEdge(null)` clears the editor, but `relabelEdge` is not called (correct) and no edge removal happens. The edge survives in `doc.edges` with `label: ''`. The static-label renderer correctly hides it (`text !== '' && ...`), so no label chip is shown — the edge renders as an unlabeled indigo line, which is a valid canvas state. The user can double-click to re-open the editor and give it a label.
+
+The alternative semantics — "Esc on a brand-new editor = delete the edge" — would require a `removeEdge` store action that does not exist yet. Phase 7 is the planned home for store-level deletion (Phase-5 Finding 1, deferred). If that action is added, `EdgeLabelEditor` could receive an `isNew` prop and call `removeEdge(id)` on Esc rather than just clearing the editor.
+
+**Suggested fix (deferred):** No action for Phase 6. When Phase 7 adds `removeEdge`, add an `isNew?: boolean` prop to `EdgeLabelEditor` and call `removeEdge(id)` on `finish(false)` when `isNew` is true.
+
+**Resolution:** accepted as Phase 6 state — deferred to Phase 7 `removeEdge` implementation.
+
+---
+
+#### Finding 5 — [info] CSS-triangle beak has no border — a 1 px seam is visible at the popover–beak junction
+
+**Files:** `app/globals.css:568-577`
+
+`.fc-cpop` carries `border: 1px solid var(--color-outline-variant)`. The beak (`.fc-cpop__beak`) is a CSS border-trick triangle: `border-right: 7px solid rgba(13, 21, 40, 0.92)` (the popover fill color). CSS triangles cannot reproduce the container's 1 px border, so a hairline gap of `var(--color-outline-variant)` is visible between the beak tip and the popover edge. This is a well-known CSS-triangle limitation; the popover is otherwise correctly tethered and the beak direction flips as intended.
+
+**Suggested fix (deferred):** Replace with a dual-pseudo-element technique (one triangle for the border color, one slightly smaller for the fill) or an SVG icon. Deferred to Phase 7 visual-polish scope.
+
+**Resolution:** accepted — deferred to Phase 7.
+
+---
+
+#### Finding 6 — [info] `placePopover` `vh - 300` bottom clamp assumes a max popover height of 300 px
+
+**Files:** `components/canvas/comment-layer.tsx:74`
+
+`top = Math.max(12, Math.min(aimY - 26, vh - 300))` clamps the popover so its top is at most `vh - 300` from the top of the viewport, implicitly assuming the popover body is ≤ 300 px tall. `.fc-cpop` has no `max-height` in CSS. Phase 7 will add more replies per thread; a thread with 8+ messages can easily exceed 300 px, causing the clamped top to push the bottom of the popover below the viewport fold.
+
+**Suggested fix (deferred):** Add `max-height: 360px; overflow-y: auto` to `.fc-cpop__b` in `globals.css` and update the clamp constant to match. Alternatively, measure the rendered popover height via a ref and use it in the clamp formula. Deferred to Phase 7 when long threads are expected.
+
+**Resolution:** accepted — deferred to Phase 7.
+
+
+## Check 2026-06-26 20:15 — Phase 6 (Comments Layer)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 6 — `lib/canvas/comments.ts` (new), `lib/canvas/comments.test.ts` (new), `lib/canvas/store.ts` (modified: `commentMode`, `setCommentMode`, `addComment`, `replyComment`, `resolveComment`), `lib/canvas/store.test.ts` (modified: store/comments describe block), `components/canvas/comment-layer.tsx` (new), `components/canvas/comment-thread.tsx` (new), `components/canvas/canvas-shell.tsx` (modified: `<CommentLayer/>` mount + mode toggle), `app/globals.css` (modified: pin/popover/row/reply/resolve/mode-toggle styles + Tailwind `@source` fix)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (2) — `lib/canvas/comments.ts` module absent from `project-overview.md` module table; Store module row missing `commentMode` / `setCommentMode`
+**Gate outcome:** PASS
+**Summary:** All five reported gates pass (tsc 0 · lint 0 · build ok · vitest 41/41 · dev 200). The two quality-gate focal areas — anchor math and thread integrity — are sound: `anchorForPoint` reads `n.measured?.width ?? n.width ?? 0` for auto-height markdown nodes, `anchorToFlowPoint` propagates the same measured geometry through `geomById`, and the zero-size guard prevents unmeasured nodes swallowing clicks. All three store comment actions are fully immutable (correct override of the plan snippet's in-place `push`), `resolveComment` guards the root-only contract via `c.parentId === null`, badge assignment is sequential across existing roots, and reply anchor copy is unit-tested. Pointer-events discipline is correct: the layer is click-through by default; `[data-mode]` CSS enables capture only in comment mode; pins and the popover carry their own `pointer-events: auto` with `e.stopPropagation()` preventing placement bleed-through. The render-phase reset for clearing the draft on mode-off is the React-sanctioned pattern; the Esc effect has correct dependencies and cleanup. No critical, high, or medium blockers — three low and three info findings, all advisory.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 (reported) |
+| Lint | pass | `npm run lint` — exit 0 (reported) |
+| Build | pass | `npm run build` — exit 0 (reported) |
+| Unit | pass | `npx vitest run` — 42/42 (9 new anchor-math + 7 new store/comments — incl. the resolve no-op test added during finding resolution — + prior 26) |
+| Dev boot | pass | `npm run dev` — GET / 200 (reported) |
+| Integration | n/a | Phase 6 scope |
+| Coverage | n/a | Phase 6 scope |
+| E2E | n/a | Phase 6 scope |
+
+### Visual Parity
+
+**Outcome:** pass — no regressions. Captured + interactive-CDP-driven on the live default board (`mockups/captures/phase-6/06-{loaded,comment-mode,draft-composer,thread-open,resolved,two-pins}.png`), classified against `04-nyx-neon.html`. Teardrop `fc-pin` (rose gradient `rgb(255,81,106)`, `border-radius 999px…/2px`, badge), resolved pin dims (`data-resolved`), glass thread popover with avatar rows + reply input + indigo Send + lime ✓ Resolve, comment-mode cyan toggle (`aria-pressed=true`) + hint pill — all match the mockup. Node-anchored (badge 1) and canvas-anchored (badge 2) projection both verified. Full drift table: `001-initial-architecture-ui-design.md § Visual Parity` Phase-6 row. No `≥ medium` visual regression.
+
+### Review Findings
+
+#### Finding 1 — [low] `resolveComment` unconditionally sets `dirty: true` on no-op cases
+
+**Files:** `lib/canvas/store.ts:131-138`
+
+`resolveComment` maps over `doc.flowcanvas.comments` and stamps `resolvedAt` only when `c.id === rootId && c.parentId === null`. If `rootId` matches a reply (`parentId !== null`) or matches no comment, the `map` returns a new array with identical member references and no data change. The function still calls `set({ doc: { ...doc, flowcanvas: { ...doc.flowcanvas, comments } }, dirty: true })` unconditionally, producing a spurious `dirty: true` state and a redundant store update. The inline comment at line 130 calls the behavior "idempotent on an already-resolved or unknown root" — which is accurate for the resolved-state outcome but not for the dirty flag. Neither the "reply id" nor the "unknown id" path arises from the wired `onResolve` handler (which is only called from `CommentThread` with a confirmed root id), so there is no practical impact in Phase 6. If Phase 7 adds a save-on-dirty side-effect, the spurious flag could trigger an unnecessary network write.
+
+**Suggested fix:** Guard the `set` call: `const changed = comments.some((c, i) => c !== doc.flowcanvas.comments[i]); if (changed) set({ doc: { ...doc, flowcanvas: { ...doc.flowcanvas, comments } }, dirty: true })`.
+
+**Resolution:** Fixed — `resolveComment` now looks up the root-only target up front and early-returns (no `set`, stays clean) for an unknown id, a reply id, or an already-resolved root; only a real state change sets `dirty`. This also makes double-resolve a true no-op (no re-stamp), matching the inline comment. Verified by a new test (`store.test.ts § resolve is a no-op …`).
+
+---
+
+#### Finding 2 — [low] `lib/canvas/comments.ts` is absent from the `project-overview.md` module table
+
+**Files:** `.flowcode/project/project-overview.md:60-74`
+
+Phase 6 creates `lib/canvas/comments.ts` — a new pure `lib/canvas/` module exposing `anchorForPoint` and `anchorToFlowPoint`. The `project-overview.md` module table has no row for it. The existing Comments row (`project-overview.md:69`) lists only `components/canvas/comment-{layer,thread}.tsx`. The project-overview conventions require the table to reflect every active module; `comments.ts` is the sixth `lib/canvas/` module and belongs alongside `jsoncanvas.ts`, `adapter.ts`, `edges.ts`, `frontmatter.ts`, and `store.ts`. Its absence makes the module count ("14 subsystems") stale and hides the pure-math/component split for this subsystem.
+
+**Suggested fix:** Add a row to the module table:
+
+```
+| Comments math | `lib/canvas/comments.ts` | `anchorForPoint` (flow-point hit-test → node/canvas anchor using measured geometry, zero-size guard, back-to-front topmost); `anchorToFlowPoint` (project anchor back to flow point; null when node left the board) | TypeScript | — pending (generated at phase close) |
+```
+
+Also update the existing Comments row description to note that projection math is delegated to `lib/canvas/comments.ts`.
+
+**Resolution:** Fixed — added a "Comment anchors" row for `lib/canvas/comments.ts` to the module table, and updated the Comments component row to note projection runs over live measured geometry with the anchor math delegated to `comments.ts`.
+
+---
+
+#### Finding 3 — [low] `project-overview.md` Store module row missing `commentMode` and `setCommentMode`
+
+**Files:** `.flowcode/project/project-overview.md:65`
+
+The Store module row was pre-seeded with `addComment`, `replyComment`, `resolveComment` from the design, but does not list `commentMode` (the transient UI-only placement-mode boolean) or `setCommentMode`, both added to the `CanvasState` interface in Phase 6 (`store.ts:14,22`). The store interface now has 13 members; the project-overview description reflects 11. `commentMode` is called out in the design as "UI-only, never persisted" — a fact worth capturing in the overview for Phase 7 when the full toolbar takes over mode management.
+
+**Suggested fix:** Append to the Store module row description: `, commentMode` (transient UI placement-mode flag — never persisted), `setCommentMode`.
+
+**Resolution:** Fixed — Store module row now lists `commentMode`/`setCommentMode` (noted as transient UI placement-mode, immutable comment thread ops).
+
+---
+
+#### Finding 4 — [info] `CommentThread` `memo` is ineffective for the `screen` prop
+
+**Files:** `components/canvas/comment-thread.tsx:100`, `components/canvas/comment-layer.tsx:55-61`
+
+`CommentThread = memo(Inner)`. The `screen` prop is typed `{ x: number; y: number }`. The `project` callback in `comment-layer.tsx:55-61` calls `flowToScreenPosition(p)`, which returns a new object reference on every call. `React.memo` uses shallow equality: a new `{ x, y }` object — even with numerically identical values — always fails the check, causing `Inner` to re-render on every viewport change regardless of whether the pin moved. The `memo` wrapper is a no-op for this prop. Phase 6 renders at most one thread at a time, so the cost is negligible; this becomes relevant if Phase 7 introduces multiple simultaneous open threads.
+
+**Suggested fix (deferred):** Add a custom `areEqual` comparator to `memo`: `memo(Inner, (p, n) => p.screen.x === n.screen.x && p.screen.y === n.screen.y && p.root?.id === n.root?.id && p.replies.length === n.replies.length)`. Or memoize the projected screen point in the layer before passing it.
+
+**Resolution:** accepted — deferred to Phase 7 if multiple simultaneous threads are introduced.
+
+---
+
+#### Finding 5 — [info] `resolveComment` edge-case test coverage gap
+
+**Files:** `lib/canvas/store.test.ts`
+
+The store/comments describe block tests the happy path for `resolveComment` (line 99–104: stamps `resolvedAt` with an ISO timestamp on the root). Missing scenarios:
+
+1. Calling `resolveComment` with a reply's id — the guard `c.parentId === null` should keep the reply unstamped; the test suite does not assert this, so a regression removing that guard would pass all existing tests.
+2. Calling `resolveComment` twice on the same root — the second call updates `resolvedAt` to a new timestamp (not strictly idempotent); whether that is correct behaviour is untested and the inline comment is misleading.
+
+**Suggested fix:** Add two tests: (a) add a reply, call `resolveComment(replyId)`, assert `reply.resolvedAt` is undefined; (b) call `resolveComment(rootId)` twice, assert `root.resolvedAt` is set after both calls (idempotent state, non-idempotent timestamp is acceptable).
+
+**Resolution:** Fixed — added a test that resolves a reply id, an unknown id, and an already-resolved root, asserting `dirty` stays `false` and the root's `resolvedAt` is unchanged after all three (true no-op timestamp). Paired with the Finding 1 fix that makes double-resolve a genuine no-op.
+
+---
+
+#### Finding 6 — [info] Plan snippet for comment store actions uses in-place `push` mutation; implementation correctly deviates
+
+**Files:** `.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md:922-935`
+
+The Phase 6 plan snippet for `addComment` calls `doc.flowcanvas.comments.push(c); set({ doc: { ...doc }, dirty: true })` — in-place mutation of the `comments` array, the same pattern that Phase 4's `store.load()` refactor eliminated (Phase 3 Finding 8, Phase 4 deviation). The actual implementation (`store.ts:109-113`, `125-128`) correctly uses `[...doc.flowcanvas.comments, c]` and spreads the entire `flowcanvas` object, consistent with the Phase 4+ immutable-store convention. The unit test at `store.test.ts:106-111` explicitly verifies this invariant. The plan snippet is misleading for future Phase 7 authors implementing comment additions in `applyResponse`.
+
+**Suggested fix:** Update the Phase 6 plan snippet to match the immutable spread pattern. Add a `<!-- Phase-6 reality: … -->` comment noting the deviation from the snippet (same annotation style as Phase 2 and 5).
+
+**Resolution:** Fixed — the Phase 6 plan snippet was rewritten to the shipped immutable implementation (spread appends, `crypto.randomUUID` id helper in place of the `uuid` import, `addComment` returns the new id, and the no-op `resolveComment` guard), so Phase 7's `applyResponse` author inherits the correct pattern.
+
+---
+
 ## Check 2026-06-26 — Phase 5 (Edges: manual + links-derived)
 
 **Reviewer:** flowcode:code-reviewer-agent

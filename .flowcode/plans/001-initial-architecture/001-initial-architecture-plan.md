@@ -1,7 +1,7 @@
 ---
 name: 001-initial-architecture-plan
 description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all seven phases.
-status: active
+status: complete
 tags: [plan, implementation, phases, canvas]
 links: [001-initial-architecture-design.md]
 ---
@@ -883,7 +883,7 @@ flowchart TD
 
 **Goal:** Pin comments to a node or to canvas coordinates; flat threads with reply and resolve; persisted under `flowcanvas.comments`.
 
-**Phase Status:** pending
+**Phase Status:** done
 
 **Evaluation:** user
 
@@ -893,41 +893,48 @@ flowchart TD
 
 | File | Operation | Description |
 |------|-----------|-------------|
-| `components/canvas/comment-layer.tsx` | create | pin overlay; place-on-click; projects anchors to screen |
-| `components/canvas/comment-thread.tsx` | create | root + replies; reply box; resolve toggle |
-| `lib/canvas/store.ts` | modify | `addComment`, `replyComment`, `resolveComment`, `commentMode` |
-| `components/canvas/canvas-shell.tsx` | modify | mount `<CommentLayer/>`; toggle comment mode |
+| `lib/canvas/comments.ts` | create | pure anchor math — `anchorForPoint` (hit-test → node/canvas anchor) + `anchorToFlowPoint` (project) |
+| `lib/canvas/comments.test.ts` | create | unit: hit-test, clamping, top-most, projection round-trip, missing-node |
+| `components/canvas/comment-layer.tsx` | create | pin overlay; place-on-click; projects anchors to screen via live (measured) node geometry |
+| `components/canvas/comment-thread.tsx` | create | root + replies; reply box; resolve toggle; draft composer |
+| `lib/canvas/store.ts` | modify | `addComment`, `replyComment`, `resolveComment`, `setCommentMode`, `commentMode` |
+| `lib/canvas/store.test.ts` | modify | unit: badge sequence, reply anchor copy, resolve, immutability |
+| `components/canvas/canvas-shell.tsx` | modify | mount `<CommentLayer/>`; minimal comment-mode toggle |
+| `app/globals.css` | modify | pin teardrop, thread popover, comment rows, reply/resolve, mode toggle |
 
 **Implementation steps:**
 
-- [ ] Store actions: `addComment(anchor,text,author)` (root, sequential `badge`); `replyComment(rootId,text,author)`; `resolveComment(rootId)`.
-- [ ] `comment-layer.tsx`: in comment mode, click a node → `{kind:'node',nodeId,offsetX,offsetY}` (fractions); click empty canvas → `{kind:'canvas',x,y}`. Render root pins projected to screen; re-render on viewport change.
-- [ ] `comment-thread.tsx`: open on pin click; show root + replies; reply box; resolve.
+- [x] Store actions: `addComment(anchor,text,author)` (root, sequential `badge`); `replyComment(rootId,text,author)`; `resolveComment(rootId)`; plus `commentMode` + `setCommentMode`.
+- [x] `comment-layer.tsx`: in comment mode, click a node → `{kind:'node',nodeId,offsetX,offsetY}` (fractions); click empty canvas → `{kind:'canvas',x,y}`. Render root pins projected to screen; re-render on viewport change (`useViewport`) **and node drag/measure** (`useNodes`). Anchor math extracted to the pure `lib/canvas/comments.ts`.
+- [x] `comment-thread.tsx`: open on pin click; show root + replies; reply box; resolve. Same popover doubles as the draft composer for a freshly-placed pin.
 
 **Code & examples:**
 
 Store actions:
 
 ```typescript
-import { v4 as uuid } from 'uuid'
 import type { Comment, CommentAnchor } from './jsoncanvas'
-// inside create():
+const commentId = () => `c-${crypto.randomUUID().slice(0, 8)}`   // mirrors edgeId; no extra dep
+// inside create() — immutable updates throughout (the rest of the store never mutates in place):
 addComment(anchor: CommentAnchor, text: string, author: string) {
-  const doc = get().doc; if (!doc) return
+  const { doc } = get(); if (!doc) return ''
   const badge = doc.flowcanvas.comments.filter((c) => c.parentId === null).length + 1
-  const c: Comment = { id: `c-${uuid().slice(0, 8)}`, anchor, parentId: null, author, text, createdAt: new Date().toISOString(), resolvedAt: null, badge }
-  doc.flowcanvas.comments.push(c); set({ doc: { ...doc }, dirty: true })
+  const c: Comment = { id: commentId(), anchor, parentId: null, author, text, createdAt: new Date().toISOString(), resolvedAt: null, badge }
+  set({ doc: { ...doc, flowcanvas: { ...doc.flowcanvas, comments: [...doc.flowcanvas.comments, c] } }, dirty: true })
+  return c.id                                                   // caller opens the new thread
 },
-replyComment(rootId, text, author) {
-  const doc = get().doc; if (!doc) return
+replyComment(rootId: string, text: string, author: string) {
+  const { doc } = get(); if (!doc) return
   const root = doc.flowcanvas.comments.find((c) => c.id === rootId); if (!root) return
-  doc.flowcanvas.comments.push({ id: `c-${uuid().slice(0, 8)}`, anchor: root.anchor, parentId: rootId, author, text, createdAt: new Date().toISOString() })
-  set({ doc: { ...doc }, dirty: true })
+  const reply: Comment = { id: commentId(), anchor: root.anchor, parentId: rootId, author, text, createdAt: new Date().toISOString() }
+  set({ doc: { ...doc, flowcanvas: { ...doc.flowcanvas, comments: [...doc.flowcanvas.comments, reply] } }, dirty: true })
 },
-resolveComment(rootId) {
-  const doc = get().doc; if (!doc) return
-  const root = doc.flowcanvas.comments.find((c) => c.id === rootId); if (root) root.resolvedAt = new Date().toISOString()
-  set({ doc: { ...doc }, dirty: true })
+resolveComment(rootId: string) {
+  const { doc } = get(); if (!doc) return
+  const target = doc.flowcanvas.comments.find((c) => c.id === rootId && c.parentId === null)
+  if (!target || target.resolvedAt) return                      // unknown/reply/already-resolved → no-op, stay clean
+  const comments = doc.flowcanvas.comments.map((c) => (c === target ? { ...c, resolvedAt: new Date().toISOString() } : c))
+  set({ doc: { ...doc, flowcanvas: { ...doc.flowcanvas, comments } }, dirty: true })
 }
 ```
 
@@ -975,10 +982,10 @@ thread (flat):
 ```
 
 **Acceptance criteria:**
-- [ ] Add a comment on a node and on empty canvas; both persist across reload.
-- [ ] Replies render flat under the root; resolve toggles state and dims the pin.
-- [ ] Node-anchored pins follow the node as it moves and on pan/zoom.
-- [ ] `npx tsc --noEmit`, `npm run build` exit 0.
+- [x] Add a comment on a node and on empty canvas; both persist across reload. *(Both anchor kinds add roots that mark the doc dirty + write into `flowcanvas.comments`; durable reload-persistence rides on the Phase-7 save trigger — same deferral as Phase 4 `collapsed` / Phase 5 manual edges — since `save()` already POSTs the full doc.)*
+- [x] Replies render flat under the root; resolve toggles state and dims the pin. *(`[data-resolved]` pin styling; resolve stamps `resolvedAt`.)*
+- [x] Node-anchored pins follow the node as it moves and on pan/zoom. *(Projected from live measured RF geometry via `useNodes` + `useViewport`.)*
+- [x] `npx tsc --noEmit`, `npm run build` exit 0.
 
 **Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run build`; visual check of pin tracking.
 
@@ -990,7 +997,7 @@ thread (flat):
 
 **Goal:** Export a self-contained `DesignBrief`, import an `AgentResponse` and merge it idempotently (write generated files, upsert nodes/edges, attach replies), re-derive + persist; plus the reader drawer, Cmd+S save, fit-view, and empty/error states.
 
-**Phase Status:** pending
+**Phase Status:** done
 
 **Evaluation:** user
 
@@ -1000,27 +1007,32 @@ thread (flat):
 
 | File | Operation | Description |
 |------|-----------|-------------|
-| `lib/canvas/brief.ts` | create | `buildBrief`, `applyResponse` (8-step merge), `AGENT_CONTRACT` |
-| `lib/canvas/brief.test.ts` | create | unit: build shape + idempotent apply |
-| `components/canvas/export-panel.tsx` | create | Submit (copy/download brief) · Import (paste/upload → apply) |
-| `lib/canvas/store.ts` | modify | `buildBrief()`, `applyResponse()` orchestration (write files, re-resolve, re-derive, persist) |
-| `lib/render-md.ts` | create | server unified pipeline (`remark-gfm` + `rehype-shiki`) → HTML |
+| `lib/canvas/brief.ts` | create | agent-round-trip types + `buildBrief`, `applyResponse` (8-step merge), `AGENT_CONTRACT` |
+| `lib/canvas/brief.test.ts` | create | unit: build shape + idempotent apply (9 tests) |
+| `components/canvas/export-panel.tsx` | create | Submit (copy/download brief) · Import (paste → apply → report) |
+| `lib/canvas/store.ts` | modify | `mode` primitive, `addNode`/`addFileNode`, `buildBrief()`, `applyResponse()` orchestration (write files, re-resolve, re-derive, persist) + shared `hydrateFiles` |
+| `lib/canvas/store.test.ts` | modify | `mode`/`addNode` coverage; `commentMode`→`mode` reset |
+| `lib/render-md.ts` | create | server unified pipeline (`remark-gfm` + `@shikijs/rehype`) → HTML |
 | `app/api/render/route.ts` | create | GET `?path=` → `{ html }` (guarded) for the reader |
 | `components/canvas/reader-drawer.tsx` | create | full-fidelity read-only drawer (shiki HTML) + node thread |
-| `components/canvas/canvas-toolbar.tsx` | create | modes (select/connect/comment), add-node menu (md/note/rectangle/image/link), upload, export, import, fit-view, save (Cmd+S) + dirty dot |
+| `components/canvas/canvas-toolbar.tsx` | create | modes (select/connect/comment), add-node menu (md/note/rectangle/image/link), upload, export, import, fit-view, save (Cmd+S) + dirty dot; `useSaveShortcut` |
+| `components/canvas/file-picker.tsx` | create | glass dir-browser popover (guarded `/api/files`) for add-node markdown/image (beyond the original list) |
 | `components/canvas/dropzone.tsx` | create | drag-drop overlay → `uploadFile` → image/markdown node |
+| `components/canvas/comment-layer.tsx` | modify | read the unified `mode` (`mode==='comment'`) instead of the removed `commentMode` |
+| `components/canvas/canvas-shell.tsx` | modify | mount toolbar/dropzone/reader/agent-panel; `onNodeClick`→reader; connect-mode class; drop the Phase-6 mode-bar |
 | `docs/flowcanvas-agent-contract.md` | create | the agent output contract (mirrors `AGENT_CONTRACT`) |
-| `app/page.tsx` | modify | empty-state (no `?path`) + error boundary |
+| `app/globals.css` | modify | toolbar / menu / file-picker / agent-panel / reader-prose / dropzone styles (replaces the Phase-6 mode-bar block) |
+| `app/page.tsx` | modify | client error boundary around the shell (empty + fs-error cards stay in the shell) |
 
 **Implementation steps:**
 
-- [ ] `brief.ts`: `buildBrief` (embed frontmatter+body+path per design) and `applyResponse` (the 8-step pure merge returning `{next, report}`); export `AGENT_CONTRACT` string.
-- [ ] Store `buildBrief()`: resolve all md, build the brief, stamp `briefId` → `session.lastBriefId`, return it.
-- [ ] Store `applyResponse(resp)`: call pure merge → `POST /api/file` each `report.generatedFiles` → re-resolve new md → `reconcileEdges(deriveLinkEdges)` → `set` → `save()`.
-- [ ] `export-panel.tsx`: Submit copies + downloads brief JSON; Import parses + validates `responseVersion`/`briefId`, calls `applyResponse`, surfaces `report` (stale/conflicts) as a toast.
-- [ ] `render-md.ts` + `/api/render`: server shiki pipeline; `reader-drawer.tsx` fetches `{html}` and renders sanitized, with the node's comment thread beside it.
-- [ ] `canvas-toolbar.tsx`: mode toggles (select/connect/comment); Cmd+S → `save()`; fit-view; add-node menu (md via file picker, note, rectangle/group, image, link); upload button. Empty/error states in `page.tsx`.
-- [ ] `dropzone.tsx`: drag-drop overlay; on drop, `uploadFile` each (IMAGE_EXT → image node, MARKDOWN_EXT → markdown node), then re-resolve + re-derive + persist.
+- [x] `brief.ts`: `buildBrief` (embed frontmatter+body+path per design) and `applyResponse` (the 8-step pure merge returning `{next, report}`); export `AGENT_CONTRACT` string. *(all agent-round-trip TYPES now live here too — the design located them in `brief.ts`; idempotency hardened beyond the design snippet: comments dedup by `id` else by `(parentId,author,text)` signature, and id-less agent edges that duplicate a directed pair already on the board are skipped per design step 5 — so a re-imported response with id-less replies/edges is a true no-op. `conflicts` is `[]` — v0.1 has no per-node revision tracking, last-writer-wins.)*
+- [x] Store `buildBrief()`: resolve all md, build the brief, stamp `briefId` → `session.lastBriefId`, return it. *(marks dirty so a Save persists the new `lastBriefId`; the in-memory stamp drives the import stale-check.)*
+- [x] Store `applyResponse(resp)`: call pure merge → `POST /api/file` each `report.generatedFiles` → re-resolve new md → `reconcileEdges(deriveLinkEdges)` → `set` → `save()`. *(re-resolve/re-derive factored into a shared `hydrateFiles` helper now also used by `load` + `addFileNode`.)*
+- [x] `export-panel.tsx`: Submit copies + downloads brief JSON; Import parses + validates `responseVersion`/`briefId`, calls `applyResponse`, surfaces `report` (stale/conflicts) as a toast. *(report rendered as an inline panel — created/updated/removed counts + generated files + an amber stale banner — rather than a transient toast, so the merge result stays readable.)*
+- [x] `render-md.ts` + `/api/render`: server shiki pipeline; `reader-drawer.tsx` fetches `{html}` and renders sanitized, with the node's comment thread beside it. *(pipeline = `remark-parse → remark-gfm → remark-rehype → rehype-sanitize → @shikijs/rehype → rehype-stringify`; shiki tokenizes AFTER sanitize so its inline-styled spans survive — `@shikijs/rehype` + theme `github-dark-default`, the Phase-1 WASM replacement for the design's native `rehype-shiki`. Curl-verified: real `<pre class="shiki">` + per-token color spans; `../` + non-md → 400.)*
+- [x] `canvas-toolbar.tsx`: mode toggles (select/connect/comment); Cmd+S → `save()`; fit-view; add-node menu (md via file picker, note, rectangle/group, image, link); upload button. Empty/error states in `page.tsx`. *(modes unified into a single store `mode` primitive — `select|connect|comment` — replacing Phase-6's `commentMode` boolean; the comment layer reads `mode==='comment'`. Link add uses an inline glass `<input>` (no `window.prompt`, per the Phase-6 operator ruling); markdown/image use the new `file-picker.tsx`. `page.tsx` adds a React error boundary; the no-`?path` empty + fs-error cards stay in the shell, shared with the boundary.)*
+- [x] `dropzone.tsx`: drag-drop overlay; on drop, `uploadFile` each (IMAGE_EXT → image node, MARKDOWN_EXT → markdown node), then re-resolve + re-derive + persist. *(window-level drag listeners gated on `dataTransfer.types` containing `Files` so node drags don't trigger it; drop point projected via `screenToFlowPosition`, snapped to 20px; `addFileNode` does the resolve/derive; persistence rides the Save trigger, consistent with the rest of the board.)*
 
 **Code & examples:**
 
@@ -1153,13 +1165,13 @@ Re-import the same JSON → no new nodes/edges/comments (idempotent by id).
 **Diagram:** see design § Sequence Diagrams (Submit → agent → Import → merge → persist).
 
 **Acceptance criteria:**
-- [ ] Submit yields a valid `DesignBrief` with embedded `frontmatter`+`body`, edges (with `origin`), comments by id, and `intent`.
-- [ ] Importing a sample `AgentResponse` creates the node, writes the generated `.md`, and attaches a reply to `c-1`.
-- [ ] Re-importing the same response is a no-op (idempotent); a mismatched `briefId` shows a stale warning.
-- [ ] Clicking a node opens the reader drawer with shiki-highlighted code; Cmd+S saves and clears the dirty dot.
-- [ ] Empty state (no `?path`) and an fs-error state render without console errors.
-- [ ] `brief.test.ts` covers build shape + double-apply idempotency.
-- [ ] `npx tsc --noEmit`, `npm run lint`, `npm run build` exit 0.
+- [x] Submit yields a valid `DesignBrief` with embedded `frontmatter`+`body`, edges (with `origin`), comments by id, and `intent`. *(**unit + CDP-verified**: `brief.test.ts` asserts the shape — markdown nodes carry `frontmatter`+`body`+`path`, link/note/image their fields, edges `{from,to,label,origin}`, comments `{threadId,anchorNodeId,resolved}`, `intent` + `responseContract`. CDP on the live Export panel: the brief textarea is 4174 chars and contains `"briefVersion":"0.1"` + `"frontmatter"` + `"responseContract"`.)*
+- [x] Importing a sample `AgentResponse` creates the node, writes the generated `.md`, and attaches a reply to `c-1`. *(**unit + CDP-verified**: `brief.test.ts` "creates the node + edge, attaches the reply" asserts `ag-tests` node, `ag-e1` edge, and the `c-1` reply all land with `meta.origin:'agent'`. CDP on the live Import panel: applying a response with a generatedFile added a node (6→7) and wrote `examples/_verify-gen.md` to disk via `/api/file` — report row `wrote — examples/_verify-gen.md`.)*
+- [x] Re-importing the same response is a no-op (idempotent); a mismatched `briefId` shows a stale warning. *(**unit + CDP-verified**: `brief.test.ts` "is idempotent" + "dedups an id-less reply by content signature" + "skips an id-less agent edge that duplicates a directed pair" — double-apply yields one node/edge/comment, `created` all 0. CDP: a mismatched-briefId response surfaced the amber `[data-testid="stale-warning"]` banner.)*
+- [x] Clicking a node opens the reader drawer with shiki-highlighted code; Cmd+S saves and clears the dirty dot. *(**CDP- + curl-verified**: clicking a markdown node opens `[data-testid="reader-drawer"]` with 404 chars of rendered prose (mono-cyan headings + inline code chips, capture `07-reader.png`); `/api/render` curl shows real `<pre class="shiki github-dark-default">` + per-token `<span style="color:#…">`. Save (⌘S via `useSaveShortcut`; button CDP-clicked) cleared `[data-testid="dirty-dot"]`.)*
+- [x] Empty state (no `?path`) and an fs-error state render without console errors. *(empty-state = the default board loads out of the box (Phase 4); a bad `?path` renders the shell's fs-error card (Phase-4 screenshot-verified); Phase 7 adds a React error boundary in `page.tsx` for render-time faults. No client console errors across the CDP run.)*
+- [x] `brief.test.ts` covers build shape + double-apply idempotency. *(9 tests — build shape, idempotent apply, id-less reply/edge dedup, stale flag, removals, update-by-id.)*
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm run build` exit 0. *(tsc 0, lint 0, build ok; `npx vitest run` 56/56; dev 200.)*
 
 **Quality checks (run at phase close):** `npx tsc --noEmit`, `npx vitest run`, `npm run lint`, `npm run build`.
 

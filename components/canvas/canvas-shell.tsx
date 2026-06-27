@@ -25,6 +25,12 @@ import { LinkChipNode } from './nodes/link-node'
 import { NoteNode } from './nodes/note-node'
 import { FallbackNode } from './nodes/fallback-node'
 import { LabeledEdge } from './edges/labeled-edge'
+import { CommentLayer } from './comment-layer'
+import { CanvasToolbar } from './canvas-toolbar'
+import { Dropzone } from './dropzone'
+import { ReaderDrawer } from './reader-drawer'
+import { ExportPanel } from './export-panel'
+import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
 // shows content out of the box instead of an empty grid.
@@ -52,11 +58,14 @@ const edgeTypes: EdgeTypes = { labeled: LabeledEdge }
 function CanvasFlow() {
   const doc = useCanvasStore((s) => s.doc)
   const load = useCanvasStore((s) => s.load)
-  const connectEdge = useCanvasStore((s) => s.onConnect)
+  const onConnect = useCanvasStore((s) => s.onConnect)
   const setNodePosition = useCanvasStore((s) => s.setNodePosition)
-  const relabelEdge = useCanvasStore((s) => s.relabelEdge)
+  const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
+  const mode = useCanvasStore((s) => s.mode)
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
+  const [readerNodeId, setReaderNodeId] = useState<string | null>(null)
+  const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' }>({ open: false, tab: 'export' })
 
   // Kick off the load once on mount; the catch (async) surfaces failures in the empty-state card.
   useEffect(() => {
@@ -75,13 +84,6 @@ function CanvasFlow() {
   useEffect(() => { setNodes(rfNodes) }, [rfNodes, setNodes])
   useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
 
-  // The store stays DOM-free (project-overview § Conventions): the shell owns the label prompt
-  // and hands the result to the store action, mirroring onEdgeDoubleClick.
-  const onConnect = useCallback(
-    (conn: Connection) => connectEdge(conn, window.prompt('Edge label?')?.trim() ?? ''),
-    [connectEdge],
-  )
-
   // onNodesChange drives smooth local dragging; commit the final position to the store on drop
   // (resolves the Phase-4 deferred write-back so node moves survive a save).
   const onNodeDragStop = useCallback(
@@ -89,29 +91,49 @@ function CanvasFlow() {
     [setNodePosition],
   )
 
-  // Double-click an edge to relabel it; relabeling a derived `links` edge promotes it to `user`.
+  // Connecting two nodes mints the edge and opens its inline label editor (no native prompt);
+  // double-clicking an existing edge re-opens that editor. Relabeling a derived `links` edge
+  // promotes it to `user` (in `relabelEdge`). The label is typed in-canvas via the edge component.
   const onEdgeDoubleClick = useCallback(
-    (_e: React.MouseEvent, edge: RFEdge) => {
-      const current = typeof edge.label === 'string' ? edge.label : ''
-      const next = window.prompt('Edge label?', current)
-      if (next !== null) relabelEdge(edge.id, next.trim())
+    (_e: React.MouseEvent, edge: RFEdge) => setEditingEdge(edge.id),
+    [setEditingEdge],
+  )
+
+  // Reject self-connections during the drag itself: without this, an imprecise drag snaps to the
+  // SOURCE node's own handle (a self-loop) instead of reaching the target — the "sometimes works,
+  // sometimes doesn't" + "reference itself" bug. RF marks the connection invalid and never fires onConnect.
+  const isValidConnection = useCallback(
+    (c: RFEdge | Connection) => !!c.source && !!c.target && c.source !== c.target,
+    [],
+  )
+
+  // Click a markdown node → open the full-fidelity reader drawer. Other kinds (image/link/note/group)
+  // have nothing more to read, so a click just selects. Comment mode is handled by the overlay, not here.
+  const onNodeClick = useCallback(
+    (_e: React.MouseEvent, node: RFNode) => {
+      const n = doc?.nodes.find((x) => x.id === node.id)
+      if (n && isFileNode(n) && nodeKind(n) === 'markdown') setReaderNodeId(node.id)
     },
-    [relabelEdge],
+    [doc],
   )
 
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <ReactFlow
+        className={mode === 'connect' ? 'fc-rf--connect' : undefined}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        onNodeClick={onNodeClick}
         onEdgeDoubleClick={onEdgeDoubleClick}
+        isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
+        connectionRadius={34}
         deleteKeyCode={null}
         fitView
         minZoom={0.2}
@@ -122,6 +144,27 @@ function CanvasFlow() {
         <MiniMap nodeColor="#222a3d" maskColor="rgba(6,14,32,0.7)" pannable zoomable />
         {/* React Flow attribution is kept (MIT terms); subscribers may hide it via proOptions */}
       </ReactFlow>
+
+      {/* Top glass toolbar — modes, add-node, upload, agent I/O, fit-view, save (⌘S + dirty dot). */}
+      {doc && <CanvasToolbar onOpenAgent={(tab) => setAgent({ open: true, tab })} />}
+
+      {/* Drag-drop overlay — drop images / markdown to upload + add nodes. */}
+      <Dropzone />
+
+      {/* Pin overlay above the pane — projects anchors to screen, places pins in comment mode. */}
+      <CommentLayer />
+
+      {/* Reader drawer — opens on a markdown node click; full-fidelity shiki render + node thread. */}
+      {readerNodeId && <ReaderDrawer nodeId={readerNodeId} onClose={() => setReaderNodeId(null)} />}
+
+      {/* Agent round-trip panel — export DesignBrief / import AgentResponse. */}
+      {agent.open && (
+        <ExportPanel
+          tab={agent.tab}
+          onTab={(tab) => setAgent((a) => ({ ...a, tab }))}
+          onClose={() => setAgent((a) => ({ ...a, open: false }))}
+        />
+      )}
 
       {/* Minimal empty/error state so a board that fails to load is never a silent blank grid.
           Full empty-state polish is Phase 7. */}

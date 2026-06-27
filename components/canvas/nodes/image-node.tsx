@@ -11,6 +11,7 @@ function Inner({ data }: NodeProps) {
   const name = node.file.split('/').pop() ?? node.file
   const [errored, setErrored] = useState(false)
   return (
+    <>
     <div className="fc-node fc-node--img">
       <div className="fc-node__imgwrap">
         {errored ? (
@@ -21,10 +22,12 @@ function Inner({ data }: NodeProps) {
         )}
       </div>
       <span className="fc-node__caption">{name}</span>
-      {SIDES.map((p) => (
-        <Handle key={p} type="source" position={p} id={p} />
-      ))}
     </div>
+    {/* handles outside the card so all sides stay grabbable (see markdown-node) */}
+    {SIDES.map((p) => (
+      <Handle key={p} type="source" position={p} id={p} />
+    ))}
+    </>
   )
 }
 

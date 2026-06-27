@@ -20,13 +20,16 @@ function Inner({ data }: NodeProps) {
         ? node.file.split('/').pop() ?? node.file
         : node.id
   return (
+    <>
     <div className="fc-node fc-node--fallback" style={{ width: '100%', height: '100%', padding: '12px 14px' }}>
       <span className="fc-fallback__kind">{kind}</span>
       <span className="fc-fallback__label">{label}</span>
-      {SIDES.map((p) => (
-        <Handle key={p} type="source" position={p} id={p} />
-      ))}
     </div>
+    {/* handles outside the card so all sides stay grabbable (see markdown-node) */}
+    {SIDES.map((p) => (
+      <Handle key={p} type="source" position={p} id={p} />
+    ))}
+    </>
   )
 }
 
