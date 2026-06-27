@@ -1598,6 +1598,8 @@ Close:     gates + CDP visual-parity (3 reader sizes, ≤66ch, 1-click inserts)
 | `lib/canvas/adapter.ts` | modify | 10·1 core | `toReactFlow`: parent-before-child ordering + absolute→relative child positions + `extent:'parent'`; `toJSONCanvas`: relative→absolute inverse |
 | `lib/canvas/store.ts` | modify | 10·1 core | `selectedIds`/`setSelection`, `groupSelection`, `ungroup`, `applyLayout` (bulk), `saveAs`, `openBoard` |
 | `lib/canvas/brief.ts` | modify | 10·1 core | Preserve `parentId` in `nodeFromAgent` (else agent updates silently un-parent) |
+| `lib/canvas/adapter.test.ts` | modify | 10·1 core | +5 tests — abs↔rel round-trip w/ a parented child + parent-before-child ordering + dangling-parentId degrade |
+| `lib/canvas/store.test.ts` | modify | 10·1 core | +5 tests — `setSelection` guard, `groupSelection`/`ungroup`/`applyLayout` membership+coords |
 | `package.json` | modify | 10·1 core | Add `elkjs` dependency |
 | `lib/canvas/layout.ts` | create | S10a | ELK graph build + `computeLayout(nodes, edges, measured)` (layered, orthogonal, separated components) |
 | `lib/canvas/layout.test.ts` | create | S10a | Finite, non-overlapping coords for a small graph (one group + an island) |

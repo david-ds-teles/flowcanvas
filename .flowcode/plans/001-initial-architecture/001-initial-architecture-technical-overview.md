@@ -19,6 +19,8 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ## Summary
 
+> **Audit basis (plan-close):** the Phase 10 slice was independently audited by `flowcode:code-explorer-agent` against the plan spec (2026-06-27) — **every spec item a match**, the doc-`x/y`-ABSOLUTE invariant verified to hold across all write paths (`applyLayout`/`toJSONCanvas absPos`/group ops), the abs↔rel round-trip and single-nesting confirmed correct. No material divergence; the info-level items (positional `setSelection` guard, dead `setNodePosition`, `setTimeout` fitView, BoardDialog-in-shell) are recorded below in Deviations/Tech-Debt. Phases 1–9 were audited at their prior closes.
+
 **What:** Flowcanvas v0.1 — an extended-JSONCanvas board (React Flow) over flowcode markdown. Markdown files render as frontmatter-table + collapsible-body cards; images, links, and notes render inline; edges derive from `links:` frontmatter or are drawn by hand; comments pin to a node or a canvas point; and a bidirectional `DesignBrief` ⇄ `AgentResponse` JSON loop lets an AI agent read and rewrite the board, with an idempotent merge.
 
 **Why:** Design systems are authored as many related markdown files, but a flat file tree hides their relationships and gives an AI agent no spatial, relational context. Flowcanvas turns the files into a navigable board and a single self-contained JSON an agent can reason over and edit.
