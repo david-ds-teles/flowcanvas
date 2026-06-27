@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas v2 — Review Stepper (02)</title>
+<!--
+  002 System Design Studio — iteration 02 "review-stepper".
+  Direction: change-review is a focused, full-height centered STEPPER (one change at a time,
+  big before/after, filmstrip rail); Submit is a bottom command bar; Templates is a LEFT rail;
+  typed-edge type is an inline segmented control on the edge editor; ref-nav is a hovercard.
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx). Self-contained. Desktop-only.
+-->
+<style>
+  :root{
+    --bg:#0b1326; --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33;
+    --c-high:#222a3d; --c-highest:#2d3449;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --secondary:#ddb7ff; --secondary-cont:#6f00be;
+    --tertiary:#ffb2b7; --tertiary-cont:#ff516a;
+    --neon-cyan:#5ef2ff; --neon-lime:#b6f36a; --neon-rose:#ff8fb0; --amber:#f59f00;
+    --glass-fill:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    --r-lg:16px; --r-md:8px; --r-sm:4px; --r-full:999px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%), var(--bg);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased}
+
+  .statebar{position:sticky;top:0;z-index:80;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:9px 16px;background:rgba(6,14,32,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .statebar .brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--on-var);margin-right:auto}
+  .statebar .brand b{color:var(--primary);font-weight:600}
+  .statebar button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:7px 11px;min-height:34px;border-radius:var(--r-md);cursor:pointer;
+    transition:border-color .14s ease,color .14s ease,box-shadow .14s ease}
+  .statebar button:hover{color:var(--on);box-shadow:var(--glow-indigo)}
+  .statebar button[aria-current="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);box-shadow:var(--glow-indigo)}
+  .statebar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  .app{position:relative;height:calc(100vh - 54px);overflow:hidden}
+  .toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:8px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .ttitle{font-family:var(--mono);font-size:12px;color:var(--on-var);display:flex;gap:8px;align-items:center}
+  .ttitle .dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .tspring{margin-left:auto}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 12px;
+    border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);
+    font-family:var(--ui);font-size:13px;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}.tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .tbtn.primary{background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .mcp{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 10px;color:var(--on-var)}
+  .mcp .d{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-lime);box-shadow:0 0 8px var(--neon-lime)}
+
+  .board{position:absolute;inset:56px 0 0 0;
+    background-image:radial-gradient(rgba(146,143,160,.16) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+  .app.dim .board{filter:saturate(.85) brightness(.7)}
+
+  .edges{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;color:var(--on-var);
+    padding:3px 8px;border-radius:var(--r-full);white-space:nowrap;background:rgba(13,21,40,.85);border:1px solid var(--outline-var);display:flex;gap:6px;align-items:center;cursor:pointer}
+  .elabel .rel{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary)}
+  .elabel.user{color:#e7e7ff;border-color:rgba(128,131,255,.5)}
+  .elabel:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  .node{position:absolute;z-index:10;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    transition:box-shadow .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node .hd{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--outline-var)}
+  .node .name{font-size:13px;font-weight:600}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto}
+  .fmrow{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px}
+  .chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:var(--r-full);background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .tag{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:var(--r-sm);background:rgba(221,183,255,.12);color:var(--secondary)}
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-full);background:var(--c-highest);border:1px solid var(--primary);z-index:11}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+
+  /* reference ↗ chip + hovercard */
+  .lchip{position:relative;display:inline-flex;gap:6px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--secondary);
+    border:1px solid rgba(221,183,255,.3);border-radius:var(--r-full);padding:2px 8px;cursor:pointer;background:transparent}
+  .lchip .arr{color:var(--neon-cyan)}
+  .lchip:hover{box-shadow:0 0 14px -4px rgba(94,242,255,.6);border-color:rgba(94,242,255,.5)}
+  .lchip:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .hovercard{position:absolute;z-index:46;display:none;left:50%;top:120%;transform:translateX(-50%);min-width:200px;padding:10px;border-radius:var(--r-md);
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo)}
+  .app[data-refnav="open"] .hovercard{display:block}
+  .hovercard .hh{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);margin-bottom:8px}
+  .hovercard .ha{display:flex;gap:6px}
+  .hovercard button{flex:1;height:34px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on);font-size:12px;cursor:pointer}
+  .hovercard button.on{border-color:transparent;background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));color:#06222a}
+  .hovercard button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* typed-edge inline editor */
+  .edgeed{position:absolute;z-index:46;display:none;left:50%;top:60%;transform:translateX(-50%);width:480px;padding:14px;border-radius:var(--r-md);
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 30px 70px -24px rgba(0,0,0,.7)}
+  .app[data-edge="open"] .edgeed{display:block}
+  .edgeed .eh{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);margin-bottom:10px}
+  .segwrap{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--outline-var);border-radius:var(--r-md);overflow:hidden}
+  .segwrap button{flex:1 0 25%;font-family:var(--mono);font-size:10px;color:var(--on-var);background:transparent;border:0;border-right:1px solid var(--outline-var);border-bottom:1px solid var(--outline-var);padding:8px 6px;cursor:pointer}
+  .segwrap button[aria-pressed="true"]{color:#fff;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .segwrap button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+  .edgeed .er{display:flex;gap:8px;margin-top:10px}
+  .edgeed input{flex:1;height:36px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--ui);font-size:13px;padding:0 12px}
+  .edgeed input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .edgeed .save{height:36px;padding:0 16px;border-radius:var(--r-sm);border:0;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;font-size:13px;cursor:pointer}
+
+  /* SUBMIT bottom command bar */
+  .cmdbar{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:47;width:min(820px,86vw);display:none;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-full);
+    background-image:linear-gradient(rgba(13,21,40,.92),rgba(13,21,40,.92)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 24px 60px -18px rgba(0,0,0,.7),var(--glow-indigo)}
+  .app[data-panel="submit"] .cmdbar{display:flex}
+  .cmdbar .lead{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--neon-cyan);white-space:nowrap}
+  .cmdbar input{flex:1;height:42px;border-radius:var(--r-full);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--ui);font-size:14px;padding:0 16px}
+  .cmdbar input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .cmdbar .send{height:42px;padding:0 22px;border-radius:var(--r-full);border:0;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;font-size:14px;cursor:pointer;white-space:nowrap}
+  .cmdbar .send:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* TEMPLATES left rail */
+  .trail{position:absolute;top:56px;left:0;bottom:0;width:280px;z-index:48;transform:translateX(-100%);transition:transform .22s cubic-bezier(.23,1,.32,1);
+    border-right:1px solid transparent;background-image:linear-gradient(rgba(11,19,38,.9),rgba(11,19,38,.9)),linear-gradient(20deg,rgba(94,242,255,.32),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:30px 0 80px -30px rgba(0,0,0,.75);display:flex;flex-direction:column}
+  .app[data-panel="templates"] .trail{transform:translateX(0)}
+  .rhd{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--outline-var)}
+  .rhd b{font-size:13px} .rhd .x{margin-left:auto;width:30px;height:30px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer}
+  .rhd .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tfilter{display:flex;gap:5px;padding:10px 14px;flex-wrap:wrap}
+  .tfilter button{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 9px;cursor:pointer}
+  .tfilter button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .tlist{padding:6px 14px 16px;overflow:auto}
+  .tcard{border:1px solid var(--outline-var);border-radius:var(--r-md);padding:11px;margin-bottom:10px;background:rgba(6,14,32,.4);cursor:grab;transition:box-shadow .14s ease,border-color .14s ease}
+  .tcard:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tcard:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tcard .tkind{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--neon-cyan)}
+  .tcard h4{margin:5px 0 3px;font-size:13px} .tcard p{font-size:11px;color:var(--on-var);margin:0;line-height:1.4}
+
+  /* REVIEW centered focused stepper */
+  .reviewstage{position:absolute;inset:56px 0 0 0;z-index:48;display:none;align-items:center;justify-content:center;padding:24px}
+  .app[data-panel="review"] .reviewstage{display:flex}
+  .rev{width:min(760px,92vw);border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.93),rgba(13,21,40,.93)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 40px 100px -30px rgba(0,0,0,.8)}
+  .rev .rvh{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--outline-var)}
+  .rev .rvh b{font-size:15px}
+  .rev .rvh .meta{font-family:var(--mono);font-size:10px;color:var(--on-var)}
+  .rev .rvh .x{margin-left:auto;width:32px;height:32px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer}
+  .filmstrip{display:flex;gap:6px;padding:12px 22px;overflow:auto;border-bottom:1px solid var(--outline-var)}
+  .fcell{flex:0 0 auto;width:30px;height:30px;border-radius:var(--r-sm);border:1px solid var(--outline-var);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--on-var);cursor:pointer;background:transparent}
+  .fcell.add{border-color:rgba(182,243,106,.5);color:var(--neon-lime)}
+  .fcell.upd{border-color:rgba(94,242,255,.5);color:var(--neon-cyan)}
+  .fcell.rem{border-color:rgba(255,81,106,.5);color:var(--tertiary-cont)}
+  .fcell.cur{box-shadow:var(--glow-indigo);border-color:transparent}
+  .fcell:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .focus{padding:22px}
+  .focus .tline{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+  .badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-sm)}
+  .badge.add{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .badge.upd{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .badge.rem{background:rgba(255,81,106,.14);color:var(--tertiary-cont)}
+  .focus h3{margin:0;font-size:18px} .focus .kind{font-family:var(--mono);font-size:10px;color:var(--on-var);margin-left:auto}
+  .focus .src{font-family:var(--mono);font-size:11px;color:var(--neon-cyan);margin-bottom:14px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ba .col{border:1px solid var(--outline-var);border-radius:var(--r-md);padding:12px;background:rgba(6,14,32,.4)}
+  .ba .col .h{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--on-var);margin-bottom:8px}
+  .ba .col.before .h{color:var(--tertiary-cont)} .ba .col.after .h{color:var(--neon-lime)}
+  .ba .col pre{margin:0;font-family:var(--mono);font-size:11px;color:var(--on-var);white-space:pre-wrap;line-height:1.5}
+  .navrow{display:flex;gap:8px;align-items:center;padding:14px 22px;border-top:1px solid var(--outline-var)}
+  .ghost{height:38px;min-width:38px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer;font-size:13px}
+  .ghost:hover{box-shadow:var(--glow-indigo)} .ghost:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .navrow .pos{font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .navrow .spring{margin-left:auto}
+  .btn-rem{height:40px;padding:0 16px;border-radius:var(--r-md);border:1px solid rgba(255,81,106,.5);background:transparent;color:var(--tertiary-cont);font-size:13px;cursor:pointer}
+  .btn-ok{height:40px;padding:0 18px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--neon-lime),#8fd84a);color:#06220a;font-weight:600;font-size:13px;cursor:pointer}
+  .btn-rem:focus-visible,.btn-ok:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* frames */
+  .frame{position:absolute;inset:56px 0 0 0;z-index:30;display:none;align-items:center;justify-content:center}
+  .app[data-frame="empty"] .frame.empty,.app[data-frame="loading"] .frame.loading,.app[data-frame="error"] .frame.error{display:flex}
+  .frame .card{width:420px;text-align:center;padding:34px 30px;border-radius:var(--r-lg);backdrop-filter:blur(24px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.62),rgba(13,21,40,.62)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .frame h2{margin:0 0 8px;font-size:20px}.frame p{color:var(--on-var);font-size:13px;line-height:1.5;margin:0 0 18px}
+  .frame.error h2{color:var(--tertiary-cont)}.frame.error .card{border-color:rgba(255,81,106,.4)}
+  .spinner{width:34px;height:34px;border-radius:var(--r-full);border:3px solid var(--outline-var);border-top-color:var(--neon-cyan);margin:0 auto 16px;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){.trail{transition:none}.spinner{animation:none}.tbtn:active{transform:none}}
+</style>
+</head>
+<body>
+<nav class="statebar" aria-label="Mockup states">
+  <span class="brand"><b>02</b> · review-stepper · v2 surfaces</span>
+  <button data-go="submit">Submit</button>
+  <button data-go="review" aria-current="true">Change-review</button>
+  <button data-go="templates">Templates</button>
+  <button data-go="typededge">Typed edge</button>
+  <button data-go="refnav">Ref-nav</button>
+  <button data-go="empty">Empty</button>
+  <button data-go="loading">Loading</button>
+  <button data-go="error">Error</button>
+</nav>
+
+<div class="app" data-panel="review" data-frame="none" data-edge="closed" data-refnav="closed">
+
+  <header class="toolbar">
+    <span class="ttitle"><span class="dot"></span>002 system-design-studio</span>
+    <button class="tbtn" data-go="templates" data-testid="toolbar-templates" aria-label="Templates"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg><span>Templates</span></button>
+    <button class="tbtn" data-testid="toolbar-bundle" aria-label="Export bundle"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg><span>Bundle</span></button>
+    <span class="tspring"></span>
+    <span class="mcp" data-testid="submit-mcp-status"><span class="d"></span>MCP ready</span>
+    <button class="tbtn primary" data-go="submit" data-testid="toolbar-submit" aria-label="Submit to agent"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Submit</span></button>
+  </header>
+
+  <div class="board">
+    <svg class="edges" viewBox="0 0 1280 700" preserveAspectRatio="none" aria-hidden="true">
+      <defs><marker id="ar-u" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="#c0c1ff" stroke-width="1.6"/></marker></defs>
+      <path d="M360,150 C430,150 430,150 470,150" fill="none" stroke="#c0c1ff" stroke-width="1.6" marker-end="url(#ar-u)"/>
+    </svg>
+    <button class="elabel user" data-go="typededge" data-testid="edge-rel-pill" style="left:415px;top:140px"><span class="rel">implements</span>contract</button>
+
+    <article class="node" style="left:120px;top:96px;width:240px;height:150px">
+      <div class="hd"><span class="name">order-api</span><span class="kind">md</span></div>
+      <div class="fmrow"><span class="chip">active</span><span class="tag">service</span></div>
+      <div class="fmrow">
+        <span style="position:relative">
+          <button class="lchip" data-go="refnav" data-testid="link-chip"><span class="arr">↗</span>order-schema.md</button>
+          <div class="hovercard" role="dialog" aria-label="Reference navigation" data-testid="refnav-hovercard">
+            <div class="hh">order-schema.md · not on board</div>
+            <div class="ha"><button data-testid="refnav-focus">Focus</button><button class="on" data-testid="refnav-add">Add + edge</button></div>
+          </div>
+        </span>
+      </div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+    <article class="node" style="left:470px;top:96px;width:230px;height:110px">
+      <div class="hd"><span class="name">order-schema</span><span class="kind">md</span></div>
+      <div class="fmrow"><span class="tag">schema</span></div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+
+    <!-- typed-edge inline editor -->
+    <div class="edgeed" role="dialog" aria-label="Edge relationship" data-testid="edge-rel-picker">
+      <div class="eh">Relationship · order-api → order-schema</div>
+      <div class="segwrap" role="group" aria-label="Relationship type">
+        <button data-testid="edge-rel-option" aria-pressed="false">references</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">depends-on</button>
+        <button data-testid="edge-rel-option" aria-pressed="true">implements</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">derives-from</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">calls</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">produces</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">informs</button>
+        <button data-testid="edge-rel-option" aria-pressed="false">related</button>
+      </div>
+      <div class="er"><input data-testid="edge-label-input" value="contract" aria-label="Edge label" placeholder="label (defaults to type)"><button class="save" data-go="loaded">Save</button></div>
+    </div>
+  </div>
+
+  <!-- SUBMIT command bar -->
+  <div class="cmdbar" role="dialog" aria-label="Submit to agent" data-testid="submit-panel">
+    <span class="lead">⌁ submit</span>
+    <input data-testid="submit-intent" placeholder="Tell the agent what to do this round…" value="Add a cache layer between order-api and order-schema; typed calls edges.">
+    <button class="send" data-go="loading" data-testid="submit-send">Send →</button>
+  </div>
+
+  <!-- TEMPLATES left rail -->
+  <aside class="trail" aria-label="Template library" data-testid="template-tray">
+    <div class="rhd"><b>Templates</b><button class="x" data-go="loaded" data-testid="template-close" aria-label="Close">✕</button></div>
+    <div class="tfilter" role="group" aria-label="Template kind">
+      <button data-testid="template-kind-filter" aria-pressed="true">all</button>
+      <button data-testid="template-kind-filter" aria-pressed="false">node</button>
+      <button data-testid="template-kind-filter" aria-pressed="false">diagram</button>
+      <button data-testid="template-kind-filter" aria-pressed="false">document</button>
+    </div>
+    <div class="tlist">
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Service + DB + Cache</h4><p>3 nodes · typed depends-on edges</p></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">document</span><h4>ADR scaffold</h4><p>md node + source frontmatter</p></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">node</span><h4>External system</h4><p>link node + informs edge</p></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Subsystem group</h4><p>group container + member slots</p></div>
+    </div>
+  </aside>
+
+  <!-- REVIEW focused stepper -->
+  <div class="reviewstage">
+    <div class="rev" data-testid="review-panel">
+      <div class="rvh"><b>Change-review</b><span class="meta">round @ rev 7 → 8 · agent:opus-4.8</span><button class="x" data-go="loaded" data-testid="review-close" aria-label="Close">✕</button></div>
+      <div class="filmstrip" role="tablist" aria-label="Changes">
+        <button class="fcell add cur" data-testid="review-item" aria-label="Change 1 added">+</button>
+        <button class="fcell add" data-testid="review-item" aria-label="Change 2 added">+</button>
+        <button class="fcell upd" data-testid="review-item" aria-label="Change 3 updated">~</button>
+        <button class="fcell rem" data-testid="review-item" aria-label="Change 4 removed">−</button>
+        <button class="fcell add" data-testid="review-item" aria-label="Change 5 added file">⎙</button>
+        <button class="fcell upd" data-testid="review-item" aria-label="Change 6 updated">~</button>
+        <button class="fcell add" data-testid="review-item" aria-label="Change 7 comment">✱</button>
+      </div>
+      <div class="focus">
+        <div class="tline"><span class="badge upd">updated</span><h3>order-api</h3><span class="kind">node · md</span></div>
+        <div class="src">source: 002-design.md#order-flow</div>
+        <div class="ba">
+          <div class="col before"><div class="h">before · rev 7</div><pre>status: active
+links: [order-schema.md]
+tags: [service]</pre></div>
+          <div class="col after"><div class="h">after · rev 8 (agent)</div><pre>status: review
+links: [order-schema.md, cache.md]
+tags: [service, cached]</pre></div>
+        </div>
+      </div>
+      <div class="navrow">
+        <button class="ghost" data-testid="review-prev" aria-label="Previous">‹ Prev</button>
+        <button class="ghost" data-testid="review-next" aria-label="Next">Next ›</button>
+        <span class="pos">change 3 / 7</span>
+        <span class="spring"></span>
+        <button class="btn-rem" data-go="loaded" data-testid="review-discard">Discard round</button>
+        <button class="btn-ok" data-go="loaded" data-testid="review-accept">Accept all 7</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- frames -->
+  <div class="frame empty"><div class="card"><h2>No board open</h2><p>Submit a flowcode design doc to extract an initial board, or open a <code style="font-family:var(--mono);color:var(--neon-cyan)">.canvas</code>.</p><button class="tbtn primary" data-testid="empty-open">Open .canvas…</button></div></div>
+  <div class="frame loading"><div class="card"><div class="spinner" aria-hidden="true"></div><h2>Agent working…</h2><p>MCP sidecar reading the board and applying the response.</p></div></div>
+  <div class="frame error"><div class="card"><h2>Round failed</h2><p>briefId mismatch — board changed since Submit. Re-submit to snapshot afresh.</p><button class="tbtn" data-testid="error-retry">Re-submit</button></div></div>
+</div>
+
+<script>
+  var app=document.querySelector('.app');
+  var FRAMES={empty:1,loading:1,error:1};
+  var PANELS={submit:1,review:1,templates:1};
+  function show(go){
+    if(go==='typededge'){app.setAttribute('data-edge',app.getAttribute('data-edge')==='open'?'closed':'open');return;}
+    if(go==='refnav'){app.setAttribute('data-refnav',app.getAttribute('data-refnav')==='open'?'closed':'open');return;}
+    app.setAttribute('data-edge','closed');app.setAttribute('data-refnav','closed');
+    if(FRAMES[go]){app.setAttribute('data-frame',go);app.setAttribute('data-panel','none');app.classList.remove('dim');}
+    else if(PANELS[go]){app.setAttribute('data-frame','none');app.setAttribute('data-panel',go);app.classList.add('dim');}
+    else {app.setAttribute('data-frame','none');app.setAttribute('data-panel','none');app.classList.remove('dim');}
+    document.querySelectorAll('.statebar [data-go]').forEach(function(b){b.setAttribute('aria-current',String(b.dataset.go===go));});
+  }
+  document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();show(b.dataset.go);});});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){show('loaded');}});
+</script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas v2 — Command Spotlight (03)</title>
+<!--
+  002 System Design Studio — iteration 03 "command-spotlight".
+  Direction: Submit is a center command PALETTE (spotlight, ⌘K); change-review is a grouped
+  overlay INSPECTOR (sections by kind, all visible, expand a row for the diff); Templates is a
+  bottom DOCK; typed-edge is a quick-pick gem flyout off the label; ref-nav is a chip with an
+  inline focus/add toggle. Ground truth: .flowcode/ui/ui-design-system.md (nyx). Self-contained.
+-->
+<style>
+  :root{
+    --bg:#0b1326; --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33;
+    --c-high:#222a3d; --c-highest:#2d3449;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --secondary:#ddb7ff; --secondary-cont:#6f00be;
+    --tertiary:#ffb2b7; --tertiary-cont:#ff516a;
+    --neon-cyan:#5ef2ff; --neon-lime:#b6f36a; --neon-rose:#ff8fb0; --amber:#f59f00;
+    --glass-fill:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    --r-lg:16px; --r-md:8px; --r-sm:4px; --r-full:999px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%), var(--bg);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased}
+
+  .statebar{position:sticky;top:0;z-index:80;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:9px 16px;background:rgba(6,14,32,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .statebar .brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--on-var);margin-right:auto}
+  .statebar .brand b{color:var(--primary);font-weight:600}
+  .statebar button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:7px 11px;min-height:34px;border-radius:var(--r-md);cursor:pointer;transition:border-color .14s ease,color .14s ease,box-shadow .14s ease}
+  .statebar button:hover{color:var(--on);box-shadow:var(--glow-indigo)}
+  .statebar button[aria-current="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);box-shadow:var(--glow-indigo)}
+  .statebar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  .app{position:relative;height:calc(100vh - 54px);overflow:hidden}
+  .toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:8px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .ttitle{font-family:var(--mono);font-size:12px;color:var(--on-var);display:flex;gap:8px;align-items:center}
+  .ttitle .dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .tspring{margin-left:auto}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 12px;
+    border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);font-family:var(--ui);font-size:13px;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}.tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .tbtn.primary{background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .tbtn .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px}
+  .mcp{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 10px;color:var(--on-var)}
+  .mcp .d{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-lime);box-shadow:0 0 8px var(--neon-lime)}
+
+  .board{position:absolute;inset:56px 0 0 0;background-image:radial-gradient(rgba(146,143,160,.16) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+  .app.dim .board{filter:saturate(.85) brightness(.66)}
+  .scrim{position:absolute;inset:56px 0 0 0;z-index:44;display:none;background:rgba(6,12,28,.5)}
+  .app[data-panel="submit"] .scrim,.app[data-panel="review"] .scrim{display:block}
+
+  .edges{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;color:var(--on-var);
+    padding:3px 8px;border-radius:var(--r-full);white-space:nowrap;background:rgba(13,21,40,.85);border:1px solid var(--outline-var);display:flex;gap:6px;align-items:center;cursor:pointer}
+  .elabel .rel{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary)}
+  .elabel.user{color:#e7e7ff;border-color:rgba(128,131,255,.5)}
+  .elabel.agent{color:#062a30;background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-color:transparent;box-shadow:0 0 16px -3px rgba(94,242,255,.6)}
+  .elabel.agent .rel{color:#06222a}
+  .elabel:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  /* quick-pick gem flyout */
+  .gem{position:absolute;z-index:46;display:none;left:50%;top:140%;transform:translateX(-50%);padding:6px;border-radius:var(--r-full);
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 18px 50px -16px rgba(0,0,0,.7),var(--glow-indigo);display:flex;gap:4px;flex-wrap:wrap;width:300px;justify-content:center}
+  .app[data-edge="open"] .gem{display:flex}
+  .gem button{font-family:var(--mono);font-size:10px;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:5px 9px;cursor:pointer}
+  .gem button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .gem button:hover{box-shadow:var(--glow-indigo);border-color:transparent}.gem button:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+
+  .node{position:absolute;z-index:10;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;transition:box-shadow .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node .hd{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--outline-var)}
+  .node .name{font-size:13px;font-weight:600}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto}
+  .fmrow{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px}
+  .chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:var(--r-full);background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .tag{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:var(--r-sm);background:rgba(221,183,255,.12);color:var(--secondary)}
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-full);background:var(--c-highest);border:1px solid var(--primary);z-index:11}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+
+  /* ref ↗ chip with inline focus/add toggle */
+  .lchip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;color:var(--secondary);border:1px solid rgba(221,183,255,.3);border-radius:var(--r-full);overflow:hidden}
+  .lchip .arr{padding:2px 5px 2px 8px;color:var(--neon-cyan)}
+  .lchip .nm{padding:2px 4px}
+  .lchip .act{padding:2px 9px;border-left:1px solid var(--outline-var);cursor:pointer;color:var(--on-var);background:transparent;border-top:0;border-right:0;border-bottom:0;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+  .lchip .act:hover{color:var(--neon-lime)}
+  .lchip .act[aria-pressed="true"]{color:#06222a;background:linear-gradient(135deg,var(--neon-cyan),var(--secondary))}
+  .lchip .act:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+
+  /* SUBMIT spotlight palette */
+  .spot{position:absolute;left:50%;top:18%;transform:translateX(-50%);z-index:48;width:min(680px,90vw);display:none;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 40px 100px -24px rgba(0,0,0,.8),var(--glow-indigo)}
+  .app[data-panel="submit"] .spot{display:block}
+  .spot .si{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--outline-var)}
+  .spot .si .ic{font-family:var(--mono);font-size:13px;color:var(--neon-cyan)}
+  .spot .si input{flex:1;background:transparent;border:0;color:var(--on);font-family:var(--ui);font-size:17px;outline:none}
+  .spot .si input::placeholder{color:var(--outline)}
+  .spot .si .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:2px 6px}
+  .spot .sb{padding:14px 20px 18px}
+  .spot .mcp-line{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+  .spot .hint{font-family:var(--mono);font-size:11px;color:var(--on-var);line-height:1.6}
+  .spot .hint code{color:var(--neon-cyan)}
+  .spot .sa{display:flex;gap:10px;margin-top:16px;align-items:center}
+  .spot .send{height:42px;padding:0 22px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;font-size:14px;cursor:pointer}
+  .spot .send:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .spot .scope{display:flex;gap:6px;margin-left:auto}
+  .spot .scope button{font-family:var(--mono);font-size:10px;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:5px 11px;cursor:pointer}
+  .spot .scope button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+
+  /* REVIEW grouped inspector overlay */
+  .inspector{position:absolute;left:50%;top:8%;transform:translateX(-50%);z-index:48;width:min(720px,92vw);max-height:84%;display:none;flex-direction:column;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 40px 100px -28px rgba(0,0,0,.8)}
+  .app[data-panel="review"] .inspector{display:flex}
+  .ihd{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--outline-var)}
+  .ihd b{font-size:15px}.ihd .meta{font-family:var(--mono);font-size:10px;color:var(--on-var)}
+  .ihd .x{margin-left:auto;width:32px;height:32px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer}
+  .ihd .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ibody{overflow:auto;padding:10px 22px}
+  .grp{margin:12px 0}
+  .grp .gh{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--on-var);margin-bottom:8px;display:flex;gap:8px;align-items:center}
+  .grp .gh .ct{color:var(--primary)}
+  .row{display:flex;gap:10px;align-items:center;border:1px solid var(--outline-var);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;background:rgba(6,14,32,.4);cursor:pointer;transition:box-shadow .14s ease,border-color .14s ease}
+  .row:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .row:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-sm)}
+  .badge.add{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .badge.upd{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .badge.rem{background:rgba(255,81,106,.14);color:var(--tertiary-cont)}
+  .row .rn{font-size:13px;font-weight:600}.row .rk{font-family:var(--mono);font-size:10px;color:var(--on-var);margin-left:auto}
+  .row.open .diff{display:block}
+  .diff{display:none;flex-basis:100%;margin-top:8px;font-family:var(--mono);font-size:11px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--outline-var)}
+  .diff .o{background:rgba(255,81,106,.08);color:var(--tertiary);padding:3px 9px}
+  .diff .n{background:rgba(182,243,106,.08);color:var(--neon-lime);padding:3px 9px}
+  .ifoot{display:flex;gap:10px;align-items:center;padding:14px 22px;border-top:1px solid var(--outline-var)}
+  .ifoot .sum{font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .ifoot .spring{margin-left:auto}
+  .btn-rem{height:40px;padding:0 16px;border-radius:var(--r-md);border:1px solid rgba(255,81,106,.5);background:transparent;color:var(--tertiary-cont);font-size:13px;cursor:pointer}
+  .btn-ok{height:40px;padding:0 18px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--neon-lime),#8fd84a);color:#06220a;font-weight:600;font-size:13px;cursor:pointer}
+  .btn-rem:focus-visible,.btn-ok:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* TEMPLATES bottom dock */
+  .dock{position:absolute;left:50%;bottom:0;transform:translateX(-50%);z-index:47;width:min(1100px,96vw);display:none;flex-direction:column;border-radius:var(--r-lg) var(--r-lg) 0 0;border:1px solid transparent;border-bottom:0;
+    background-image:linear-gradient(rgba(13,21,40,.93),rgba(13,21,40,.93)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 -24px 60px -24px rgba(0,0,0,.7)}
+  .app[data-panel="templates"] .dock{display:flex}
+  .dkh{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--outline-var)}
+  .dkh b{font-size:13px}
+  .tfilter{display:flex;gap:6px;margin-left:8px}
+  .tfilter button{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 11px;cursor:pointer}
+  .tfilter button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .dkh .x{margin-left:auto;width:30px;height:30px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer}
+  .dkh .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .dkrow{display:flex;gap:12px;padding:14px 18px;overflow:auto}
+  .tcard{flex:0 0 200px;border:1px solid var(--outline-var);border-radius:var(--r-md);padding:12px;background:rgba(6,14,32,.4);cursor:grab;transition:box-shadow .14s ease,border-color .14s ease}
+  .tcard:hover{box-shadow:var(--glow-indigo);border-color:transparent}.tcard:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tcard .tkind{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--neon-cyan)}
+  .tcard h4{margin:6px 0 4px;font-size:13px}.tcard p{font-size:11px;color:var(--on-var);margin:0 0 8px;line-height:1.45}
+  .tcard .mini{height:52px;border-radius:var(--r-sm);border:1px dashed var(--outline-var);background:radial-gradient(rgba(146,143,160,.16) 1px,transparent 1px);background-size:10px 10px;position:relative}
+  .tcard .mini b{position:absolute;border-radius:3px;background:rgba(192,193,255,.5);display:block}
+  .tadd{margin-top:8px;width:100%;height:30px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on);font-size:12px;cursor:pointer}
+  .tadd:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+
+  /* frames */
+  .frame{position:absolute;inset:56px 0 0 0;z-index:30;display:none;align-items:center;justify-content:center}
+  .app[data-frame="empty"] .frame.empty,.app[data-frame="loading"] .frame.loading,.app[data-frame="error"] .frame.error{display:flex}
+  .frame .card{width:420px;text-align:center;padding:34px 30px;border-radius:var(--r-lg);backdrop-filter:blur(24px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.62),rgba(13,21,40,.62)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .frame h2{margin:0 0 8px;font-size:20px}.frame p{color:var(--on-var);font-size:13px;line-height:1.5;margin:0 0 18px}
+  .frame.error h2{color:var(--tertiary-cont)}.frame.error .card{border-color:rgba(255,81,106,.4)}
+  .spinner{width:34px;height:34px;border-radius:var(--r-full);border:3px solid var(--outline-var);border-top-color:var(--neon-cyan);margin:0 auto 16px;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){.spinner{animation:none}.tbtn:active{transform:none}}
+</style>
+</head>
+<body>
+<nav class="statebar" aria-label="Mockup states">
+  <span class="brand"><b>03</b> · command-spotlight · v2 surfaces</span>
+  <button data-go="submit" aria-current="true">Submit</button>
+  <button data-go="review">Change-review</button>
+  <button data-go="templates">Templates</button>
+  <button data-go="typededge">Typed edge</button>
+  <button data-go="refnav">Ref-nav</button>
+  <button data-go="empty">Empty</button>
+  <button data-go="loading">Loading</button>
+  <button data-go="error">Error</button>
+</nav>
+
+<div class="app" data-panel="submit" data-frame="none" data-edge="closed">
+
+  <header class="toolbar">
+    <span class="ttitle"><span class="dot"></span>002 system-design-studio</span>
+    <button class="tbtn" data-go="templates" data-testid="toolbar-templates" aria-label="Templates"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg><span>Templates</span></button>
+    <button class="tbtn" data-testid="toolbar-bundle" aria-label="Export bundle"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/></svg><span>Bundle</span></button>
+    <span class="tspring"></span>
+    <span class="mcp" data-testid="submit-mcp-status"><span class="d"></span>MCP ready</span>
+    <button class="tbtn primary" data-go="submit" data-testid="toolbar-submit" aria-label="Submit to agent"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Submit</span><span class="kbd">⌘K</span></button>
+  </header>
+
+  <div class="board">
+    <svg class="edges" viewBox="0 0 1280 700" preserveAspectRatio="none" aria-hidden="true">
+      <defs><marker id="ar-a" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M1 1L8 5L1 9" fill="none" stroke="#5ef2ff" stroke-width="1.7"/></marker>
+      <linearGradient id="ga" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ef2ff"/><stop offset="1" stop-color="#ddb7ff"/></linearGradient></defs>
+      <path d="M360,150 C430,150 430,150 470,150" fill="none" stroke="url(#ga)" stroke-width="2" marker-end="url(#ar-a)" style="filter:drop-shadow(0 0 5px rgba(94,242,255,.7))"/>
+    </svg>
+    <button class="elabel agent" data-go="typededge" data-testid="edge-rel-pill" style="left:415px;top:140px"><span class="rel">calls</span>POST /charge</button>
+    <div class="gem" role="dialog" aria-label="Relationship type" data-testid="edge-rel-picker">
+      <button data-testid="edge-rel-option" aria-pressed="false">references</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">depends-on</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">implements</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">derives-from</button>
+      <button data-testid="edge-rel-option" aria-pressed="true">calls</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">produces</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">informs</button>
+      <button data-testid="edge-rel-option" aria-pressed="false">related</button>
+    </div>
+
+    <article class="node" style="left:120px;top:96px;width:240px;height:150px">
+      <div class="hd"><span class="name">checkout</span><span class="kind">md</span></div>
+      <div class="fmrow"><span class="chip">active</span><span class="tag">flow</span></div>
+      <div class="fmrow">
+        <span class="lchip" data-testid="link-chip"><span class="arr">↗</span><span class="nm">payment-gateway.md</span><button class="act" data-testid="refnav-focus" aria-pressed="true">focus</button></span>
+        <span class="lchip" data-testid="link-chip"><span class="arr">↗</span><span class="nm">flow.png</span><button class="act" data-testid="refnav-add" aria-pressed="false">add</button></span>
+      </div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+    <article class="node" style="left:470px;top:96px;width:230px;height:110px">
+      <div class="hd"><span class="name">payment-gateway</span><span class="kind">md</span></div>
+      <div class="fmrow"><span class="tag">service</span></div>
+      <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+    </article>
+  </div>
+
+  <div class="scrim" data-testid="scrim"></div>
+
+  <!-- SUBMIT spotlight -->
+  <div class="spot" role="dialog" aria-label="Submit to agent" data-testid="submit-panel">
+    <div class="si"><span class="ic">⌁</span><input data-testid="submit-intent" placeholder="What should the agent do this round?" value="Trace the checkout→payment call chain and add retry + idempotency nodes."><span class="kbd">⏎ send</span></div>
+    <div class="sb">
+      <div class="mcp-line"><span class="mcp" style="border-color:rgba(182,243,106,.4)"><span class="d"></span>MCP sidecar connected</span><span class="mcp" style="color:var(--amber)"><span class="d" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span>no LLM in-app</span></div>
+      <p class="hint">On send: board saved (rev 12), submit-time snapshot captured, active-board pointer handed to your harness. The agent calls <code>get_board</code> → <code>apply_response</code>; <code>links:</code> are extraction input only. Review opens when the round lands.</p>
+      <div class="sa">
+        <button class="send" data-go="loading" data-testid="submit-send">Send round →</button>
+        <div class="scope" role="group" aria-label="Round scope">
+          <button aria-pressed="true" data-testid="submit-scope">whole board</button>
+          <button aria-pressed="false" data-testid="submit-scope">selection</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW grouped inspector -->
+  <div class="inspector" data-testid="review-panel">
+    <div class="ihd"><b>Change-review</b><span class="meta">round @ rev 12 → 13 · 8 changes</span><button class="x" data-go="loaded" data-testid="review-close" aria-label="Close">✕</button></div>
+    <div class="ibody">
+      <div class="grp">
+        <div class="gh">Nodes <span class="ct">· 3</span></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge add">added</span><span class="rn">retry-policy</span><span class="rk">md · src 002-design.md#resilience</span></div>
+        <div class="row open" data-testid="review-item" tabindex="0"><span class="badge upd">updated</span><span class="rn">checkout</span><span class="rk">md</span>
+          <div class="diff"><div class="o">- status: active</div><div class="n">+ status: review</div></div></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge rem">removed</span><span class="rn">legacy-retry</span><span class="rk">md</span></div>
+      </div>
+      <div class="grp">
+        <div class="gh">Edges <span class="ct">· 3</span></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge add">added</span><span class="rn">checkout → retry-policy</span><span class="rk">calls</span></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge add">added</span><span class="rn">retry-policy → payment-gateway</span><span class="rk">depends-on</span></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge upd">updated</span><span class="rn">checkout → payment-gateway</span><span class="rk">references→calls</span></div>
+      </div>
+      <div class="grp">
+        <div class="gh">Comments · 1 &nbsp; · &nbsp; Files · 1</div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge add">added</span><span class="rn">reply on c-2</span><span class="rk">comment</span></div>
+        <div class="row" data-testid="review-item" tabindex="0"><span class="badge add">added</span><span class="rn">checkout.nodes/retry-policy.md</span><span class="rk">file · discard deletes</span></div>
+      </div>
+    </div>
+    <div class="ifoot"><span class="sum">+5 · ~2 · −1 · 1 file</span><span class="spring"></span>
+      <button class="btn-rem" data-go="loaded" data-testid="review-discard">Discard round</button>
+      <button class="btn-ok" data-go="loaded" data-testid="review-accept">Accept all 8</button>
+    </div>
+  </div>
+
+  <!-- TEMPLATES bottom dock -->
+  <div class="dock" aria-label="Template library" data-testid="template-tray">
+    <div class="dkh"><b>Templates</b>
+      <div class="tfilter" role="group" aria-label="Template kind">
+        <button data-testid="template-kind-filter" aria-pressed="true">all</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">node</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">diagram</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">document</button>
+      </div>
+      <button class="x" data-go="loaded" data-testid="template-close" aria-label="Close">✕</button>
+    </div>
+    <div class="dkrow">
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Service + DB + Cache</h4><p>3 nodes · typed depends-on</p><div class="mini"><b style="left:8px;top:8px;width:28px;height:14px"></b><b style="left:48px;top:8px;width:28px;height:14px"></b><b style="left:28px;top:30px;width:28px;height:14px"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">document</span><h4>ADR scaffold</h4><p>md node + source frontmatter</p><div class="mini"><b style="left:24px;top:14px;width:40px;height:22px"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">node</span><h4>External system</h4><p>link node + informs edge</p><div class="mini"><b style="left:28px;top:18px;width:34px;height:16px;background:rgba(221,183,255,.55)"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Subsystem group</h4><p>group container + slots</p><div class="mini"><b style="left:6px;top:6px;width:72px;height:40px;background:rgba(128,131,255,.18)"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+    </div>
+  </div>
+
+  <!-- frames -->
+  <div class="frame empty"><div class="card"><h2>No board open</h2><p>Press <span class="kbd" style="font-family:var(--mono);border:1px solid var(--outline-var);border-radius:4px;padding:1px 6px">⌘K</span> to submit a design doc for extraction, or open a <code style="font-family:var(--mono);color:var(--neon-cyan)">.canvas</code>.</p><button class="tbtn primary" data-testid="empty-open">Open .canvas…</button></div></div>
+  <div class="frame loading"><div class="card"><div class="spinner" aria-hidden="true"></div><h2>Agent working…</h2><p>MCP sidecar reading the board and applying the response.</p></div></div>
+  <div class="frame error"><div class="card"><h2>Round failed</h2><p>briefId mismatch — board changed since Submit. Re-submit to snapshot afresh.</p><button class="tbtn" data-testid="error-retry">Re-submit</button></div></div>
+</div>
+
+<script>
+  var app=document.querySelector('.app');
+  var FRAMES={empty:1,loading:1,error:1};
+  var PANELS={submit:1,review:1,templates:1};
+  function show(go){
+    if(go==='typededge'){app.setAttribute('data-edge',app.getAttribute('data-edge')==='open'?'closed':'open');return;}
+    app.setAttribute('data-edge','closed');
+    if(go==='refnav'){app.setAttribute('data-frame','none');app.setAttribute('data-panel','none');app.classList.remove('dim');}
+    else if(FRAMES[go]){app.setAttribute('data-frame',go);app.setAttribute('data-panel','none');app.classList.remove('dim');}
+    else if(PANELS[go]){app.setAttribute('data-frame','none');app.setAttribute('data-panel',go);app.classList.add('dim');}
+    else {app.setAttribute('data-frame','none');app.setAttribute('data-panel','none');app.classList.remove('dim');}
+    document.querySelectorAll('.statebar [data-go]').forEach(function(b){b.setAttribute('aria-current',String(b.dataset.go===go));});
+  }
+  document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();show(b.dataset.go);});});
+  document.querySelectorAll('.row[data-testid="review-item"]').forEach(function(r){r.addEventListener('click',function(){r.classList.toggle('open');});});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){show('loaded');}});
+</script>
+</body>
+</html>
