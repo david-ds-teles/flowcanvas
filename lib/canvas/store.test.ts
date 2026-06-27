@@ -125,6 +125,12 @@ describe('store / node editing (text · label · size)', () => {
     expect(useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'n-g')).toMatchObject({ type: 'group', label: 'Renamed', meta: { shape: 'ellipse' } })
   })
 
+  it('setNodeShape changes a group node shape, preserving other meta', () => {
+    useCanvasStore.getState().addNode({ id: 'n-g2', type: 'group', label: 'x', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'user', shape: 'rectangle' } })
+    useCanvasStore.getState().setNodeShape('n-g2', 'diamond')
+    expect(useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'n-g2')).toMatchObject({ type: 'group', meta: { origin: 'user', shape: 'diamond' } })
+  })
+
   it('setNodeSize persists a resize and marks dirty', () => {
     useCanvasStore.getState().setNodeSize('a', 500, 400)
     const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!

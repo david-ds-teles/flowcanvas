@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [BUGFIX] Shapes weren't real / couldn't resize or change — 2026-06-27
+
+**Dev:** david-ds-teles
+**Cause:** Groups rendered an SVG inside a still-rectangular node — the hit area + selection box were rectangular ("fake"), and the node was forced to `zIndex:0` (behind content), so new shapes spawned under existing nodes and couldn't be selected/resized; changing the shape also deselected the node (the controlled-state re-sync wiped RF selection).
+**Fix:** True shapes — only the painted SVG outline is hit-testable (`.fc-group` + RF node wrapper `pointer-events:none !important`, shapes `visiblePainted`); React Flow's rectangular `.selected` glow suppressed (shape stroke glows instead); dropped the forced `zIndex`; added a shape switcher (`setNodeShape` rectangle/ellipse/diamond) + enlarged `NodeResizer` handles on select; the shell now preserves RF `selected` across store re-syncs so editing doesn't deselect.
+**Affected:** `components/canvas/nodes/group-node.tsx`, `lib/canvas/{store,adapter}.ts`, `components/canvas/canvas-shell.tsx`, `app/globals.css`, `lib/canvas/store.test.ts`. Gates: tsc 0 · lint 0 · build ok · vitest 61/61 · CDP shape-probe 8/8 (corner-click passes through, switcher changes shape, resize-drag 347×255→406×314, body-drag moves).
+
+---
+
 ## [BUGFIX] Link/note handles misaligned (bottom-edge gap) — 2026-06-27
 
 **Dev:** david-ds-teles

@@ -1123,13 +1123,24 @@ html, body { height: 100%; }
 }
 .fc-note__edit:focus { outline: none; box-shadow: 0 0 0 2px rgba(192, 193, 255, 0.25); }
 
-/* group / shape node — SVG outline + label, resizable container behind content nodes */
+/* group / shape node — a REAL shape: only the painted SVG outline is hit-testable (the rectangular
+   bounding box + corners pass clicks through), and React Flow's rectangular .selected box is suppressed
+   so selection follows the shape. */
 .fc-group {
   position: relative;
+  pointer-events: none;                 /* corners/box are transparent to events… */
   --fc-group-fill: rgba(128, 131, 255, 0.05);
   --fc-group-stroke: var(--color-primary-cont);
 }
-.fc-group__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fc-group__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.fc-group__svg ellipse, .fc-group__svg polygon, .fc-group__svg rect { pointer-events: visiblePainted; }  /* …only the shape captures */
+/* the whole RF node wrapper is transparent to events too, so the rectangular corners outside the shape
+   don't select/drag the node — only the painted shape, label, switcher, and resize handles capture
+   (events still bubble from those to RF's wrapper listeners, so drag/select work). */
+.react-flow__node:has(.fc-group) { pointer-events: none !important; }   /* beat RF's inline pointer-events */
+.react-flow__node:has(.fc-group) .react-flow__resize-control { pointer-events: all; }
+/* suppress the rectangular selection glow for shape nodes (set on the RF node wrapper) */
+.react-flow__node.selected:has(.fc-group) { box-shadow: none !important; }
 .fc-group__label {
   position: absolute;
   left: 10px;
@@ -1148,6 +1159,7 @@ html, body { height: 100%; }
   text-align: center;
 }
 .fc-group__label > span { display: inline-block; padding: 1px 6px; border-radius: 5px; background: rgba(13, 21, 40, 0.6); cursor: text; }
+.fc-group__label--empty { opacity: 0.5; font-style: italic; }
 .fc-group__input {
   width: 160px;
   height: 24px;
@@ -1160,9 +1172,52 @@ html, body { height: 100%; }
   font-size: 11px;
 }
 .fc-group__input:focus { outline: none; }
-/* NodeResizer chrome in nyx accents */
+
+/* shape/color switcher — floats above the selected shape */
+.fc-group__bar {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+.fc-group__sbtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-group__sbtn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); }
+.fc-group__sbtn.is-on { color: #06222a; background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary)); }
+.fc-group__sbtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* NodeResizer chrome in nyx accents — handles enlarged so they're easy to grab */
 .fc-group__rzline { border-color: var(--color-primary) !important; }
-.fc-group__rzhandle { background: var(--color-primary) !important; border-color: var(--color-bg) !important; border-radius: 2px; }
+.fc-group__rzhandle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--color-primary) !important;
+  border: 1.5px solid var(--color-bg) !important;
+  border-radius: 2px;
+}
 
 /* add-node menu — shape sub-row */
 .fc-menu__shapes { display: flex; flex-direction: column; gap: 2px; padding: 2px 6px 6px; }

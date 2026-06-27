@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Connection } from '@xyflow/react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape } from './jsoncanvas'
 import { isFileNode, nodeKind } from './jsoncanvas'
 import { deriveLinkEdges, reconcileEdges } from './edges'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
@@ -27,6 +27,7 @@ interface CanvasState {
   setNodeSize: (id: string, width: number, height: number) => void
   setNodeText: (id: string, text: string) => void
   setNodeLabel: (id: string, label: string) => void
+  setNodeShape: (id: string, shape: NodeShape) => void
   relabelEdge: (id: string, label: string) => void
   setEditingEdge: (id: string | null) => void
   setMode: (mode: CanvasMode) => void
@@ -130,6 +131,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { doc } = get()
     if (!doc) return
     const nodes = doc.nodes.map((n) => (n.id === id && n.type === 'group' ? { ...n, label } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Change a group node's drawn shape (rectangle/ellipse/diamond) in place.
+  setNodeShape(id: string, shape: NodeShape) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => (n.id === id && n.type === 'group' ? { ...n, meta: { ...n.meta, shape } } : n))
     set({ doc: { ...doc, nodes }, dirty: true })
   },
   relabelEdge(id: string, label: string) {

@@ -83,8 +83,15 @@ function CanvasFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
 
-  // Sync controlled state when store doc changes (e.g. toggleCollapsed, onConnect, load)
-  useEffect(() => { setNodes(rfNodes) }, [rfNodes, setNodes])
+  // Sync controlled state when the store doc changes (toggleCollapsed, onConnect, setNodeShape, load…),
+  // preserving each node's transient RF selection so a store edit (e.g. switching a shape) doesn't
+  // deselect the node out from under the user and make its switcher/resize handles vanish.
+  useEffect(() => {
+    setNodes((prev) => {
+      const sel = new Map(prev.map((n) => [n.id, n.selected]))
+      return rfNodes.map((n) => ({ ...n, selected: sel.get(n.id) ?? false }))
+    })
+  }, [rfNodes, setNodes])
   useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
 
   // onNodesChange drives smooth local dragging; commit the final position to the store on drop
