@@ -20,6 +20,8 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
       width: n.width,
       height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box
       data: { node: n },
+      // Groups are containers — paint them BEHIND content nodes so a shape can frame other nodes.
+      zIndex: kind === 'group' ? 0 : 1,
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
   })

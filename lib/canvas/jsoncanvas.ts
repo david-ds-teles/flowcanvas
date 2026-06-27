@@ -7,12 +7,16 @@ export type CanvasColor = string
 
 export type NodeOrigin = 'user' | 'agent' | 'import'
 export type EdgeOrigin = 'links' | 'user' | 'agent'
+/** Drawn outline of a `group` node. Absent → rectangle (the JSONCanvas default). */
+export type NodeShape = 'rectangle' | 'ellipse' | 'diamond'
 
 /** Flowcanvas extension — always safe to drop; re-derivable or UI-only. */
 export interface NodeMeta {
   origin?: NodeOrigin
   /** Body hidden (frontmatter-only card). UI state, persisted for convenience. */
   collapsed?: boolean
+  /** Shape of a `group` node's outline (rectangle default). */
+  shape?: NodeShape
   /**
    * Parsed YAML frontmatter of a markdown node. CACHE ONLY — the file on disk is
    * the source of truth; repopulated on every load via /api/canvas/resolve.

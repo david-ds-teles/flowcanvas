@@ -17,15 +17,21 @@ interface CanvasState {
   dirty: boolean
   mode: CanvasMode                   // UI-only: select / connect / comment (transient, never persisted)
   editingEdgeId: string | null       // UI-only: edge whose label is being edited inline (transient)
+  readerNodeId: string | null        // UI-only: markdown node open in the reader drawer (transient)
   load: (path: string) => Promise<void>
   save: () => Promise<void>
   bodyFor: (id: string) => string | undefined
   toggleCollapsed: (id: string) => void
   onConnect: (conn: Connection) => void
   setNodePosition: (id: string, x: number, y: number) => void
+  setNodeSize: (id: string, width: number, height: number) => void
+  setNodeText: (id: string, text: string) => void
+  setNodeLabel: (id: string, label: string) => void
   relabelEdge: (id: string, label: string) => void
   setEditingEdge: (id: string | null) => void
   setMode: (mode: CanvasMode) => void
+  openReader: (id: string) => void
+  closeReader: () => void
   addNode: (node: CanvasNode) => void
   addFileNode: (path: string, x: number, y: number) => Promise<void>
   addComment: (anchor: CommentAnchor, text: string, author: string) => string
@@ -61,7 +67,7 @@ async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>)
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null,
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null,
   bodyFor: (id) => get().bodies[id],
   async load(path) {
     const doc = await api.getCanvas(path)
@@ -105,6 +111,27 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x, y } : n))
     set({ doc: { ...doc, nodes }, dirty: true })
   },
+  // Persist a resize (group nodes) committed by React Flow's NodeResizer on resize-end.
+  setNodeSize(id: string, width: number, height: number) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, width, height } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Edit a note's markdown body in place (double-click → inline textarea). No-op for non-text nodes.
+  setNodeText(id: string, text: string) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => (n.id === id && n.type === 'text' ? { ...n, text } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Edit a group's label in place. No-op for non-group nodes.
+  setNodeLabel(id: string, label: string) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => (n.id === id && n.type === 'group' ? { ...n, label } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
   relabelEdge(id: string, label: string) {
     const { doc } = get()
     if (!doc) return
@@ -121,6 +148,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   setMode(mode: CanvasMode) {
     set({ mode })
+  },
+  openReader(id: string) {
+    set({ readerNodeId: id })
+  },
+  closeReader() {
+    set({ readerNodeId: null })
   },
   // Append a fully-formed text / link / group node (the caller mints the id + position). Markdown and
   // image nodes go through `addFileNode` instead, which also resolves their content + re-derives edges.

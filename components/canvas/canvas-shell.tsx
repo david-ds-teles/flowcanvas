@@ -23,6 +23,7 @@ import { MarkdownNode } from './nodes/markdown-node'
 import { ImageNode } from './nodes/image-node'
 import { LinkChipNode } from './nodes/link-node'
 import { NoteNode } from './nodes/note-node'
+import { GroupNode } from './nodes/group-node'
 import { FallbackNode } from './nodes/fallback-node'
 import { LabeledEdge } from './edges/labeled-edge'
 import { CommentLayer } from './comment-layer'
@@ -42,14 +43,14 @@ function readPath(): string {
   return new URLSearchParams(window.location.search).get('path') ?? DEFAULT_PATH
 }
 
-// `group` + `file` (non-md/non-image) have no dedicated component yet → FallbackNode keeps
-// React Flow from rendering its bare "node type not found" box for those kinds.
+// `group` → the resizable/labelable shape container; `file` (non-md/non-image, e.g. .pdf/.ts) →
+// FallbackNode keeps React Flow from rendering its bare "node type not found" box.
 const nodeTypes: NodeTypes = {
   markdown: MarkdownNode,
   image: ImageNode,
   link: LinkChipNode,
   note: NoteNode,
-  group: FallbackNode,
+  group: GroupNode,
   file: FallbackNode,
 }
 // All edges flow through the single provenance-styled labeled edge (the adapter sets type:'labeled').
@@ -62,9 +63,11 @@ function CanvasFlow() {
   const setNodePosition = useCanvasStore((s) => s.setNodePosition)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const mode = useCanvasStore((s) => s.mode)
+  const readerNodeId = useCanvasStore((s) => s.readerNodeId)
+  const openReader = useCanvasStore((s) => s.openReader)
+  const closeReader = useCanvasStore((s) => s.closeReader)
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
-  const [readerNodeId, setReaderNodeId] = useState<string | null>(null)
   const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' }>({ open: false, tab: 'export' })
 
   // Kick off the load once on mount; the catch (async) surfaces failures in the empty-state card.
@@ -112,9 +115,9 @@ function CanvasFlow() {
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: RFNode) => {
       const n = doc?.nodes.find((x) => x.id === node.id)
-      if (n && isFileNode(n) && nodeKind(n) === 'markdown') setReaderNodeId(node.id)
+      if (n && isFileNode(n) && nodeKind(n) === 'markdown') openReader(node.id)
     },
-    [doc],
+    [doc, openReader],
   )
 
   return (
@@ -154,8 +157,8 @@ function CanvasFlow() {
       {/* Pin overlay above the pane — projects anchors to screen, places pins in comment mode. */}
       <CommentLayer />
 
-      {/* Reader drawer — opens on a markdown node click; full-fidelity shiki render + node thread. */}
-      {readerNodeId && <ReaderDrawer nodeId={readerNodeId} onClose={() => setReaderNodeId(null)} />}
+      {/* Reader drawer — opens on a markdown node click or its header read button; shiki + node thread. */}
+      {readerNodeId && <ReaderDrawer nodeId={readerNodeId} onClose={closeReader} />}
 
       {/* Agent round-trip panel — export DesignBrief / import AgentResponse. */}
       {agent.open && (

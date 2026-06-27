@@ -107,6 +107,41 @@ describe('store / setNodePosition', () => {
   })
 })
 
+describe('store / node editing (text · label · size)', () => {
+  it('setNodeText edits a text node only, and marks dirty', () => {
+    useCanvasStore.getState().addNode({ id: 'n-t', type: 'text', text: 'old', x: 0, y: 0, width: 200, height: 120, meta: { origin: 'user' } })
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().setNodeText('n-t', 'new body')
+    expect(useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'n-t')).toMatchObject({ type: 'text', text: 'new body' })
+    expect(useCanvasStore.getState().dirty).toBe(true)
+    // no-op on a non-text node (file node 'a' unchanged)
+    useCanvasStore.getState().setNodeText('a', 'nope')
+    expect(useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'a')).not.toHaveProperty('text')
+  })
+
+  it('setNodeLabel edits a group node only', () => {
+    useCanvasStore.getState().addNode({ id: 'n-g', type: 'group', label: 'old', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'user', shape: 'ellipse' } })
+    useCanvasStore.getState().setNodeLabel('n-g', 'Renamed')
+    expect(useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'n-g')).toMatchObject({ type: 'group', label: 'Renamed', meta: { shape: 'ellipse' } })
+  })
+
+  it('setNodeSize persists a resize and marks dirty', () => {
+    useCanvasStore.getState().setNodeSize('a', 500, 400)
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect({ w: n.width, h: n.height }).toEqual({ w: 500, h: 400 })
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+})
+
+describe('store / reader', () => {
+  it('openReader / closeReader toggle the reader node id', () => {
+    useCanvasStore.getState().openReader('a')
+    expect(useCanvasStore.getState().readerNodeId).toBe('a')
+    useCanvasStore.getState().closeReader()
+    expect(useCanvasStore.getState().readerNodeId).toBeNull()
+  })
+})
+
 describe('store / comments', () => {
   it('adds a root comment with a sequential badge, null parent, and marks dirty', () => {
     const s = useCanvasStore.getState()

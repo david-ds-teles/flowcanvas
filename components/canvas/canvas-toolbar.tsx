@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { uploadFile, type DirEntry } from '@/lib/api'
-import type { CanvasNode } from '@/lib/canvas/jsoncanvas'
+import type { CanvasNode, NodeShape } from '@/lib/canvas/jsoncanvas'
 import { FilePicker } from './file-picker'
 
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'])
@@ -40,6 +40,7 @@ export function CanvasToolbar({ onOpenAgent }: CanvasToolbarProps) {
   const [menu, setMenu] = useState(false)                       // add-node dropdown open
   const [picker, setPicker] = useState<'markdown' | 'image' | null>(null)
   const [linkUrl, setLinkUrl] = useState<string | null>(null)   // inline link-URL input (no window.prompt)
+  const [shapeOpen, setShapeOpen] = useState(false)             // shape sub-row (rectangle/ellipse/diamond)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
 
@@ -52,17 +53,17 @@ export function CanvasToolbar({ onOpenAgent }: CanvasToolbarProps) {
     [screenToFlowPosition],
   )
 
-  const closeMenu = useCallback(() => { setMenu(false); setPicker(null); setLinkUrl(null) }, [])
+  const closeMenu = useCallback(() => { setMenu(false); setPicker(null); setLinkUrl(null); setShapeOpen(false) }, [])
 
   const addText = useCallback(() => {
     const { x, y } = placeAt()
-    addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'text', text: '## Note\n\nWrite something…', x, y, width: 280, height: 160, color: '#5ef2ff', meta: { origin: 'user' } } as CanvasNode)
+    addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'text', text: '', x, y, width: 280, height: 160, color: '#5ef2ff', meta: { origin: 'user' } } as CanvasNode)
     closeMenu()
   }, [addNode, placeAt, closeMenu])
 
-  const addRectangle = useCallback(() => {
+  const addShape = useCallback((shape: NodeShape) => {
     const { x, y } = placeAt()
-    addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'group', label: 'Group', x, y, width: 360, height: 240, meta: { origin: 'user' } } as CanvasNode)
+    addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'group', label: '', x, y, width: 320, height: 220, meta: { origin: 'user', shape } } as CanvasNode)
     closeMenu()
   }, [addNode, placeAt, closeMenu])
 
@@ -103,10 +104,10 @@ export function CanvasToolbar({ onOpenAgent }: CanvasToolbarProps) {
 
   // Esc closes the menu when no picker/input is open (those handle their own Esc).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && menu && !picker && linkUrl === null) setMenu(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && menu && !picker && linkUrl === null && !shapeOpen) setMenu(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [menu, picker, linkUrl])
+  }, [menu, picker, linkUrl, shapeOpen])
 
   const modeBtn = (m: typeof mode, testid: string, label: string, icon: ReactNode) => (
     <button
@@ -137,10 +138,17 @@ export function CanvasToolbar({ onOpenAgent }: CanvasToolbarProps) {
           + Add ▾
         </button>
         {menu && (
-          <div className="fc-menu" role="menu" data-testid="add-node-menu" onMouseLeave={() => { if (!picker && linkUrl === null) setMenu(false) }}>
+          <div className="fc-menu" role="menu" data-testid="add-node-menu" onMouseLeave={() => { if (!picker && linkUrl === null && !shapeOpen) setMenu(false) }}>
             <button className="fc-menu__item" data-testid="add-node-markdown" role="menuitem" onClick={() => setPicker('markdown')}>Markdown file…</button>
             <button className="fc-menu__item" data-testid="add-node-text" role="menuitem" onClick={addText}>Note (text)</button>
-            <button className="fc-menu__item" data-testid="add-node-rectangle" role="menuitem" onClick={addRectangle}>Rectangle / group</button>
+            <button className="fc-menu__item" data-testid="add-node-shape" role="menuitem" aria-expanded={shapeOpen} onClick={() => setShapeOpen((v) => !v)}>Shape ▸</button>
+            {shapeOpen && (
+              <div className="fc-menu__shapes" onClick={(e) => e.stopPropagation()}>
+                <button className="fc-menu__shape" data-testid="add-node-rectangle" onClick={() => addShape('rectangle')}>▭ Rectangle</button>
+                <button className="fc-menu__shape" data-testid="add-node-ellipse" onClick={() => addShape('ellipse')}>◯ Ellipse</button>
+                <button className="fc-menu__shape" data-testid="add-node-diamond" onClick={() => addShape('diamond')}>◇ Diamond</button>
+              </div>
+            )}
             <button className="fc-menu__item" data-testid="add-node-image" role="menuitem" onClick={() => setPicker('image')}>Image…</button>
             <button className="fc-menu__item" data-testid="add-node-link" role="menuitem" onClick={() => setLinkUrl('')}>Link…</button>
 

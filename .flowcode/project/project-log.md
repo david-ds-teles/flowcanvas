@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [BUGFIX] Flowcanvas node usability — text/group editing, link 404, shapes, full-read — 2026-06-27
+
+**Dev:** david-ds-teles
+**Cause:** Post-v0.1 operator report — added node types weren't usable: notes/groups had no edit path (editing was deferred), link chips with a scheme-less url (`google.com`) resolved relative → 404, the shape tool only made rectangles, and the markdown card's clamped body had no discoverable "read full" path.
+**Fix:** Note nodes double-click → inline textarea (`setNodeText`); group nodes are now a real `GroupNode` — resizable (`NodeResizer`/`setNodeSize`), double-click label edit (`setNodeLabel`), SVG outline rectangle/ellipse/diamond via `meta.shape` (`NodeShape`), painted behind content nodes (adapter `zIndex:0`); `normalizeUrl` prepends `https://` to scheme-less links; add-node menu gained a Shape ▸ rectangle/ellipse/diamond sub-row; markdown header gained a `node-read` button → reader drawer (reader state moved into the store: `readerNodeId`/`openReader`/`closeReader`).
+**Affected:** `lib/canvas/{jsoncanvas,store,adapter}.ts`, `components/canvas/nodes/{note,link,group,markdown}-node.tsx` (+ new `group-node.tsx`), `components/canvas/{canvas-shell,canvas-toolbar}.tsx`, `app/globals.css`, `lib/canvas/store.test.ts`. Gates: tsc 0 · lint 0 · build ok · vitest 60/60 · CDP fix-probe 7/7.
+
+---
+
 ## [PLAN COMPLETE] 001-initial-architecture — Flowcanvas v0.1 — 2026-06-26
 
 **Dev:** david-ds-teles
