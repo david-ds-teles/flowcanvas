@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -8,17 +8,13 @@ import {
   Controls,
   MiniMap,
   ConnectionMode,
-  useNodesState,
-  useEdgesState,
-  type Connection,
-  type Node as RFNode,
-  type Edge as RFEdge,
+  ConnectionLineType,
   type NodeTypes,
   type EdgeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { toReactFlow } from '@/lib/canvas/adapter'
 import { useCanvasStore } from '@/lib/canvas/store'
+import { useCanvasHandlers } from './use-canvas-handlers'
 import { MarkdownNode } from './nodes/markdown-node'
 import { ImageNode } from './nodes/image-node'
 import { LinkChipNode } from './nodes/link-node'
@@ -31,7 +27,6 @@ import { CanvasToolbar } from './canvas-toolbar'
 import { Dropzone } from './dropzone'
 import { ReaderDrawer } from './reader-drawer'
 import { ExportPanel } from './export-panel'
-import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
 // shows content out of the box instead of an empty grid.
@@ -56,16 +51,17 @@ const nodeTypes: NodeTypes = {
 // All edges flow through the single provenance-styled labeled edge (the adapter sets type:'labeled').
 const edgeTypes: EdgeTypes = { labeled: LabeledEdge }
 
+// defaultEdgeOptions makes the live drag-preview adopt the labeled edge so it also turns at right
+// angles (Fix 2); connectionLineType=SmoothStep matches the preview to the committed routing.
+const defaultEdgeOptions = { type: 'labeled' }
+
 function CanvasFlow() {
   const doc = useCanvasStore((s) => s.doc)
   const load = useCanvasStore((s) => s.load)
-  const onConnect = useCanvasStore((s) => s.onConnect)
-  const setNodePosition = useCanvasStore((s) => s.setNodePosition)
-  const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const mode = useCanvasStore((s) => s.mode)
   const readerNodeId = useCanvasStore((s) => s.readerNodeId)
-  const openReader = useCanvasStore((s) => s.openReader)
   const closeReader = useCanvasStore((s) => s.closeReader)
+  const handlers = useCanvasHandlers()
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
   const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' }>({ open: false, tab: 'export' })
@@ -75,83 +71,34 @@ function CanvasFlow() {
     void load(path).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [load, path])
 
-  const { nodes: rfNodes, edges: rfEdges } = useMemo(
-    () => (doc ? toReactFlow(doc) : { nodes: [], edges: [] }),
-    [doc],
-  )
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
-
-  // Sync controlled state when the store doc changes (toggleCollapsed, onConnect, setNodeShape, load…),
-  // preserving each node's transient RF selection so a store edit (e.g. switching a shape) doesn't
-  // deselect the node out from under the user and make its switcher/resize handles vanish.
-  useEffect(() => {
-    setNodes((prev) => {
-      const sel = new Map(prev.map((n) => [n.id, n.selected]))
-      return rfNodes.map((n) => ({ ...n, selected: sel.get(n.id) ?? false }))
-    })
-  }, [rfNodes, setNodes])
-  useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
-
-  // onNodesChange drives smooth local dragging; commit the final position to the store on drop
-  // (resolves the Phase-4 deferred write-back so node moves survive a save).
-  const onNodeDragStop = useCallback(
-    (_e: MouseEvent | TouchEvent, node: RFNode) => setNodePosition(node.id, node.position.x, node.position.y),
-    [setNodePosition],
-  )
-
-  // Connecting two nodes mints the edge and opens its inline label editor (no native prompt);
-  // double-clicking an existing edge re-opens that editor. Relabeling a derived `links` edge
-  // promotes it to `user` (in `relabelEdge`). The label is typed in-canvas via the edge component.
-  const onEdgeDoubleClick = useCallback(
-    (_e: React.MouseEvent, edge: RFEdge) => setEditingEdge(edge.id),
-    [setEditingEdge],
-  )
-
-  // Reject self-connections during the drag itself: without this, an imprecise drag snaps to the
-  // SOURCE node's own handle (a self-loop) instead of reaching the target — the "sometimes works,
-  // sometimes doesn't" + "reference itself" bug. RF marks the connection invalid and never fires onConnect.
-  const isValidConnection = useCallback(
-    (c: RFEdge | Connection) => !!c.source && !!c.target && c.source !== c.target,
-    [],
-  )
-
-  // Click a markdown node → open the full-fidelity reader drawer. Other kinds (image/link/note/group)
-  // have nothing more to read, so a click just selects. Comment mode is handled by the overlay, not here.
-  const onNodeClick = useCallback(
-    (_e: React.MouseEvent, node: RFNode) => {
-      const n = doc?.nodes.find((x) => x.id === node.id)
-      if (n && isFileNode(n) && nodeKind(n) === 'markdown') openReader(node.id)
-    },
-    [doc, openReader],
-  )
-
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
+    <div className="fc-canvas-root">
       <ReactFlow
         className={mode === 'connect' ? 'fc-rf--connect' : undefined}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeDragStop={onNodeDragStop}
-        onNodeClick={onNodeClick}
-        onEdgeDoubleClick={onEdgeDoubleClick}
-        isValidConnection={isValidConnection}
+        nodes={handlers.nodes}
+        edges={handlers.edges}
+        onNodesChange={handlers.onNodesChange}
+        onEdgesChange={handlers.onEdgesChange}
+        onConnect={handlers.onConnect}
+        onNodeDragStop={handlers.onNodeDragStop}
+        onNodeClick={handlers.onNodeClick}
+        onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+        isValidConnection={handlers.isValidConnection}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
         connectionMode={ConnectionMode.Loose}
+        connectionLineType={ConnectionLineType.SmoothStep}
         connectionRadius={34}
-        deleteKeyCode={null}
+        deleteKeyCode={['Delete', 'Backspace']}
         fitView
         minZoom={0.2}
         maxZoom={2}
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--color-grid)" />
         <Controls />
-        <MiniMap nodeColor="#222a3d" maskColor="rgba(6,14,32,0.7)" pannable zoomable />
+        {/* SVG fills need concrete hex (not CSS vars); the chrome (glass/border) is in controls.css. */}
+        <MiniMap nodeColor="#8083ff" nodeStrokeColor="#5ef2ff" maskColor="rgba(11,19,38,0.72)" pannable zoomable />
         {/* React Flow attribution is kept (MIT terms); subscribers may hide it via proOptions */}
       </ReactFlow>
 
@@ -176,8 +123,7 @@ function CanvasFlow() {
         />
       )}
 
-      {/* Minimal empty/error state so a board that fails to load is never a silent blank grid.
-          Full empty-state polish is Phase 7. */}
+      {/* Minimal empty/error state so a board that fails to load is never a silent blank grid. */}
       {!doc && (
         <div className="fc-empty">
           <div className="fc-empty__card">

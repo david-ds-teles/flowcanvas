@@ -20,6 +20,7 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
       width: n.width,
       height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box
       data: { node: n },
+      deletable: false,                                  // edges are key-deletable (Fix 5); nodes are not
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
   })

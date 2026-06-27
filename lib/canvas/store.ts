@@ -10,6 +10,9 @@ import * as api from '../api'
 /** Canvas interaction mode — drives the toolbar's mode group and the comment layer's click capture. */
 export type CanvasMode = 'select' | 'connect' | 'comment'
 
+/** Reader drawer width preset — drawer (440px) · half (50vw) · full (100vw). */
+export type ReaderSize = 'drawer' | 'half' | 'full'
+
 interface CanvasState {
   path: string | null
   doc: FlowcanvasDoc | null
@@ -18,11 +21,13 @@ interface CanvasState {
   mode: CanvasMode                   // UI-only: select / connect / comment (transient, never persisted)
   editingEdgeId: string | null       // UI-only: edge whose label is being edited inline (transient)
   readerNodeId: string | null        // UI-only: markdown node open in the reader drawer (transient)
+  readerSize: ReaderSize             // UI-only: reader width preset (transient, never persisted)
   load: (path: string) => Promise<void>
   save: () => Promise<void>
   bodyFor: (id: string) => string | undefined
   toggleCollapsed: (id: string) => void
   onConnect: (conn: Connection) => void
+  removeEdgeWriteback: (id: string) => void
   setNodePosition: (id: string, x: number, y: number) => void
   setNodeSize: (id: string, width: number, height: number) => void
   setNodeText: (id: string, text: string) => void
@@ -33,6 +38,8 @@ interface CanvasState {
   setMode: (mode: CanvasMode) => void
   openReader: (id: string) => void
   closeReader: () => void
+  setReaderSize: (size: ReaderSize) => void
+  maximizeReader: (id: string) => void
   addNode: (node: CanvasNode) => void
   addFileNode: (path: string, x: number, y: number) => Promise<void>
   addComment: (anchor: CommentAnchor, text: string, author: string) => string
@@ -48,6 +55,13 @@ const edgeId = () => `e-${crypto.randomUUID().slice(0, 8)}`
 const commentId = () => `c-${crypto.randomUUID().slice(0, 8)}`
 /** Short random suffix for a user-created node id. */
 const nodeId = () => `n-${crypto.randomUUID().slice(0, 8)}`
+
+/** The backing file of a node id, or null when the node is absent / not file-backed. Used by the
+ *  bidirectional `links:` write-back to decide whether an edge is a structural file↔file link. */
+const fileOf = (doc: FlowcanvasDoc, id: string): string | null => {
+  const n = doc.nodes.find((x) => x.id === id)
+  return n && isFileNode(n) ? n.file : null
+}
 
 /** Hydrate file nodes' markdown frontmatter into `meta` + bodies map; returns the next nodes + bodies. */
 async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>) {
@@ -68,7 +82,7 @@ async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>)
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null,
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer',
   bodyFor: (id) => get().bodies[id],
   async load(path) {
     const doc = await api.getCanvas(path)
@@ -91,12 +105,32 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     )
     set({ doc: { ...doc, nodes }, dirty: true })
   },
-  // Mint a user edge with an empty label and open the inline label editor on it (no native prompt —
-  // the label is typed in-canvas via the edge's EdgeLabelRenderer input). Self-connections are
-  // rejected (a node referencing itself is never meaningful here, and deriveLinkEdges drops them too).
+  // Two cases (Phase 8, Fix 5 — bidirectional `links:`):
+  //  • file↔file (or file↔image): a STRUCTURAL link → mint the deterministic `lk:` edge (origin
+  //    'links', so deriveLinkEdges re-derives the identical edge on the next load — idempotent) AND
+  //    patch the source `.md`'s `links:` frontmatter so the file and the canvas agree. No label editor.
+  //  • otherwise: a canvas-only `user` edge with an empty label + the inline editor (no native prompt).
+  // Self-connections are rejected (a node referencing itself is never meaningful; deriveLinkEdges
+  // drops them too).
   onConnect(conn: Connection) {
     const { doc } = get()
     if (!doc || !conn.source || !conn.target || conn.source === conn.target) return
+    const src = fileOf(doc, conn.source)
+    const tgt = fileOf(doc, conn.target)
+    if (src && tgt) {
+      const id = `lk:${conn.source}->${conn.target}`
+      if (doc.edges.some((e) => e.id === id)) return            // already linked — no duplicate, no re-patch
+      const edge: CanvasEdge = {
+        id, fromNode: conn.source, toNode: conn.target,
+        fromSide: conn.sourceHandle as CanvasEdge['fromSide'],
+        toSide: conn.targetHandle as CanvasEdge['toSide'],
+        label: 'links', color: '6', toEnd: 'arrow', meta: { origin: 'links' },
+      }
+      set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true })
+      // fire-and-forget; reload self-heals. Surface failures so a write-back desync isn't silent.
+      void api.patchLinks(src, { add: [tgt] }).catch((e) => console.error('patchLinks(add) failed', e))
+      return
+    }
     const id = edgeId()
     const edge: CanvasEdge = {
       id, fromNode: conn.source, toNode: conn.target,
@@ -105,6 +139,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       label: '', toEnd: 'arrow', meta: { origin: 'user' },
     }
     set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
+  },
+  // Remove an edge from the doc (so the deletion is durable — it neither resurrects on the next
+  // controlled-state sync nor survives a save) and, when it joined two file nodes, strip the target
+  // from the source `.md`'s `links:`. Called per 'remove' change from the shell's onEdgesChange.
+  removeEdgeWriteback(id: string) {
+    const { doc } = get()
+    if (!doc) return
+    const e = doc.edges.find((x) => x.id === id)
+    if (!e) return
+    const src = fileOf(doc, e.fromNode)
+    const tgt = fileOf(doc, e.toNode)
+    set({ doc: { ...doc, edges: doc.edges.filter((x) => x.id !== id) }, dirty: true })
+    if (src && tgt) void api.patchLinks(src, { remove: [tgt] }).catch((e) => console.error('patchLinks(remove) failed', e))
   },
   setNodePosition(id: string, x: number, y: number) {
     const { doc } = get()
@@ -162,6 +209,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   closeReader() {
     set({ readerNodeId: null })
+  },
+  // Set the reader width preset (drawer/half/full) — bound to the reader header's segmented control.
+  setReaderSize(size: ReaderSize) {
+    set({ readerSize: size })
+  },
+  // Open the reader for a node at FULL width (the markdown node's ⤢ "maximize" button — Fix 3).
+  maximizeReader(id: string) {
+    set({ readerNodeId: id, readerSize: 'full' })
   },
   // Append a fully-formed text / link / group node (the caller mints the id + position). Markdown and
   // image nodes go through `addFileNode` instead, which also resolves their content + re-derives edges.

@@ -50,7 +50,7 @@ function Inner({ id, data }: NodeProps) {
   const collapsed = node.meta?.collapsed ?? false
   const body = useCanvasStore((s) => s.bodyFor(id))
   const toggle = useCanvasStore((s) => s.toggleCollapsed)
-  const openReader = useCanvasStore((s) => s.openReader)
+  const maximizeReader = useCanvasStore((s) => s.maximizeReader)
   const title = String(fm.name ?? basename(node.file))
 
   // Every meaningful frontmatter field — priority keys first, then the rest (skipping empties + the title).
@@ -71,9 +71,9 @@ function Inner({ id, data }: NodeProps) {
         <span className="fc-node__kind">md</span>
         <button
           className="fc-node__read nodrag"
-          onClick={(e) => { e.stopPropagation(); openReader(id) }}
-          aria-label="Read full document"
-          title="Read full document"
+          onClick={(e) => { e.stopPropagation(); maximizeReader(id) }}
+          aria-label="Maximize — read full document"
+          title="Maximize — read full document"
           data-testid="node-read"
         >
           ⤢

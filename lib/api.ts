@@ -80,6 +80,18 @@ export async function uploadFile(file: File, dir?: string): Promise<string> {
   return path
 }
 
+/** Patch a markdown file's `links:` frontmatter (add/remove paths), preserving its body + other
+ *  frontmatter. Backs the bidirectional `links:` write-back (Fix 5). Returns the resulting list. */
+export async function patchLinks(path: string, change: { add?: string[]; remove?: string[] }): Promise<string[]> {
+  const res = await fetch('/api/canvas/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, ...change }),
+  })
+  const { links } = await jsonOrThrow<{ ok: true; links: string[] }>(res)
+  return links
+}
+
 /** URL that streams an image's bytes through the guarded asset route. */
 export function assetUrl(path: string): string {
   return `/api/asset?path=${encodeURIComponent(path)}`

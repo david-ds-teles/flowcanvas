@@ -21,7 +21,7 @@ function Inner({ data }: NodeProps) {
         : node.id
   return (
     <>
-    <div className="fc-node fc-node--fallback" style={{ width: '100%', height: '100%', padding: '12px 14px' }}>
+    <div className="fc-node fc-node--fallback">
       <span className="fc-fallback__kind">{kind}</span>
       <span className="fc-fallback__label">{label}</span>
     </div>

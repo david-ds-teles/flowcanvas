@@ -12,7 +12,7 @@ function Inner({ data }: NodeProps) {
   const [errored, setErrored] = useState(false)
   return (
     <>
-    <div className="fc-node fc-node--img" style={{ height: '100%' }}>
+    <div className="fc-node fc-node--img">
       <div className="fc-node__imgwrap">
         {errored ? (
           <span className="fc-node__imgwrap--err">image not found</span>

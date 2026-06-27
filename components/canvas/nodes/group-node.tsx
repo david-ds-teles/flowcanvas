@@ -80,7 +80,7 @@ function Inner({ id, selected, data }: NodeProps) {
         </div>
       )}
 
-      <div className={`fc-group fc-group--${shape}`} style={{ width: '100%', height: '100%' }}>
+      <div className={`fc-group fc-group--${shape}`}>
         <ShapeOutline shape={shape} selected={!!selected} />
         <div className="fc-group__label nodrag" onDoubleClick={() => { setDraft(node.label ?? ''); setEditing(true) }}>
           {editing ? (

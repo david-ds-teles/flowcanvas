@@ -19,6 +19,119 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ---
 
+## Check 2026-06-27 11:30 — Plan completion
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Plan-completion sign-off on the Phase 8 delta — CSS partials split (`app/styles/*.css`), `useCanvasHandlers` hook extraction (`components/canvas/use-canvas-handlers.ts`), smoothstep edges + `connectionLineType`, reader 3-size control (`readerSize`/`setReaderSize`/`maximizeReader`), bidirectional `links:` write-back (`/api/canvas/links` + `patchLinks` + `onConnect`/`removeEdgeWriteback`), nyx minimap/controls hex props, `devIndicators:false`. Per-phase and prior plan-completion findings (2026-06-26 23:00) are resolved and not re-litigated.
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `project-overview.md` Folder Structure (line 122) lists `components/markdown-renderer.tsx`; file was never created; reader uses `/api/render` + `lib/render-md.ts`; stale entry predates Phase 8 but first flagged here
+**Gate outcome:** PASS
+**Summary:** All six applicable gates green (tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9 · curl `/api/canvas/links` 400/400/404). Phase 8 integrates cleanly: handler extraction is behavior-identical; `deletable:false` in the adapter gates node deletion while edge keyboard-delete writes through to the doc and the source file; the `lk:` write-back loop is idempotent on reconnect, self-heals under transient failure on reload, and produces no duplicate edges on the next reconcile. No regression to load/save/applyResponse/comments/agent round-trip. One low finding (stale folder-structure entry); no `≥ medium` findings.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 |
+| Build | pass | `npm run build` — 12 routes incl. `/api/canvas/links`; pre-existing Turbopack `process.cwd()` warn (not Phase 8) |
+| Unit | pass | `npx vitest run` — 66/66 (56 prior + 10 Phase 8: 5 `onConnect` + 3 `removeEdgeWriteback` + 2 no-op guards) |
+| Visual parity | pass | CDP 9/9 — smoothstep routing, nyx minimap/controls, reader drawer/half/full widths, dev badge hidden |
+| Integration | pass | curl `/api/canvas/links` — add + body preserved, remove + body preserved; `../`→400, non-md→400, ENOENT→404 |
+| E2E | n/a | plan-completion scope |
+
+### Review Findings
+
+#### Finding 1 — [low] `project-overview.md` Folder Structure lists non-existent `components/markdown-renderer.tsx`
+
+**Files:** `.flowcode/project/project-overview.md:122`
+
+The Folder Structure section at line 122 carries:
+
+```
+  markdown-renderer.tsx         — Full-fidelity unified pipeline (@shikijs/rehype); used in reader
+```
+
+This file was never created. Phase 7 ran the full shiki pipeline server-side via `lib/render-md.ts` + `GET /api/render` instead of building a client component. `ls components/` returns only the `canvas/` subdirectory — `markdown-renderer.tsx` does not exist on disk. The prior plan-completion check (2026-06-26 23:00) confirmed no code references the file; this check is the first to flag the stale folder-structure line itself. The entry was not introduced by Phase 8.
+
+**Suggested fix:** Remove the `markdown-renderer.tsx` line from the Folder Structure section of `.flowcode/project/project-overview.md`.
+
+**Resolution:** fixed — removed the stale `markdown-renderer.tsx` line; also corrected the sibling `labeled-edge.tsx` description (`Bezier` → `Smoothstep (orthogonal)`) which Phase 8 made stale.
+
+---
+
+## Check 2026-06-27 10:00 — Phase 8 (Post-Execution Polish & Cleanup)
+
+**Reviewer:** flowcode:code-reviewer-agent
+**Scope:** Phase 8 — `next.config.ts` (Fix 7), `components/canvas/edges/labeled-edge.tsx` (Fix 2), `components/canvas/canvas-shell.tsx` (Fix 1/2/5/6), `lib/canvas/use-canvas-handlers.ts` NEW (Fix 1/5), `lib/canvas/store.ts` (Fix 3/4/5), `lib/canvas/adapter.ts` (Fix 5), `lib/canvas/frontmatter.ts` (Fix 5), `lib/api.ts` (Fix 5), `app/api/canvas/links/route.ts` NEW (Fix 5), `components/canvas/nodes/markdown-node.tsx` (Fix 3), `components/canvas/reader-drawer.tsx` (Fix 4), `components/canvas/nodes/{image,fallback,group}-node.tsx` + `canvas-toolbar.tsx` (Fix 1), `app/globals.css` + NEW `app/styles/{nodes,edges,controls,reader,comments,toolbar}.css` (Fix 1/4/6), `lib/canvas/store.test.ts` (reworked onConnect + new removeEdgeWriteback tests), `docs/flowcanvas-agent-contract.md` (Fix 5 note)
+**Plan:** 001-initial-architecture
+**Baseline conformance:** flagged (1) — `lib/canvas/use-canvas-handlers.ts` is a React hook placed in the declared-pure `lib/canvas/*` zone; violates `project-overview.md § Code Style & Conventions` (pure vs. impure split); correct location is `components/canvas/`
+**Gate outcome:** PASS
+**Summary:** All five gates green (tsc 0 · lint 0 · build ok · vitest 66/66 · CDP visual-parity 9/9). The seven hands-on fixes are implemented correctly: smoothstep edges route at right angles, the reader three-size segmented control and `maximizeReader` work end-to-end, `/api/canvas/links` is guarded (traversal→400, non-md→400, ENOENT→404) and preserves the file body, `onConnect` file↔file minting is idempotent and deterministic (`lk:` id matches `deriveLinkEdges` → reload is a no-op), `removeEdgeWriteback` durably removes edges from the doc before the sync loop can resurrect them. One medium finding (hook file in wrong module zone), one low finding (silent patchLinks errors), two info findings.
+
+### Stack Gate
+
+| Gate | Outcome | Notes |
+|------|---------|-------|
+| Typecheck | pass | `npx tsc --noEmit` — exit 0 |
+| Lint | pass | `npm run lint` — exit 0 (zero errors/warnings) |
+| Build | pass | `npm run build` — 12 routes incl. `/api/canvas/links`; pre-existing Turbopack `process.cwd()` warning in `lib/fs-guard.ts` (not Phase 8) |
+| Unit | pass | `npx vitest run` — 66/66 (prior 56 + 10 new: 5 `onConnect` + 3 `removeEdgeWriteback` + 2 no-op guards) |
+| Visual parity | pass | CDP 9/9 — smoothstep no cubic `C`, minimap/controls nyx glass, reader drawer/half/full widths correct, dev badge hidden, no console errors |
+| Integration | pass | curl `/api/canvas/links` — add + body preserved, remove + body preserved; `../`→400, non-md→400, missing→404 |
+| E2E | n/a | Phase 8 scope |
+
+### Review Findings
+
+#### Finding 1 — [medium] `use-canvas-handlers.ts` placed in `lib/canvas/` violates the declared `lib/canvas/*` purity convention
+
+**Files:** `lib/canvas/use-canvas-handlers.ts:1-100`
+
+`project-overview.md § Code Style & Conventions` (Pure vs. impure split) states: "`lib/canvas/*` modules are pure TypeScript (no DOM, no React) — they accept typed inputs and return typed outputs. All React + DOM work lives in `components/`." The sole named exception is `lib/canvas/adapter.ts`, which imports only type-only symbols plus the `MarkerType` runtime enum from `@xyflow/react`, stays DOM-free, and remains vitest-testable. `use-canvas-handlers.ts` imports `useNodesState`, `useEdgesState`, `useCallback`, `useEffect`, and `useMemo` from `react` and `@xyflow/react`, manages controlled RF component state, and is not unit-testable under `vitest run` in a Node environment. Placing it alongside `edges.ts`, `frontmatter.ts`, `brief.ts`, and `comments.ts` obscures the pure/impure split from contributors reading the `lib/canvas/` directory.
+
+**Suggested fix:** Move `lib/canvas/use-canvas-handlers.ts` to `components/canvas/use-canvas-handlers.ts`. Update the single import in `canvas-shell.tsx` from `@/lib/canvas/use-canvas-handlers` to `@/components/canvas/use-canvas-handlers`. Add a note in the Canvas-shell row of `project-overview.md` listing the hook file as a co-located helper. No behavior changes required.
+
+**Resolution:** fixed — moved to `components/canvas/use-canvas-handlers.ts`; `canvas-shell.tsx` now imports `./use-canvas-handlers` (its internal `@/lib/canvas/*` imports are unchanged). Plan file table + Fix 1 step updated. `project-overview.md` Canvas-shell row updated to list the co-located hook. Gates re-run green (tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9).
+
+---
+
+#### Finding 2 — [low] `patchLinks` fire-and-forget discards errors silently; a transient network failure produces opposite-direction stale state on reload depending on the path (add vs. remove)
+
+**Files:** `lib/canvas/store.ts:130`, `lib/canvas/store.ts:153`
+
+Both `onConnect` (add path) and `removeEdgeWriteback` (remove path) call `api.patchLinks(...).catch(() => {})` with no `console.error` and no user feedback. On a transient network error: (a) **add** — the canvas shows the new `lk:` edge but the source `.md` was not updated; on the next `load()`, `deriveLinkEdges` finds no matching entry and `reconcileEdges` drops the edge — the drawn edge silently disappears; (b) **remove** — the canvas shows the edge as deleted but the `.md` still has the entry; on the next `load()`, `deriveLinkEdges` re-derives it and the edge silently reappears. The Phase 7 `low` Finding 2 (upload errors) was escalated to a visible fix using `console.error` per file + the `.fc-toolbar__err` chip; `patchLinks` failures warrant the same treatment.
+
+**Suggested fix:** Add `console.error('patchLinks failed for', src, e)` inside each `.catch()` as the minimum baseline (mirrors the Phase 7 upload-error pattern). A complete fix surfaces a transient error chip in the toolbar (`.fc-toolbar__err`) prompting the user to save and reload to re-sync.
+
+**Resolution:** fixed (baseline) — both call sites now `console.error('patchLinks(add) failed', e)` / `console.error('patchLinks(remove) failed', e)`, matching the Phase 7 upload-error precedent. The toolbar error-chip surfacing is deferred as a v0.1+ enhancement (reload already self-heals the canvas↔file divergence).
+
+---
+
+#### Finding 3 — [info] `matter.stringify` re-emits ALL frontmatter through js-yaml — scalar normalization and key reordering are inherent to the approach
+
+**Files:** `lib/canvas/frontmatter.ts:18`, `app/api/canvas/links/route.ts:26`
+
+When `/api/canvas/links` patches a file, `stringifyFile(data, content)` calls `matter.stringify(content, data)`, which re-serializes the entire frontmatter through js-yaml. The body (`content`) is byte-preserved. The frontmatter is semantically preserved but js-yaml may: re-quote bare YAML truth-value scalars (`y`→`'y'`, `no`→`'no'`), change key ordering to insertion order, or alter trailing newlines. On a repository tracking `.md` files with `git diff`, a single `links:` patch can introduce apparent noise on unrelated frontmatter lines. `gray-matter` has no `preserveFormat` option. The plan's AC #5 explicitly acknowledges and accepts this caveat for v0.1.
+
+**Suggested fix (deferred):** Accepted for v0.1. If format stability is required in a future iteration, replace `matter.stringify` with a line-scanner that surgically splices only the `links:` entry in the raw bytes, leaving all other lines untouched.
+
+**Resolution:** accepted — documented in AC #5; deferred beyond v0.1 if needed.
+
+---
+
+#### Finding 4 — [info] `beforeEach` in `store.test.ts` does not reset `readerNodeId` or `readerSize` — bleed vector for future tests
+
+**Files:** `lib/canvas/store.test.ts:28-31`
+
+The `beforeEach` resets `path`, `doc`, `bodies`, `dirty`, `mode`, and `editingEdgeId` but omits `readerNodeId: null` and `readerSize: 'drawer'`. Phase 8 adds both fields to `CanvasState`. No current test exercises `maximizeReader` or `setReaderSize` in a way that bleeds across tests. However, a future test that calls either action without resetting could corrupt a sibling test's starting state. The Phase 7 precedent (adding `editingEdgeId` to `beforeEach` after it was introduced in Phase 6) should be applied to all new transient UI state fields consistently.
+
+**Suggested fix:** Add `readerNodeId: null, readerSize: 'drawer'` to the `useCanvasStore.setState({...})` call in `beforeEach`.
+
+**Resolution:** fixed — `beforeEach` now resets `readerNodeId: null, readerSize: 'drawer'`. vitest 66/66.
+
+
+---
+
 ## Check 2026-06-26 23:00 — Plan completion
 
 **Reviewer:** main agent (inline) — the Post-Execution `flowcode:code-reviewer-agent` and `flowcode:code-explorer-agent` were dispatched in parallel but **both stalled on the background-agent stream watchdog** (600 s no-progress, infrastructure — not a task failure); per `flowcode:execute` / `plan-instructions.md § Post-Execution Pipeline`, the main agent ran the final review + audit inline.

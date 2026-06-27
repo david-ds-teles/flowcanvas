@@ -1,0 +1,323 @@
+/* Top toolbar, add-node menu, file picker, agent drawer + shared drawer shell, dropzone
+   (Phase 7 chrome) — extracted from globals.css (Phase 8, Fix 1, move-only). */
+
+/* ─────────────────────────── Phase 7 — toolbar / agent I/O / reader / dropzone ───────────────────────────
+   A top 56px glass toolbar over the void; a shared icon-button (.fc-tbtn) and pill-button (.fc-btn);
+   right-side glass drawers for the agent round-trip and the full-fidelity reader. */
+
+/* top toolbar */
+.fc-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 10;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.72);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 50px -28px rgba(0, 0, 0, 0.7);
+}
+.fc-toolbar__mark {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.fc-toolbar__group { display: flex; align-items: center; gap: 4px; }
+.fc-toolbar__spacer { flex: 1 1 auto; }
+.fc-toolbar__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-status-amber);
+  box-shadow: 0 0 10px -1px var(--color-status-amber);
+}
+.fc-toolbar__err {
+  max-width: 220px;
+  padding: 4px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgba(255, 81, 106, 0.4);
+  background: rgba(255, 81, 106, 0.12);
+  color: var(--color-neon-rose);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* toolbar icon / text button */
+.fc-tbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0 9px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(34, 42, 61, 0.5);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.fc-tbtn--wide { padding: 0 12px; }
+.fc-tbtn:hover { color: var(--color-text-primary); border-color: var(--color-primary); box-shadow: 0 0 14px -4px var(--color-primary); }
+.fc-tbtn:active { transform: scale(0.97); }
+.fc-tbtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-tbtn[aria-pressed="true"] {
+  border-color: transparent;
+  color: #06222a;
+  background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary));
+  box-shadow: 0 0 18px -2px rgba(94, 242, 255, 0.55);
+}
+.fc-tbtn--save { color: var(--color-text-primary); }
+
+/* add-node dropdown menu */
+.fc-menu {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  padding: 6px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.96);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 60px -22px rgba(0, 0, 0, 0.75);
+}
+.fc-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.fc-menu__item:hover { background: rgba(128, 131, 255, 0.14); color: var(--color-primary); }
+.fc-menu__item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.fc-menu__link { display: flex; gap: 6px; padding: 6px; }
+.fc-menu__input {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary);
+  background: rgba(6, 14, 32, 0.7);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+}
+.fc-menu__input:focus { outline: none; }
+
+/* shared pill button */
+.fc-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(34, 42, 61, 0.6);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
+}
+.fc-btn:hover:not(:disabled) { border-color: var(--color-primary); box-shadow: 0 0 16px -5px var(--color-primary); }
+.fc-btn:disabled { opacity: 0.45; cursor: default; }
+.fc-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-btn--primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--color-primary-cont), #6f5bff); }
+
+/* file picker popover (inside the add-node menu) */
+.fc-picker {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 6px;
+  z-index: 21;
+  width: 260px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.97);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 60px -22px rgba(0, 0, 0, 0.75);
+}
+.fc-picker__h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.fc-picker__x { margin-left: auto; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: 12px; }
+.fc-picker__x:hover { color: var(--color-text-primary); }
+.fc-picker__path {
+  padding: 6px 11px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-outline);
+  border-bottom: 1px solid var(--color-outline-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-picker__list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+.fc-picker__row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-picker__row:hover:not(:disabled) { background: rgba(128, 131, 255, 0.14); }
+.fc-picker__row:disabled { opacity: 0.38; cursor: default; }
+.fc-picker__row--dir { color: var(--color-secondary); }
+.fc-picker__msg { padding: 8px; font-size: 11px; color: var(--color-text-secondary); }
+
+/* right-side glass drawers (agent panel + reader share the shell) */
+.fc-agent, .fc-reader {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  width: 440px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-outline-variant);
+  background: rgba(10, 17, 33, 0.94);
+  backdrop-filter: blur(28px);
+  box-shadow: -28px 0 70px -30px rgba(0, 0, 0, 0.8);
+}
+.fc-agent__h, .fc-reader__h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+.fc-agent__tabs { display: flex; gap: 4px; }
+.fc-agent__tab {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.fc-agent__tab[aria-pressed="true"] { color: var(--color-primary); border-color: rgba(192, 193, 255, 0.4); background: rgba(128, 131, 255, 0.12); }
+.fc-agent__x, .fc-reader__x {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.fc-agent__x:hover, .fc-reader__x:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-agent__b { padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; }
+.fc-agent__hint { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--color-text-secondary); }
+.fc-agent__ta {
+  flex: 1;
+  min-height: 200px;
+  resize: none;
+  padding: 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(6, 14, 32, 0.7);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.fc-agent__ta:focus { outline: none; border-color: var(--color-primary); }
+.fc-agent__row { display: flex; gap: 8px; }
+.fc-agent__msg { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
+.fc-agent__msg--err { color: var(--color-neon-rose); }
+.fc-agent__report { font-size: 12.5px; color: var(--color-text-secondary); }
+.fc-agent__stale {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--color-status-amber);
+  background: rgba(245, 159, 0, 0.12);
+  border: 1px solid rgba(245, 159, 0, 0.3);
+  font-size: 12px;
+}
+.fc-agent__counts { margin: 0; padding-left: 16px; line-height: 1.7; }
+
+/* drag-drop overlay */
+.fc-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(11, 19, 38, 0.55);
+  backdrop-filter: blur(2px);
+}
+.fc-dropzone__inner {
+  padding: 26px 40px;
+  border-radius: var(--radius-card);
+  border: 2px dashed var(--color-primary);
+  background: rgba(13, 21, 40, 0.7);
+  color: var(--color-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 40px -8px rgba(128, 131, 255, 0.5);
+}
+
+/* add-node menu — shape sub-row */
+.fc-menu__shapes { display: flex; flex-direction: column; gap: 2px; padding: 2px 6px 6px; }
+.fc-menu__shape {
+  text-align: left;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(128, 131, 255, 0.06);
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.fc-menu__shape:hover { background: rgba(128, 131, 255, 0.16); color: var(--color-primary); }
+.fc-menu__shape:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+/* Phase 8, Fix 1 — replaces inline style={{ position:'relative' }} on the add-node toolbar group. */
+.fc-toolbar__group--rel { position: relative; }

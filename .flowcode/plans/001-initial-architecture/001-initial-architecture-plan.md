@@ -1,6 +1,6 @@
 ---
 name: 001-initial-architecture-plan
-description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all seven phases.
+description: Implementation plan for Flowcanvas — the phased build spec for the standalone canvas app, fully detailed across all eight phases (7 build phases + a post-execution polish phase).
 status: complete
 tags: [plan, implementation, phases, canvas]
 links: [001-initial-architecture-design.md]
@@ -9,10 +9,10 @@ links: [001-initial-architecture-design.md]
 # 001-initial-architecture — Flowcanvas Implementation Plan
 
 - Delivers Flowcanvas v0.1: a standalone Next.js canvas that renders flowcode markdown as nodes, connects them, embeds images, takes comments, and round-trips the board to/from an AI agent as one JSON.
-- Phases: 7 — Bootstrap, Schema & Empty Canvas, Persistence & Resolve API, Content Nodes, Edges, Comments, Agent Round-Trip & Polish.
-- Status active; dated 2026-06-25.
+- Phases: 8 — Bootstrap, Schema & Empty Canvas, Persistence & Resolve API, Content Nodes, Edges, Comments, Agent Round-Trip & Polish, Post-Execution Polish & Cleanup.
+- Status complete; phases 1–7 done (2026-06-25), Phase 8 (7 hands-on polish fixes) done 2026-06-27 — plan re-closed 8/8.
 - Upstream design: `001-initial-architecture-design.md` (read it for the full schema, API contracts, and the agent contract this plan implements).
-- **All seven phases are authored to full implementation depth** (production-ready snippets, a diagram, a worked example, acceptance criteria, named gates) — by author's direction, overriding the usual stub-later-phases convention.
+- **All eight phases are authored to full implementation depth** (production-ready snippets, a diagram, a worked example, acceptance criteria, named gates) — by author's direction, overriding the usual stub-later-phases convention.
 - Per-phase quality gates: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npx vitest run` for the pure modules.
 
 ---
@@ -32,6 +32,7 @@ Ship the Flowcanvas v0.1 standalone app specified in `001-initial-architecture-d
 5. **Edges** — manual drawing + `links:`-frontmatter derivation + reconciliation + origin-styled labeled edges.
 6. **Comments Layer** — node/canvas-anchored pins, flat threads, reply + resolve.
 7. **Agent Round-Trip & Polish** — DesignBrief export, AgentResponse import + idempotent merge, generated-file writes, the agent-contract doc, reader drawer, save/fit-view/empty states.
+8. **Post-Execution Polish & Cleanup** — surgical refactor (inline styles → CSS, shell logic → hook, `globals.css` partials), orthogonal smoothstep edges, 3-size reader (drawer/half/full) + working maximize, bidirectional `links:` frontmatter write-back, nyx-styled minimap/zoom controls, and removal of the Next.js dev badge. Fixes 7 issues surfaced in hands-on use before the plan is closed.
 
 > **Execution record:** this file is the spec. Per-phase execution history belongs in a sibling `001-initial-architecture-log.md` (one entry per phase end + plan end) — not inlined here.
 >
@@ -1179,6 +1180,289 @@ Re-import the same JSON → no new nodes/edges/comments (idempotent by id).
 
 ---
 
+## Phase 8 — Post-Execution Polish & Cleanup
+
+**Goal:** Resolve the seven issues hands-on use surfaced after v0.1 shipped — a surgical refactor, orthogonal (right-angle) edges, a 3-size reader with a real maximize, bidirectional `links:` write-back, nyx-styled minimap/zoom controls, and removal of the Next.js dev badge — so the board is polished and self-consistent before the plan closes. **No feature change** beyond these fixes; the refactor is behavior-preserving.
+
+**Phase Status:** done
+
+**Evaluation:** user
+
+**Subsystem:** polish / cleanup
+
+**Issue → fix map:**
+
+| # | Reported issue | Fix |
+|---|----------------|-----|
+| 1 | Code messy — "nested HTML+JS", bad file separation, unnecessary complexity | Surgical refactor: inline JSX styles → CSS classes, shell handlers → a hook, `globals.css` split into `@import` partials. (Audit finding: the code is already reasonably clean — shell is 210 lines with good delegation — so this is targeted, not a rewrite.) |
+| 2 | Edges only bend (bezier curves); can't make angles; lines cross & pollute the canvas | Switch the default edge + connection line from `getBezierPath` to **smoothstep** (orthogonal right-angle routing). |
+| 3 | Markdown widget maximize icon doesn't "maximize" | The `⤢` button is wired correctly but only opens the fixed 440px drawer — there is no large view. Wire it to a new `maximizeReader` that opens at **full**. (Same feature as #4.) |
+| 4 | Side markdown pane needs 3 views: default (today), half-screen, full-screen | Add `readerSize: 'drawer' \| 'half' \| 'full'` + a 3-state segmented control in the reader header. |
+| 5 | Images/connections added/removed on the canvas must reflect into the markdown file | Make the today-one-way `links:` derive loop **bidirectional**: drawing/deleting a file↔file (or file↔image) edge patches the source `.md`'s `links:` frontmatter. **Reuses the existing field — no new field** (operator decision). |
+| 6 | Minimap + zoom controls are gray/white, off the design system | Style `.react-flow__minimap` + `.react-flow__controls` with nyx glass/indigo/neon tokens; pass token-aligned colors to `<MiniMap>`. |
+| 7 | Next.js dev icon (bottom-right) must be removed | `next.config.ts` → `devIndicators: false`. |
+
+**Files to create / modify:**
+
+| File | Operation | Description |
+|------|-----------|-------------|
+| `components/canvas/edges/labeled-edge.tsx` | modify | `getBezierPath` → `getSmoothStepPath` (Fix 2) |
+| `components/canvas/canvas-shell.tsx` | modify | `connectionLineType=SmoothStep` + `defaultEdgeOptions`; nyx `<MiniMap>` props; viewport `style` → class; consume the new handlers hook (Fix 1, 2, 6) |
+| `components/canvas/use-canvas-handlers.ts` | create | extracted React Flow handlers + controlled RF state (`onConnect`, `onNodesChange`, `onEdgesChange`, `onNodeClick`, `onEdgeDoubleClick`, drag write-back) — refactor (Fix 1). *Located under `components/` (not `lib/canvas/`) per the pure-TS-zone convention — qa Phase 8 Finding 1.* |
+| `lib/canvas/store.ts` | modify | `readerSize`/`setReaderSize`/`maximizeReader`; `links:` write-back in `onConnect` + `removeEdgeWriteback` (Fix 3, 4, 5) |
+| `lib/canvas/store.test.ts` | modify | reworked `onConnect` (file↔file links / non-file user / already-linked no-op) + new `removeEdgeWriteback` tests; `beforeEach` resets reader state (Fix 5) |
+| `lib/canvas/adapter.ts` | modify | `deletable: false` per RF node so keyboard delete is edges-only (Fix 5) |
+| `components/canvas/nodes/markdown-node.tsx` | modify | `⤢` → `maximizeReader(id)` (Fix 3) |
+| `components/canvas/nodes/{image,fallback,group}-node.tsx` | modify | static inline `style={{}}` → CSS classes (`.fc-node--img`/`--fallback`, `.fc-group`) (Fix 1) |
+| `components/canvas/canvas-toolbar.tsx` | modify | static inline `style={{position:'relative'}}` → `.fc-toolbar__group--rel` (Fix 1) |
+| `components/canvas/reader-drawer.tsx` | modify | 3-state size control + `data-size` attribute (Fix 4) |
+| `lib/canvas/frontmatter.ts` | modify | add `stringifyFile` (Fix 5) |
+| `app/api/canvas/links/route.ts` | create | guarded `POST` that patches only `links:`, preserving body + other frontmatter (Fix 5) |
+| `lib/api.ts` | modify | `patchLinks(path, {add, remove})` wrapper (Fix 5) |
+| `app/globals.css` | modify | keep `@theme` + base; `@import` the new partials after the theme (Fix 1) |
+| `app/styles/{nodes,edges,comments,toolbar}.css` | create | extracted component-CSS partials (Fix 1) |
+| `app/styles/controls.css` | create | nyx minimap + zoom-controls styling (Fix 6) |
+| `app/styles/reader.css` | create | `[data-size]` widths drawer/half/full (Fix 4) |
+| `next.config.ts` | modify | `devIndicators: false` (Fix 7) |
+| `docs/flowcanvas-agent-contract.md` | modify | note that `links:` now round-trips both ways (Fix 5, optional) |
+
+**Implementation steps:**
+
+- [x] **(Fix 7)** `next.config.ts`: add `devIndicators: false`. *(verified hidden, not the CSS fallback: Next 16 always mounts the dev-tools shadow DOM for the error overlay, but `devIndicators:false` renders the badge with `offsetParent === null` — CDP-asserted `badgeVisible=false`, route indicator also absent.)*
+- [x] **(Fix 2)** `labeled-edge.tsx`: swap `getBezierPath` → `getSmoothStepPath({ …, borderRadius: 8 })`; keep the origin→stroke map, marker, and inline-label editor unchanged. In `canvas-shell.tsx` add `connectionLineType={ConnectionLineType.SmoothStep}` and `defaultEdgeOptions={{ type: 'labeled' }}` so the live drag-preview also turns at right angles. *(CDP-asserted: no cubic `C` command in any rendered `.react-flow__edge-path`.)*
+- [x] **(Fix 6)** Add `controls.css`: glass + indigo border + neon-cyan hover for `.react-flow__minimap`, `.react-flow__controls`, `.react-flow__controls-button`. Set `<MiniMap nodeColor="#8083ff" nodeStrokeColor="#5ef2ff" maskColor="rgba(11,19,38,0.72)" />` (SVG fills need concrete hex, not CSS vars). *(deviation: selectors prefixed `.react-flow ` to outrank `@xyflow/react/dist/style.css`, which loads after globals — same trick the handles already use; the unprefixed rules lost the cascade and rendered white. CDP-asserted minimap bg `rgba(19,27,46,0.72)`, controls bg `rgba(23,31,51,0.72)`.)*
+- [x] **(Fix 3 + 4)** Store: add `readerSize` (default `'drawer'`), `setReaderSize`, and `maximizeReader(id)` (sets `readerNodeId` + `readerSize:'full'`). `markdown-node.tsx`: `⤢` calls `maximizeReader(id)`. `reader-drawer.tsx`: render a Drawer·Half·Full segmented control bound to `setReaderSize` and set `data-size={readerSize}` on the `<aside>`. `reader.css`: width 440px / 50vw / 100vw with an eased transition. *(CDP-asserted: ⤢ → data-size=full w=1440; drawer=440px; half=720px (50vw of 1440).)*
+- [x] **(Fix 5)** `frontmatter.ts`: add `stringifyFile(frontmatter, body)` (`matter.stringify`). Create `app/api/canvas/links/route.ts` reading the **full** raw file (not the BODY_CAP-capped `parseFile`), mutating only `data.links`, writing back. `lib/api.ts`: `patchLinks`. Store: in `onConnect`, when both endpoints are file-backed, mint the deterministic `lk:` edge (origin `'links'`) **and** `patchLinks(src, {add:[tgt]})`; non-file edges stay canvas-only `user` edges. Add `removeEdgeWriteback(id)` and call it from `onEdgesChange` on every `remove` change whose edge joined two file nodes → `patchLinks(src, {remove:[tgt]})`. *(deviations: (a) edge deletion was disabled repo-wide (`deleteKeyCode={null}`); re-enabled **edges-only** via per-node `deletable:false` in the adapter (RF v12 has no `nodesDeletable` prop) + `deleteKeyCode={['Delete','Backspace']}`; (b) `removeEdgeWriteback` also removes the edge from the doc so the deletion is durable — without it the controlled-state sync resurrects the edge and a save re-persists it. Curl-verified add/remove + body preservation + 400/400/404 guards; unit-tested both store paths.)*
+- [x] **(Fix 1)** Extract `canvas-shell.tsx`'s `CanvasFlow` handlers into `components/canvas/use-canvas-handlers.ts` (under `components/`, not `lib/canvas/`, which is a pure-TS no-React zone — qa Finding 1); move inline `style={{…}}` (shell viewport, `image-node` objectFit, etc.) to CSS classes; split `globals.css` component blocks into `app/styles/*.css`. Verify the rendered board is pixel-identical (no selector or token change). *(deviation: the `@import` partials are placed BEFORE `@theme` (grouped after `@import "tailwindcss"`), not after as the snippet showed — CSS requires `@import` before other rules, and `var()` resolves at runtime so token resolution is unaffected. Move-only proven by a selector diff: 0 rules dropped, only the intended Fix 1/4/6 additions. Inline styles migrated: shell root → `.fc-canvas-root`, image/fallback/group nodes, toolbar group → `.fc-toolbar__group--rel`. Handlers hook is behavior-identical bar the Fix-5 edge-delete write-back.)*
+- [x] Run the gates; visually confirm each fix on the default board. *(`tsc 0 · lint 0 · build ok · vitest 66/66`; CDP visual-parity 9/9; captures `mockups/captures/phase-8/08-{loaded,reader-full,reader-half,reader-drawer}.png`.)*
+
+**Code & examples:**
+
+`components/canvas/edges/labeled-edge.tsx` — orthogonal path (only the path call changes):
+
+```tsx
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
+// …inside the component, replacing getBezierPath:
+const [path, labelX, labelY] = getSmoothStepPath({
+  sourceX: p.sourceX, sourceY: p.sourceY, sourcePosition: p.sourcePosition,
+  targetX: p.targetX, targetY: p.targetY, targetPosition: p.targetPosition,
+  borderRadius: 8,
+})
+// STROKE-by-origin, marker, and the double-click inline-label editor are unchanged.
+```
+
+`components/canvas/canvas-shell.tsx` — connection line + minimap (additions):
+
+```tsx
+import { ConnectionLineType } from '@xyflow/react'
+// …
+<ReactFlow
+  /* …existing props… */
+  connectionMode={ConnectionMode.Loose}
+  connectionLineType={ConnectionLineType.SmoothStep}
+  defaultEdgeOptions={{ type: 'labeled' }}
+>
+  <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--color-grid)" />
+  <Controls />
+  <MiniMap nodeColor="#8083ff" nodeStrokeColor="#5ef2ff" maskColor="rgba(11,19,38,0.72)" pannable zoomable />
+</ReactFlow>
+```
+
+`app/styles/controls.css` — nyx minimap + controls (Fix 6):
+
+```css
+.react-flow__minimap {
+  background: rgba(19, 27, 46, 0.72);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(128, 131, 255, 0.18);
+}
+.react-flow__controls {
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(128, 131, 255, 0.18);
+}
+.react-flow__controls-button {
+  background: rgba(23, 31, 51, 0.72);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-outline-variant);
+  color: var(--color-text-primary);
+  fill: currentColor;
+}
+.react-flow__controls-button:hover { background: rgba(128, 131, 255, 0.18); color: var(--color-neon-cyan); }
+.react-flow__controls-button svg { fill: currentColor; }
+```
+
+`lib/canvas/frontmatter.ts` — write side (Fix 5):
+
+```typescript
+import matter from 'gray-matter'
+/** Re-serialize a markdown file from its frontmatter + body (inverse of parseFile). */
+export function stringifyFile(frontmatter: Record<string, unknown>, body: string): string {
+  return matter.stringify(body, frontmatter)
+}
+```
+
+`app/api/canvas/links/route.ts` — body-preserving `links:` patch (Fix 5):
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { readFile, writeFile } from 'node:fs/promises'
+import matter from 'gray-matter'
+import { guardPath, GuardError } from '@/lib/fs-guard'
+
+const MD = /\.mdx?$/
+const norm = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
+
+export async function POST(req: NextRequest) {
+  const { path: rel, add = [], remove = [] } = (await req.json()) as { path: string; add?: string[]; remove?: string[] }
+  if (!rel || !MD.test(rel)) return NextResponse.json({ error: 'not a .md' }, { status: 400 })
+  try {
+    const abs = guardPath(rel)
+    const { data, content } = matter(await readFile(abs, 'utf8'))   // FULL body — not the capped parseFile
+    const links = Array.isArray(data.links) ? (data.links as unknown[]).map(String) : []
+    const rm = new Set(remove.map(norm))
+    const next = links.filter((l) => !rm.has(norm(l)))
+    for (const a of add) if (!next.some((l) => norm(l) === norm(a))) next.push(a)
+    if (next.length) data.links = next; else delete data.links
+    await writeFile(abs, matter.stringify(content, data), 'utf8')
+    return NextResponse.json({ ok: true, links: next })
+  } catch (e) {
+    if (e instanceof GuardError) return NextResponse.json({ error: e.message }, { status: 400 })
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return NextResponse.json({ error: 'not found' }, { status: 404 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+```
+
+`lib/canvas/store.ts` — write-back wiring (Fix 5) + reader sizes (Fix 3/4):
+
+```typescript
+const fileOf = (doc: FlowcanvasDoc, id: string) => {
+  const n = doc.nodes.find((x) => x.id === id)
+  return n && isFileNode(n) ? n.file : null
+}
+
+// reader state
+readerSize: 'drawer' as ReaderSize,
+setReaderSize: (size: ReaderSize) => set({ readerSize: size }),
+maximizeReader: (id: string) => set({ readerNodeId: id, readerSize: 'full' }),
+
+onConnect(conn) {
+  const { doc } = get(); if (!doc || !conn.source || !conn.target || conn.source === conn.target) return
+  const src = fileOf(doc, conn.source), tgt = fileOf(doc, conn.target)
+  if (src && tgt) {                                    // structural: persist into the source file's links:
+    const id = `lk:${conn.source}->${conn.target}`
+    if (doc.edges.some((e) => e.id === id)) return
+    const edge: CanvasEdge = { id, fromNode: conn.source, toNode: conn.target,
+      fromSide: conn.sourceHandle as CanvasEdge['fromSide'], toSide: conn.targetHandle as CanvasEdge['toSide'],
+      label: 'links', color: '6', toEnd: 'arrow', meta: { origin: 'links' } }
+    set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true })
+    void api.patchLinks(src, { add: [tgt] }).catch(() => {})
+    return
+  }
+  const id = edgeId()                                  // non-file → canvas-only user edge (unchanged)
+  const edge: CanvasEdge = { id, fromNode: conn.source, toNode: conn.target,
+    fromSide: conn.sourceHandle as CanvasEdge['fromSide'], toSide: conn.targetHandle as CanvasEdge['toSide'],
+    label: '', toEnd: 'arrow', meta: { origin: 'user' } }
+  set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
+},
+
+removeEdgeWriteback(id: string) {                      // called from onEdgesChange on a 'remove' change
+  const { doc } = get(); if (!doc) return
+  const e = doc.edges.find((x) => x.id === id); if (!e) return
+  const src = fileOf(doc, e.fromNode), tgt = fileOf(doc, e.toNode)
+  if (src && tgt) void api.patchLinks(src, { remove: [tgt] }).catch(() => {})
+},
+```
+
+`components/canvas/reader-drawer.tsx` — 3-size control (Fix 4):
+
+```tsx
+const size = useCanvasStore((s) => s.readerSize)
+const setSize = useCanvasStore((s) => s.setReaderSize)
+// …
+<aside className="fc-reader" data-size={size} role="dialog" data-testid="reader-drawer">
+  <header className="fc-reader__h">
+    <span className="fc-reader__title">{title}</span>
+    {file && <span className="fc-reader__path">{file}</span>}
+    <div className="fc-reader__sizes" role="group" aria-label="Reader size">
+      {(['drawer', 'half', 'full'] as const).map((s) => (
+        <button key={s} className={cn('fc-reader__size', size === s && 'is-active')}
+          aria-pressed={size === s} onClick={() => setSize(s)} title={s}>
+          {s === 'drawer' ? '◧' : s === 'half' ? '◑' : '⛶'}
+        </button>
+      ))}
+    </div>
+    <button className="fc-reader__x" data-testid="reader-close" onClick={onClose}>✕</button>
+  </header>
+  {/* …scroll body unchanged… */}
+</aside>
+```
+
+`app/styles/reader.css` (Fix 4) and `next.config.ts` (Fix 7):
+
+```css
+.fc-reader { transition: width 0.18s ease; }
+.fc-reader[data-size='drawer'] { width: 440px; max-width: 92vw; }
+.fc-reader[data-size='half']   { width: 50vw;  max-width: 96vw; }
+.fc-reader[data-size='full']   { width: 100vw; max-width: 100vw; }
+```
+
+```typescript
+// next.config.ts
+const nextConfig: NextConfig = { devIndicators: false }
+export default nextConfig
+```
+
+`app/globals.css` — partial imports (Fix 1; `@theme` stays, blocks move out):
+
+```css
+/* @import the new partials AFTER the @theme block so token vars resolve. */
+@import './styles/nodes.css';
+@import './styles/edges.css';
+@import './styles/controls.css';
+@import './styles/reader.css';
+@import './styles/comments.css';
+@import './styles/toolbar.css';
+```
+
+**Diagram:** `links:` write-back round-trip (Fix 5).
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant RF as React Flow
+  participant S as store
+  participant API as /api/canvas/links
+  participant MD as source .md
+  U->>RF: drag handle (file A → file B)
+  RF->>S: onConnect
+  S->>S: mint lk:A->B edge (origin 'links')
+  S->>API: patchLinks(A.file, { add:[B.file] })
+  API->>MD: read → set data.links → write (body preserved)
+  Note over S,MD: delete edge ⇒ removeEdgeWriteback ⇒ patchLinks(remove)
+  Note over RF,S: next load ⇒ deriveLinkEdges re-derives the same edge — idempotent
+```
+
+**Worked example:** on the default board, drag a handle from `n-welcome` to `n-schema`. `examples/welcome.md` frontmatter gains `links: [examples/schema.md]`; a deterministic `lk:n-welcome->n-schema` edge appears (indigo dashed, 🔒 links). Delete it → the entry is removed from `welcome.md`. Reload → `deriveLinkEdges` re-derives the identical edge from the (now updated) frontmatter — the canvas and the file agree.
+
+**Acceptance criteria:**
+- [x] **(1)** No inline `style={{…}}` remains in `canvas-shell.tsx` / node components for static styling; shell handlers live in `use-canvas-handlers.ts`; `globals.css` imports `app/styles/*` partials. The rendered board is visually unchanged (no regression). *(only dynamic transforms — edge label x/y, comment pin positions — keep inline styles, as intended. CDP: styled nyx glass cards render; selector-diff proves move-only.)*
+- [x] **(2)** Edges and the live connection line route at right angles (smoothstep), not curves; visible crossing/overlap is reduced on the default board. *(CDP: edge path `d` has no cubic `C`; visible in `08-loaded.png` as the welcome→Schema right-angle edge.)*
+- [x] **(3 + 4)** The markdown node's `⤢` opens the reader at **full**; the reader header toggles Drawer (440px) · Half (50vw) · Full (100vw), each rendering correctly. *(CDP: ⤢→full(1440); segmented control → drawer 440 / half 720 / full 1440; `08-reader-{full,half,drawer}.png`.)*
+- [x] **(5)** Drawing a file↔file (or file↔image) edge adds the target path to the source `.md`'s `links:`; deleting it removes the entry; other frontmatter + body are byte-preserved; reload re-derives the same edge. Non-file edges remain canvas-only. *(curl + unit verified. Caveat: the **body is byte-preserved**; OTHER frontmatter is **semantically** preserved but re-emitted by js-yaml, which may normalize scalar quoting, e.g. a bare `y` tag → `'y'` — inherent to the plan's `matter.stringify` approach. Logged as info.)*
+- [x] **(6)** Minimap + zoom controls render with nyx glass/indigo/neon (no gray/white); a `../` path to `/api/canvas/links` returns 400, a missing file 404. *(CDP minimap/controls bg asserted; curl: traversal 400, non-md 400, missing 404.)*
+- [x] **(7)** No Next.js dev badge appears in `npm run dev`. *(CDP: badge `offsetParent===null` (hidden), route indicator absent.)*
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npx vitest run` all exit 0; existing tests still pass (no behavior regression from the refactor). *(tsc 0 · lint 0 · build ok · vitest 66/66 — prior 56 + 10 new onConnect/removeEdgeWriteback assertions.)*
+
+**Quality checks (run at phase close):** `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npx vitest run`; visual pass on the default board for each fix.
+
+> **Quality gate:** code-review sub-agent on (a) the `/api/canvas/links` route — traversal guard + frontmatter/body preservation + add/remove idempotency, and (b) the refactor — confirming no behavior drift (handlers, styles, and CSS partials are move-only).
+
+---
+
 ## Post-Execution Artifacts
 
 After all phases complete:
@@ -1211,3 +1495,4 @@ Then flip this plan's frontmatter `status: active → complete`.
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-06-25 | Plan created | Initial full-depth draft (all 7 phases) for Flowcanvas v0.1 |
+| 2026-06-27 | Phase 8 added; status `complete` → `active` | Post-execution polish/cleanup of 7 issues found in hands-on use (refactor, orthogonal edges, 3-size reader + maximize, `links:` write-back, nyx minimap/controls, drop Next badge) before the plan closes |

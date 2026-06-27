@@ -13,3 +13,8 @@ export function parseFile(raw: string) {
     truncated,
   }
 }
+
+/** Re-serialize a markdown file from its frontmatter + body (the inverse of `parseFile`). */
+export function stringifyFile(frontmatter: Record<string, unknown>, body: string): string {
+  return matter.stringify(body, frontmatter)
+}

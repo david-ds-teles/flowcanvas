@@ -14,6 +14,11 @@ inline on every brief as `DesignBrief.responseContract` (source of truth: `AGENT
    and edges, attaches your comment replies, re-derives the `links:` edges, and persists — so re-importing
    the same response is a no-op.
 
+> **`links:` round-trips both ways.** On the canvas, drawing an edge between two file nodes writes the
+> target into the source `.md`'s `links:` frontmatter, and deleting that edge removes it. So the `links:`
+> you see in a brief is the single source of truth for structural relationships — the file and the board
+> always agree. Prefer expressing structure through `links:` (per the rules below) over manual edges.
+
 ## Rules
 
 - Return **exactly one** JSON object matching `AgentResponse` — no prose, no code fence, nothing outside it.

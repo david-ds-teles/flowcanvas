@@ -1,6 +1,6 @@
 'use client'
 import { memo, useRef, useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import type { EdgeOrigin } from '@/lib/canvas/jsoncanvas'
 
@@ -52,7 +52,8 @@ function EdgeLabelEditor({ id, initial, x, y }: { id: string; initial: string; x
 export const LabeledEdge = memo(function LabeledEdge({
   id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data,
 }: EdgeProps) {
-  const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
+  // Orthogonal right-angle routing (Phase 8, Fix 2) — fewer crossing/overlapping curves than bezier.
+  const [path, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 8 })
   const origin = ((data as { origin?: EdgeOrigin } | undefined)?.origin ?? 'user') as EdgeOrigin
   const derived = origin === 'links'
   const editing = useCanvasStore((s) => s.editingEdgeId === id)

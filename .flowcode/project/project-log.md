@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 001-initial-architecture — Phase 8 polish & cleanup — 2026-06-27
+
+**Dev:** david-ds-teles
+**Delivered:** Re-closed `001-initial-architecture` after **Phase 8** (8/8 phases) — seven post-v0.1 polish fixes: behavior-preserving refactor (globals.css → 6 `app/styles/*` partials + `useCanvasHandlers` hook + inline-styles→classes), orthogonal smoothstep edges, a 3-size reader (drawer/half/full) with working maximize, bidirectional `links:` write-back via a new guarded `/api/canvas/links` route (file↔file edge ⇄ source `.md` frontmatter), nyx minimap/controls, and removal of the Next dev badge. The three earlier 2026-06-27 `[BUGFIX]` entries below were the operator reports this plan reopening formalized and finished.
+**Gates:** tsc 0 · lint 0 · build ok · vitest 66/66 · CDP visual-parity 9/9 · curl `/api/canvas/links` guards 400/400/404.
+**Artifacts:** technical-overview, changelog, test-notes, qa-report (all updated for Phase 8) under `.flowcode/plans/001-initial-architecture/`.
+
+---
+
 ## [BUGFIX] Shapes weren't real / couldn't resize or change — 2026-06-27
 
 **Dev:** david-ds-teles

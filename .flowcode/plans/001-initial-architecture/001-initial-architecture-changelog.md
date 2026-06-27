@@ -18,7 +18,9 @@ links: [.flowcode/plans/001-initial-architecture/001-initial-architecture-plan.m
 
 ## Summary
 
-{Written at plan completion.}
+Flowcanvas built in 8 phases over 2026-06-26 (v0.1, Phases 1–7) and 2026-06-27 (Phase 8 polish). Phases 1–7 delivered: Next.js 16 / React 19 / Tailwind v4 bootstrap + nyx design system; extended-JSONCanvas schema + RF adapter; 7 guarded fs API routes; 5 node types + origin-styled labeled edges + pinned comment threads; bidirectional agent JSON loop with idempotent merge; full chrome (toolbar, shiki reader drawer, export/import panel). Phase 8 applied 7 targeted post-execution fixes: CSS extraction from `app/globals.css` to 6 partials under `app/styles/`; RF controlled state and handler callbacks extracted to `useCanvasHandlers`; smoothstep edge paths (`getSmoothStepPath(borderRadius:8)`); 3-size reader drawer (440 px / 50 vw / 100 vw); bidirectional `links:` write-back via a new 8th route (`/api/canvas/links`); nyx controls cascade overrides; dev badge suppression — vitest hardened from 56/56 to 66/66.
+
+Type: FEATURE. Dev: david-ds-teles. Gates at plan close: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9 (Phase 8).
 
 ---
 
@@ -194,3 +196,42 @@ Reconciled at plan completion against the committed source (audit run **inline**
 - **File-count note:** `components/canvas/file-picker.tsx` shipped in Phase 7 beyond the plan's original file table (the plan table was updated in the same close).
 
 No anomalies. The 56-test suite, `tsc`/`lint`/`build`, and the Phase-7 CDP visual-parity run (18/18) all pass on the reconciled tree.
+
+**Phase 8 (2026-06-27):** All per-phase entries match the audited code. Cross-phase notes: `app/globals.css` content moved to `app/styles/*.css` (zero selectors dropped — move-only, gate-verified); `onConnect` reworked to branch file↔file vs user edge (Phase 5–6 store tests updated accordingly in Phase 8); `removeEdgeWriteback` is new with no prior phase coverage. The Phase 8 CDP run (9/9) confirmed visual parity on controls overrides, reader size control, and smoothstep edges. Final gates: tsc 0 · lint 0 · build ok · vitest 66/66 · CDP 9/9.
+
+---
+
+## Phase 8 — Post-Execution Polish & Cleanup
+
+Seven targeted fixes applied post-v0.1 to address QA findings and operator feedback: CSS extraction to partials, smoothstep edge paths, reader 3-size control, bidirectional link write-back via a new `/api/canvas/links` route, nyx controls cascade overrides, dev badge suppression, and test hardening to 66/66.
+
+| File | Type | Summary |
+|------|------|---------|
+| `app/globals.css` | modified | Base/theme/glass/RF-mapping/empty/void rules remain; all node/edge/controls/reader/comments/toolbar rules extracted to `@import`-ed partials (`app/styles/*.css`). `@import` placed before `@theme` for CSS validity; selector diff confirmed 0 dropped rules (move-only). |
+| `app/styles/nodes.css` | created | Node anatomy styles: `.fc-node`, `.fc-node__*`, `.fc-chip`, `.fc-tag`, `.fc-fm__*`, `.fc-prose`, collapse, image/note/link node variants. |
+| `app/styles/edges.css` | created | Edge styles: `.fc-edge-label`, origin color variants (`--links`/`--user`/`--agent`), `.fc-edge-input`. |
+| `app/styles/controls.css` | created | RF controls + minimap overrides; selectors prefixed `.react-flow ` to outrank `@xyflow/react`'s built-in stylesheet. |
+| `app/styles/reader.css` | created | Reader drawer widths driven by `data-size`: drawer=440px, half=50vw, full=100vw. |
+| `app/styles/comments.css` | created | Comment pin teardrop, thread popover, comment rows, connector beak, reply, resolve styles. |
+| `app/styles/toolbar.css` | created | Toolbar, add-node menu, file-picker, agent-drawer, dropzone, upload-error chip, mode-button styles. |
+| `components/canvas/use-canvas-handlers.ts` | created | `useCanvasHandlers` hook: RF controlled state (`useNodesState`/`useEdgesState` + change handlers) + all RF interaction callbacks + `removeEdgeWriteback` (keyboard-delete path). Placed in `components/canvas/` (not `lib/canvas/`) per pure-TS zone boundary — contains React hooks. |
+| `components/canvas/canvas-shell.tsx` | modified | Consumes `useCanvasHandlers` (handlers extracted to hook); `connectionLineType=SmoothStep` + `defaultEdgeOptions={type:'labeled'}`; nyx hex props on `<MiniMap>`; `deleteKeyCode=['Delete','Backspace']` (edges-only — per-node `deletable:false` in adapter keeps node deletion off). |
+| `components/canvas/edges/labeled-edge.tsx` | modified | `getBezierPath` → `getSmoothStepPath(borderRadius:8)` for all edge paths. |
+| `lib/canvas/store.ts` | modified | Added `ReaderSize` type + `readerSize` state (default `'drawer'`) + `setReaderSize` + `maximizeReader`; `removeEdgeWriteback` (removes edge from `doc.edges` + `patchLinks(remove)` for durable deletion); `onConnect` branches: file↔file mints deterministic `lk:` links edge + `patchLinks(add)`; non-file-pair mints empty-label user edge. |
+| `lib/canvas/store.test.ts` | modified | Reworked `onConnect` tests (file↔file links branch / non-file user branch / no-op guard); new `removeEdgeWriteback` block; `beforeEach` resets reader state. 66/66 passing. |
+| `lib/canvas/adapter.ts` | modified | `toReactFlow` sets `deletable:false` on every node's RF data so keyboard `Delete`/`Backspace` skips nodes; edges remain deletable. |
+| `lib/canvas/frontmatter.ts` | modified | Added `stringifyFile(path, newFrontmatter)`: reads the file, merges frontmatter via `matter.stringify`, body bytes preserved (scalars may re-quote via js-yaml — accepted). |
+| `lib/api.ts` | modified | Added `patchLinks(path, op, link)` typed fetch wrapper targeting `POST /api/canvas/links`. |
+| `app/api/canvas/links/route.ts` | created | Guarded `POST {path, op:'add'|'remove', link}` — reads the full file, patches the `links:` frontmatter field body-preservingly via `frontmatter.stringifyFile`; `GuardError`→400, `ENOENT`→404, else→500. |
+| `components/canvas/nodes/markdown-node.tsx` | modified | `⤢` expand button calls `maximizeReader` (store action) to open the reader at full (`100vw`) size. |
+| `components/canvas/reader-drawer.tsx` | modified | 3-size segmented control (Drawer / Half / Full) wired to `readerSize`/`setReaderSize`; `data-size` attribute drives CSS widths (440px / 50vw / 100vw). |
+| `components/canvas/nodes/image-node.tsx` | modified | Static inline `style={{height:'100%'}}` removed → `.fc-node--img { height: 100% }` in `nodes.css`. |
+| `components/canvas/nodes/fallback-node.tsx` | modified | Static inline `style={{width/height/padding}}` removed → `.fc-node--fallback` rule in `nodes.css`. |
+| `components/canvas/nodes/group-node.tsx` | modified | Static inline `style={{width:'100%',height:'100%'}}` on `.fc-group` removed → `.fc-group` rule in `nodes.css`. |
+| `components/canvas/canvas-toolbar.tsx` | modified | Toolbar group `style={{position:'relative'}}` → `.fc-toolbar__group--rel` class. |
+| `next.config.ts` | modified | `devIndicators: false` — suppresses the Next.js dev overlay badge (shadow-DOM element stays mounted with `offsetParent===null`; CSS fallback unnecessary). |
+| `docs/flowcanvas-agent-contract.md` | modified | Notes the bidirectional `links:` write-back: `patchLinks(add)` on file↔file connect, `patchLinks(remove)` on edge delete. |
+| `.flowcode/project/project-overview.md` | modified | Store, Canvas shell, Reader, Frontmatter, API rows updated; Canvas handlers row added; folder structure updated for `app/styles/` partials and `use-canvas-handlers.ts`. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md` | modified | Phase 8 QA findings and review recorded. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-changelog.md` | modified | This file — Phase 8 section appended. |
+| `.flowcode/plans/001-initial-architecture/001-initial-architecture-log.md` | modified | Phase 8 `[PHASE 8]` log entry prepended. |

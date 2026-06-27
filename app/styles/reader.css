@@ -1,0 +1,104 @@
+/* Reader drawer body + full-fidelity prose — extracted from globals.css (Phase 8, Fix 1, move-only).
+   The shared drawer shell (.fc-agent, .fc-reader) lives in toolbar.css. */
+
+/* reader drawer */
+.fc-reader__title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.fc-reader__path { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-outline); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-reader__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px 40px; }
+.fc-reader__msg { font-size: 13px; color: var(--color-text-secondary); }
+.fc-reader__msg--err { color: var(--color-neon-rose); }
+.fc-reader__thread { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--color-outline-variant); }
+.fc-reader__threadh { margin: 0 0 10px; font-family: var(--font-jetbrains-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
+.fc-reader__cmt { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.fc-reader__cmtwho { font-family: var(--font-jetbrains-mono); font-size: 11px; color: var(--color-secondary); }
+.fc-reader__cmttx { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+
+/* reader prose — full-fidelity, larger than the in-node renderer (design: body 16/1.66) */
+.fc-reader__prose { font-size: 16px; line-height: 1.66; color: var(--color-text-secondary); }
+.fc-reader__prose > :first-child { margin-top: 0; }
+.fc-reader__prose h1, .fc-reader__prose h2, .fc-reader__prose h3, .fc-reader__prose h4 {
+  font-family: var(--font-jetbrains-mono);
+  font-weight: 600;
+  color: var(--color-neon-cyan);
+  line-height: 1.3;
+  margin: 1.4em 0 0.5em;
+}
+.fc-reader__prose h1 { font-size: 22px; color: var(--color-text-primary); }
+.fc-reader__prose h2 { font-size: 18px; }
+.fc-reader__prose h3 { font-size: 15px; }
+.fc-reader__prose p { margin: 0 0 1em; }
+.fc-reader__prose strong { color: var(--color-text-primary); }
+.fc-reader__prose em { color: var(--color-secondary); }
+.fc-reader__prose a { color: var(--color-neon-cyan); text-decoration: none; }
+.fc-reader__prose a:hover { text-decoration: underline; }
+.fc-reader__prose ul, .fc-reader__prose ol { margin: 0 0 1em; padding-left: 1.4em; }
+.fc-reader__prose li { margin-bottom: 0.35em; }
+.fc-reader__prose blockquote {
+  margin: 0 0 1em;
+  padding: 6px 14px;
+  border-left: 3px solid var(--color-primary);
+  background: rgba(128, 131, 255, 0.08);
+  border-radius: 0 8px 8px 0;
+  color: var(--color-text-secondary);
+}
+.fc-reader__prose code {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 0.86em;
+  color: var(--color-neon-cyan);
+  background: rgba(94, 242, 255, 0.1);
+  border: 1px solid rgba(94, 242, 255, 0.16);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.fc-reader__prose pre {
+  margin: 0 0 1.1em;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-outline-variant);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+}
+/* shiki sets its own background + per-token colors inline; keep our chrome, drop the code-chip styling */
+.fc-reader__prose pre code { background: none; border: 0; padding: 0; color: inherit; font-size: inherit; }
+.fc-reader__prose table { border-collapse: collapse; font-size: 14px; margin: 0 0 1em; }
+.fc-reader__prose th, .fc-reader__prose td { border: 1px solid var(--color-outline-variant); padding: 5px 10px; text-align: left; }
+.fc-reader__prose th { color: var(--color-text-primary); }
+.fc-reader__prose img { max-width: 100%; border-radius: 8px; margin: 0.4em 0; }
+.fc-reader__prose hr { border: 0; border-top: 1px solid var(--color-outline-variant); margin: 1.4em 0; }
+
+/* Phase 8, Fix 3/4 — 3-size reader. The [data-size] selectors outrank the shared .fc-reader base
+   width by specificity, so source order vs toolbar.css does not matter. */
+.fc-reader { transition: width 0.18s ease; }
+.fc-reader[data-size='drawer'] { width: 440px; max-width: 92vw; }
+.fc-reader[data-size='half']   { width: 50vw;  max-width: 96vw; }
+.fc-reader[data-size='full']   { width: 100vw; max-width: 100vw; }
+
+/* reader header — Drawer · Half · Full segmented control */
+.fc-reader__sizes { display: flex; gap: 3px; margin-left: auto; }
+.fc-reader__size {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-reader__size:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-reader__size:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.fc-reader__size.is-active {
+  color: #06222a;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary));
+}
+
+/* the header keeps its layout when the size control sits between path and close */
+.fc-reader__h .fc-reader__path { margin-right: 4px; }
+.fc-reader__h .fc-reader__x { margin-left: 0; }

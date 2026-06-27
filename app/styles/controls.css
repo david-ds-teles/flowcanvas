@@ -1,0 +1,31 @@
+/* nyx minimap + zoom controls (Phase 8, Fix 6) — glass panel, indigo hairline, neon-cyan hover,
+   replacing React Flow's default gray/white chrome. Selectors are prefixed with `.react-flow` to
+   outrank @xyflow/react's own dist/style.css (loaded after globals.css), mirroring the handle styling.
+   SVG node fills are passed as concrete hex on <MiniMap> in canvas-shell.tsx (CSS vars don't apply to
+   SVG fills); maskColor is passed there too. */
+.react-flow .react-flow__minimap {
+  background: rgba(19, 27, 46, 0.72);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(128, 131, 255, 0.18);
+}
+.react-flow .react-flow__minimap-mask { fill: rgba(11, 19, 38, 0.72); }
+.react-flow .react-flow__controls {
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  border: 1px solid var(--color-outline-variant);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(128, 131, 255, 0.18);
+}
+.react-flow .react-flow__controls-button {
+  background: rgba(23, 31, 51, 0.72);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-outline-variant);
+  color: var(--color-text-primary);
+  fill: currentColor;
+}
+.react-flow .react-flow__controls-button:hover {
+  background: rgba(128, 131, 255, 0.18);
+  color: var(--color-neon-cyan);
+}
+.react-flow .react-flow__controls-button svg { fill: currentColor; }

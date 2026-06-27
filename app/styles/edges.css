@@ -1,0 +1,77 @@
+/* Edges + handles + connect mode — extracted from globals.css (Phase 8, Fix 1, move-only). */
+
+/* edges (Phase 5) — provenance carried by stroke (set inline in labeled-edge) + a glass label.
+   links = dashed muted + lock (auto-derived), user = solid indigo, agent = neon cyan. */
+.fc-edge-label {
+  position: absolute;
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.82);
+  backdrop-filter: blur(8px);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fc-edge-label--links { color: var(--color-text-secondary); border-color: var(--color-outline-variant); }
+.fc-edge-label--user  { color: var(--color-primary);        border-color: rgba(192, 193, 255, 0.4); }
+.fc-edge-label--agent { color: var(--color-neon-cyan);      border-color: rgba(94, 242, 255, 0.4); }
+.fc-edge-label__lock { font-size: 9px; line-height: 1; }
+.fc-edge-label { cursor: pointer; }
+
+/* inline edge-label editor (replaces the old window.prompt) — typed in-canvas at the edge midpoint */
+.fc-edge-input {
+  position: absolute;
+  min-width: 96px;
+  max-width: 220px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-primary);
+  background: rgba(6, 14, 32, 0.94);
+  backdrop-filter: blur(10px);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  text-align: center;
+  box-shadow: 0 0 0 3px rgba(192, 193, 255, 0.18), 0 10px 26px -10px rgba(0, 0, 0, 0.65);
+}
+.fc-edge-input::placeholder { color: var(--color-outline); }
+.fc-edge-input:focus { outline: none; }
+
+/* handles — small neon dots with an enlarged invisible grab target so connections are easy to start.
+   Prefixed with `.react-flow` to outrank @xyflow/react's own stylesheet (loaded after globals.css). */
+.react-flow .react-flow__handle {
+  width: 11px;
+  height: 11px;
+  z-index: 5;
+  border-radius: 999px;
+  background: var(--color-surface-highest);
+  border: 1.5px solid var(--color-primary);
+  transition: background 0.14s ease, box-shadow 0.14s ease;
+}
+/* extend the clickable/droppable area ~9px in every direction without enlarging the visible dot */
+.react-flow .react-flow__handle::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 999px;
+}
+.react-flow .react-flow__handle:hover { background: var(--color-primary); box-shadow: 0 0 12px -1px var(--color-primary); }
+/* connection feedback: highlight a valid drop target so it's clear when a connection will land */
+.react-flow .react-flow__handle.connectingto,
+.react-flow .react-flow__handle.valid {
+  background: var(--color-neon-cyan);
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 14px var(--color-neon-cyan);
+}
+
+/* connect mode — emphasise the handles so it's clear edges are drawable */
+.fc-rf--connect .react-flow__handle { background: var(--color-primary); box-shadow: 0 0 12px -1px var(--color-primary); }

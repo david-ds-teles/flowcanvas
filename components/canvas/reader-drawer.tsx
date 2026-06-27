@@ -2,6 +2,14 @@
 import { useEffect, useState } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { isFileNode } from '@/lib/canvas/jsoncanvas'
+import { cn } from '@/lib/utils'
+
+// Reader width presets surfaced as a segmented control in the header (Phase 8, Fix 3/4).
+const SIZES = [
+  { key: 'drawer', glyph: '◧', label: 'Drawer' },
+  { key: 'half', glyph: '◑', label: 'Half screen' },
+  { key: 'full', glyph: '⛶', label: 'Full screen' },
+] as const
 
 // Right-side glass drawer: full-fidelity, syntax-highlighted (shiki) read-only view of a markdown node,
 // fetched from /api/render. The node's comment thread sits beneath the prose. Editing is deferred (v0.1).
@@ -12,6 +20,8 @@ interface ReaderDrawerProps {
 
 export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
   const doc = useCanvasStore((s) => s.doc)
+  const size = useCanvasStore((s) => s.readerSize)
+  const setSize = useCanvasStore((s) => s.setReaderSize)
   const node = doc?.nodes.find((n) => n.id === nodeId) ?? null
   const file = node && isFileNode(node) ? node.file : null
   const title = node && isFileNode(node) ? String(node.meta?.frontmatter?.name ?? file?.split('/').pop()) : 'Reader'
@@ -45,10 +55,25 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
   const thread = doc?.flowcanvas.comments.filter((c) => c.anchor.kind === 'node' && c.anchor.nodeId === nodeId) ?? []
 
   return (
-    <aside className="fc-reader" role="dialog" aria-label={`Reader · ${title}`} data-testid="reader-drawer">
+    <aside className="fc-reader" data-size={size} role="dialog" aria-label={`Reader · ${title}`} data-testid="reader-drawer">
       <header className="fc-reader__h">
         <span className="fc-reader__title">{title}</span>
         {file && <span className="fc-reader__path">{file}</span>}
+        <div className="fc-reader__sizes" role="group" aria-label="Reader size">
+          {SIZES.map((s) => (
+            <button
+              key={s.key}
+              className={cn('fc-reader__size', size === s.key && 'is-active')}
+              aria-pressed={size === s.key}
+              aria-label={s.label}
+              title={s.label}
+              data-testid={`reader-size-${s.key}`}
+              onClick={() => setSize(s.key)}
+            >
+              {s.glyph}
+            </button>
+          ))}
+        </div>
         <button className="fc-reader__x" data-testid="reader-close" aria-label="Close reader" onClick={onClose}>✕</button>
       </header>
 

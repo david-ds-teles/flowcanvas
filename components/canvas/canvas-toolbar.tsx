@@ -133,7 +133,7 @@ export function CanvasToolbar({ onOpenAgent }: CanvasToolbarProps) {
         {modeBtn('comment', 'toolbar-comment-mode', 'Comment', <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M5 5h14v10H9l-4 4z" /></svg>)}
       </div>
 
-      <div className="fc-toolbar__group" style={{ position: 'relative' }}>
+      <div className="fc-toolbar__group fc-toolbar__group--rel">
         <button type="button" className="fc-tbtn fc-tbtn--wide" data-testid="toolbar-add-node" aria-haspopup="menu" aria-expanded={menu} onClick={() => (menu ? closeMenu() : setMenu(true))}>
           + Add ▾
         </button>

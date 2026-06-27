@@ -1,0 +1,469 @@
+/* Content + editable nodes (Phase 4 + fix passes) — extracted from globals.css (Phase 8, Fix 1, move-only).
+   Card glass, frontmatter chips, in-node prose, image/note/link/fallback kinds, and the group/shape editors. */
+
+/* ─────────────────────────── content nodes (Phase 4 — nyx glass cards) ───────────────────────────
+   Design direction: mockup 04-nyx-neon. The card is glass; the frontmatter keys stay muted and the
+   COLOR is carried by the values (semantic status chip + tag chips). Markdown cards are content-sized
+   so the collapse toggle visibly shrinks them. */
+.fc-node {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-card);
+  border: 1px solid transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  background-image:
+    linear-gradient(rgba(23,31,51,.55), rgba(23,31,51,.55)),
+    linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease, border-color .14s ease;
+}
+.fc-node:hover {
+  box-shadow: 0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+}
+
+/* header: title · type badge · collapse — the node color (if any) tints the divider */
+.fc-node__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--node-accent, var(--color-outline-variant));
+  flex-shrink: 0;
+}
+.fc-node__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-node__kind {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+.fc-node__collapse {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: color .14s ease, border-color .14s ease;
+}
+.fc-node__collapse:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-node__collapse:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* read-full button — opens the reader drawer (the card body is intentionally clamped) */
+.fc-node__read {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: color .14s ease, border-color .14s ease;
+}
+.fc-node__read:hover { color: var(--color-neon-cyan); border-color: var(--color-neon-cyan); }
+.fc-node__read:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* frontmatter table — keys muted, values carry the color */
+.fc-fm {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.fc-fm td { padding: 5px 12px; vertical-align: top; }
+.fc-fm__k {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+.fc-fm__v { color: var(--color-text-primary); word-break: break-word; }
+.fc-fm__v--chips { display: flex; flex-wrap: wrap; gap: 3px 4px; }
+
+/* status chip — semantic color picked from the status value */
+.fc-chip {
+  display: inline-block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  background: rgba(221,183,255,.14);
+  color: var(--color-secondary);
+}
+.fc-chip--ok   { background: rgba(182,243,106,.14); color: var(--color-neon-lime); }
+.fc-chip--act  { background: rgba(94,242,255,.14);  color: var(--color-neon-cyan); }
+.fc-chip--warn { background: rgba(245,159,0,.16);   color: var(--color-status-amber); }
+
+/* tag chips */
+.fc-tag {
+  display: inline-block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+  background: rgba(221,183,255,.12);
+  color: var(--color-secondary);
+}
+.fc-fm__more { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-text-secondary); }
+
+/* body — rendered markdown, clamped to --fc-body-max with a fade-to-card edge */
+.fc-node__body {
+  position: relative;
+  flex: 1 1 auto;
+  max-height: var(--fc-body-max, 280px);
+  overflow: hidden;
+  padding: 8px 12px 12px;
+}
+.fc-node__body::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 32px;
+  background: linear-gradient(transparent, rgba(20,28,47,.97));
+  pointer-events: none;
+}
+.fc-node.is-collapsed .fc-node__body { display: none; }
+
+/* prose — compact in-node markdown (mono cyan headings, glowing list bullets) */
+.fc-prose { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.fc-prose > :first-child { margin-top: 0; }
+.fc-prose h1, .fc-prose h2, .fc-prose h3 {
+  margin: 2px 0 5px;
+  font-family: var(--font-jetbrains-mono);
+  font-weight: 600;
+  color: var(--color-neon-cyan);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.fc-prose h1 { font-size: 13px; }
+.fc-prose h2, .fc-prose h3 { font-size: 12px; }
+.fc-prose p { margin: 0 0 6px; }
+.fc-prose p:last-child { margin-bottom: 0; }
+.fc-prose strong { color: var(--color-text-primary); font-weight: 600; }
+.fc-prose em { color: var(--color-secondary); font-style: italic; }
+.fc-prose a { color: var(--color-neon-cyan); text-decoration: none; }
+.fc-prose a:hover { text-decoration: underline; }
+.fc-prose ul, .fc-prose ol { margin: 0 0 6px; padding: 0; list-style: none; }
+.fc-prose li { position: relative; padding-left: 14px; font-size: 11.5px; line-height: 1.45; margin-bottom: 3px; }
+.fc-prose ul li::before {
+  content: "";
+  position: absolute;
+  left: 2px; top: 7px;
+  width: 4px; height: 4px;
+  border-radius: 1px;
+  background: var(--color-neon-cyan);
+  box-shadow: 0 0 6px -1px var(--color-neon-cyan);
+}
+.fc-prose ol { counter-reset: li; }
+.fc-prose ol li::before {
+  counter-increment: li;
+  content: counter(li);
+  position: absolute;
+  left: 0; top: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-primary);
+}
+.fc-prose code {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  color: var(--color-neon-cyan);
+  background: rgba(94,242,255,.1);
+  border: 1px solid rgba(94,242,255,.16);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.fc-prose pre {
+  margin: 0 0 6px;
+  background: rgba(94,242,255,.06);
+  border: 1px solid rgba(94,242,255,.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+.fc-prose pre code { background: none; border: 0; padding: 0; color: var(--color-text-secondary); }
+.fc-prose blockquote {
+  margin: 0 0 6px;
+  padding: 4px 10px;
+  border-left: 2px solid var(--color-primary);
+  background: rgba(128,131,255,.08);
+  border-radius: 0 6px 6px 0;
+}
+.fc-prose blockquote p { margin: 0; font-style: italic; color: var(--color-text-secondary); }
+.fc-prose img { display: block; max-width: 100%; border-radius: 6px; margin: 4px 0; }
+.fc-prose table { border-collapse: collapse; font-size: 11px; margin: 0 0 6px; }
+.fc-prose th, .fc-prose td { border: 1px solid var(--color-outline-variant); padding: 2px 6px; text-align: left; }
+.fc-prose th { color: var(--color-text-primary); }
+
+/* image node — bytes streamed through the guarded /api/asset route (any allowed type) */
+.fc-node__imgwrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6,14,32,.5);
+  overflow: hidden;
+}
+.fc-node__imgwrap img { width: 100%; height: 100%; object-fit: contain; }
+.fc-node__imgwrap--err {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-neon-rose);
+}
+.fc-node__caption {
+  display: block;
+  flex-shrink: 0;
+  padding: 4px 11px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+/* note (text) node — cyan-tinted glass with a mono kicker */
+.fc-node--note {
+  height: 100%;             /* fill the RF node box so the handles sit on the card edges, not below it */
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+  padding: 13px 15px;
+  border-radius: var(--radius-card);
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(rgba(13,21,40,.5), rgba(13,21,40,.5)),
+    linear-gradient(135deg, rgba(94,242,255,.4), rgba(128,131,255,.12));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease;
+}
+.fc-node--note:hover { box-shadow: 0 0 22px -6px rgba(94,242,255,.5); }
+.fc-note__kicker {
+  flex-shrink: 0;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neon-cyan);
+}
+.fc-note__body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* link node — horizontal chip: glyph · kicker + url */
+.fc-node--link {
+  height: 100%;             /* fill the RF node box so the handles sit on the chip edges, not below it */
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  text-decoration: none;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(34,42,61,.5);
+  backdrop-filter: blur(16px);
+  transition: box-shadow .14s ease, border-color .14s ease;
+}
+.fc-node--link:hover { box-shadow: 0 0 22px -6px rgba(128,131,255,.55); border-color: var(--color-primary); }
+.fc-node--link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-link__glyph { flex: 0 0 auto; font-size: 16px; line-height: 1; color: var(--color-secondary); }
+.fc-link__main { min-width: 0; }
+.fc-link__kicker {
+  display: block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.fc-link__url {
+  display: block;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 12px;
+  color: var(--color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* fallback node — unhandled kinds (group / non-md-non-image file) */
+.fc-node--fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+.fc-fallback__kind {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+.fc-fallback__label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* ─────────────────────────── editable nodes — note + group/shape (fix pass) ───────────────────────────
+   Notes and groups are edited in place: double-click → inline textarea/input. Shapes (group nodes)
+   render as a resizable outlined container drawn behind content nodes. */
+
+/* note inline editor */
+.fc-note__edit {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 60px;
+  resize: none;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-control);
+  background: rgba(6, 14, 32, 0.7);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 6px 8px;
+}
+.fc-note__edit:focus { outline: none; box-shadow: 0 0 0 2px rgba(192, 193, 255, 0.25); }
+
+/* group / shape node — a REAL shape: only the painted SVG outline is hit-testable (the rectangular
+   bounding box + corners pass clicks through), and React Flow's rectangular .selected box is suppressed
+   so selection follows the shape. */
+.fc-group {
+  position: relative;
+  pointer-events: none;                 /* corners/box are transparent to events… */
+  --fc-group-fill: rgba(128, 131, 255, 0.05);
+  --fc-group-stroke: var(--color-primary-cont);
+}
+.fc-group__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.fc-group__svg ellipse, .fc-group__svg polygon, .fc-group__svg rect { pointer-events: visiblePainted; }  /* …only the shape captures */
+/* the whole RF node wrapper is transparent to events too, so the rectangular corners outside the shape
+   don't select/drag the node — only the painted shape, label, switcher, and resize handles capture
+   (events still bubble from those to RF's wrapper listeners, so drag/select work). */
+.react-flow__node:has(.fc-group) { pointer-events: none !important; }   /* beat RF's inline pointer-events */
+.react-flow__node:has(.fc-group) .react-flow__resize-control { pointer-events: all; }
+/* suppress the rectangular selection glow for shape nodes (set on the RF node wrapper) */
+.react-flow__node.selected:has(.fc-group) { box-shadow: none !important; }
+.fc-group__label {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  max-width: calc(100% - 20px);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  pointer-events: auto;
+}
+.fc-group--ellipse .fc-group__label, .fc-group--diamond .fc-group__label {
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.fc-group__label > span { display: inline-block; padding: 1px 6px; border-radius: 5px; background: rgba(13, 21, 40, 0.6); cursor: text; }
+.fc-group__label--empty { opacity: 0.5; font-style: italic; }
+.fc-group__input {
+  width: 160px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 5px;
+  border: 1px solid var(--color-primary);
+  background: rgba(6, 14, 32, 0.85);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 11px;
+}
+.fc-group__input:focus { outline: none; }
+
+/* shape/color switcher — floats above the selected shape */
+.fc-group__bar {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+.fc-group__sbtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-group__sbtn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); }
+.fc-group__sbtn.is-on { color: #06222a; background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary)); }
+.fc-group__sbtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* NodeResizer chrome in nyx accents — handles enlarged so they're easy to grab */
+.fc-group__rzline { border-color: var(--color-primary) !important; }
+.fc-group__rzhandle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--color-primary) !important;
+  border: 1.5px solid var(--color-bg) !important;
+  border-radius: 2px;
+}
+
+/* Phase 8, Fix 1 — these fill-the-RF-box rules replace inline style={{…}} removed from the node
+   components (image-node / fallback-node / group-node); values are identical to the old inline styles. */
+.fc-node--img { height: 100%; }
+.fc-node--fallback { width: 100%; height: 100%; padding: 12px 14px; }
+.fc-group { width: 100%; height: 100%; }
