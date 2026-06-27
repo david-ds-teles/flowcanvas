@@ -317,6 +317,7 @@ html, body { height: 100%; }
 
 /* note (text) node — cyan-tinted glass with a mono kicker */
 .fc-node--note {
+  height: 100%;             /* fill the RF node box so the handles sit on the card edges, not below it */
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -341,10 +342,11 @@ html, body { height: 100%; }
   text-transform: uppercase;
   color: var(--color-neon-cyan);
 }
-.fc-note__body { overflow: hidden; }
+.fc-note__body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 
 /* link node — horizontal chip: glyph · kicker + url */
 .fc-node--link {
+  height: 100%;             /* fill the RF node box so the handles sit on the chip edges, not below it */
   display: flex;
   align-items: center;
   gap: 11px;

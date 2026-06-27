@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [BUGFIX] Link/note handles misaligned (bottom-edge gap) — 2026-06-27
+
+**Dev:** david-ds-teles
+**Cause:** `.fc-node--note` and `.fc-node--link` (and latently `.fc-node--img`) sized to their content, shorter than the authored RF node box; React Flow anchors handles to the wrapper edges, so the bottom/side handles floated in the gap below the visible card.
+**Fix:** `height: 100%` on the note/link/image cards so the card fills the wrapper (note body `flex: 1` to absorb slack). CDP-measured `gapBelowCard=0px` and `handleVsCardBottom=0px` for all three.
+**Affected:** `app/globals.css` (`.fc-node--note`/`.fc-node--link`/`.fc-note__body`), `components/canvas/nodes/image-node.tsx`
+
+---
+
 ## [BUGFIX] Flowcanvas node usability — text/group editing, link 404, shapes, full-read — 2026-06-27
 
 **Dev:** david-ds-teles
