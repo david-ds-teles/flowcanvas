@@ -1,0 +1,22 @@
+# Flowcode framework metadata.
+# Read by flowcode-install.js (stamps `version` into the install manifest) and by
+# flowcode:migrator-agent (version comparison on upgrade). Top-level keys are flat
+# so the installer can extract `version:` with a simple line match — no YAML
+# library required.
+
+name: flowcode
+version: 0.11.0
+spec_version: 1          # file-conventions / artifact standard revision — bump on breaking convention changes
+description: Thin, precise, auto-executable framework that runs a project's full lifecycle through a code agent.
+
+# Minimum runtime. Node is the only hard requirement — the install / uninstall /
+# migrate engine and the hooks are all dependency-free Node, so flowcode runs
+# natively on Windows, macOS, and Linux (no bash / rsync / python3 / coreutils).
+requires:
+  node: ">=14"           # install / uninstall / migrate engine + hooks
+  git: "*"               # optional — only to obtain flowcode by cloning
+
+# Where a host install places framework files vs agent tooling.
+install_paths:
+  framework: .flowcode/  # framework files + project knowledge base
+  agent_tools: .claude/  # agents, commands, skills, hooks, settings

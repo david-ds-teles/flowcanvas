@@ -1,0 +1,81 @@
+/*
+ * Flowcode mockup house-style — baseline token + reset layer.
+ * Inline this into a mockup's <style> as the floor, then let ui-design-system.md
+ * tokens override anything the project defines. It mirrors the shipped starter
+ * design system (.flowcode/ui/ui-design-system.md). Self-contained: system fonts,
+ * no CDN. Recolor the whole system by changing --accent.
+ */
+
+:root{
+  /* primitives — neutral ramp + accent */
+  --white:#fff; --neutral-50:#f8fafc; --neutral-100:#f1f5f9; --neutral-200:#e2e8f0;
+  --neutral-300:#cbd5e1; --neutral-500:#64748b; --neutral-700:#334155; --neutral-900:#0f172a;
+  --accent-600:#4f46e5; --accent-700:#4338ca; --accent-50:#eef2ff;
+  --success:#16a34a; --success-bg:#dcfce7; --warning:#d97706; --warning-bg:#fef3c7;
+  --error:#dc2626; --error-bg:#fee2e2; --info:#2563eb;
+
+  /* semantic aliases — use these in components */
+  --bg-app:var(--neutral-50); --bg-surface:var(--white); --bg-subtle:var(--neutral-100);
+  --text-primary:var(--neutral-900); --text-body:var(--neutral-700); --text-muted:var(--neutral-500);
+  --border-default:var(--neutral-200); --border-strong:var(--neutral-300);
+  --accent:var(--accent-600); --accent-hover:var(--accent-700); --focus-ring:var(--accent-600);
+
+  /* type */
+  --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  /* spacing */
+  --space-page:24px; --space-card:16px; --gap:16px; --gap-tight:8px;
+  --field-height:40px; --container-max:1200px;
+
+  /* radii + elevation */
+  --radius-sm:6px; --radius:8px; --radius-lg:12px; --radius-pill:999px;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.10);
+  --shadow-md:0 4px 6px rgba(15,23,42,.07),0 2px 4px rgba(15,23,42,.06);
+  --shadow-lg:0 10px 15px rgba(15,23,42,.10),0 4px 6px rgba(15,23,42,.05);
+
+  /* motion */
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-in-out:cubic-bezier(.77,0,.175,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--font-sans); font-size:14px; line-height:1.5;
+  color:var(--text-body); background:var(--bg-app);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{color:var(--text-primary); margin:0 0 8px}
+h1{font-size:30px; letter-spacing:-.02em}
+a{color:var(--accent); text-decoration:none}
+:focus-visible{outline:2px solid var(--focus-ring); outline-offset:2px}
+
+/* baseline component shapes (override via the project's design system) */
+.btn{height:var(--field-height); padding:0 16px; border-radius:var(--radius); font:inherit;
+  font-weight:600; cursor:pointer; border:1px solid transparent; display:inline-flex;
+  align-items:center; gap:8px; transition:background 150ms var(--ease-out), transform 120ms var(--ease-out)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent); color:#fff; box-shadow:var(--shadow-sm)}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:var(--bg-surface); color:var(--text-body); border-color:var(--border-strong)}
+.btn-secondary:hover{background:var(--bg-subtle)}
+.btn:disabled{opacity:.5; cursor:default}
+
+.input{height:var(--field-height); padding:0 12px; border:1px solid var(--border-default);
+  border-radius:var(--radius); background:var(--bg-surface); font:inherit; color:var(--text-body); outline:none}
+.input:focus{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--focus-ring) 30%,transparent)}
+.input[aria-invalid="true"]{border-color:var(--error)}
+
+.card{background:var(--bg-surface); border:1px solid var(--border-default);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:var(--space-card)}
+
+.badge{display:inline-flex; align-items:center; gap:6px; padding:2px 10px;
+  border-radius:var(--radius-pill); font-size:12px; font-weight:600}
+.badge--success{background:var(--success-bg); color:var(--success)}
+.badge--warning{background:var(--warning-bg); color:var(--warning)}
+.badge--error{background:var(--error-bg); color:var(--error)}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}

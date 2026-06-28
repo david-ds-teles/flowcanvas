@@ -168,7 +168,7 @@ The sidecar reads `.flowcanvas/active-board.json` directly from the project file
   ```json
   {
     "boardId": "abc123",
-    "path": "/Users/davidteles/Projects/2flow/flowcanvas/boards/my-board.md"
+    "path": "/Users/davidteles/Projects/flowcanvas/boards/my-board.md"
   }
   ```
 - Or store **project-relative paths** and have both the sidecar and app resolve them against the project root:
@@ -176,7 +176,7 @@ The sidecar reads `.flowcanvas/active-board.json` directly from the project file
   {
     "boardId": "abc123",
     "path": "boards/my-board.md",
-    "projectRoot": "/Users/davidteles/Projects/2flow/flowcanvas"
+    "projectRoot": "/Users/davidteles/Projects/flowcanvas"
   }
   ```
 - Validate in the route that the resolved path is within the project (prevent directory traversal).

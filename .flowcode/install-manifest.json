@@ -1,0 +1,983 @@
+{
+  "version": "0.11.0",
+  "installed_at": "2026-06-28T21:28:29Z",
+  "source": "flowcode",
+  "project_root": ".",
+  "files": [
+    {
+      "category": "flowcode",
+      "path": ".flowcode/README.md",
+      "sha256": "9cfc25baedc814965f708a8c75e13a35542bc87320a6156ea7e0bf12201c60c3"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/changelog.md",
+      "sha256": "253141817a482c4d5d1192fcfbcba5aee2e151a24fcdf0bac288ed11c0f1aba8"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/flowcode-index.md",
+      "sha256": "af146f325bce1b25d1b2d2dde4a35e6c519f27338d65deb8a4598cefd009edd0"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/flowcode.yml",
+      "sha256": "eba74b713d21a6d0a4304eed8400632b662c640b19e5a290773a9190e25a4690"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-changelog.md",
+      "sha256": "73de6352d78fa1c549c9329aea98507847792e79da119b4f7694f4b4c6b9c964"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+      "sha256": "9c4ab77998660c358ebd2d532d183f79b8bfefd99cf4a3224c6209ef11d986e6"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-log.md",
+      "sha256": "2596b895e9f1b4404e7b0718666d94a0275cbe07b286ca8e65150ce1bc0f9470"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md",
+      "sha256": "8d5c1bd4dbc444cb4d3fc3961428b39192e7fdf7f20af44af50598c8bafd7a1b"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md",
+      "sha256": "66a83f82d1777b96f1e6a620386d71d7f74537e96e1f84428bf0005e6ad1066e"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-technical-overview.md",
+      "sha256": "68e90d2eb1ac9b486e506699b17bfed89f2ad1c17b9697bd71d1e0fec6a8d52b"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-test-notes.md",
+      "sha256": "d4deb4e6e36c61b6bd3e28cd9ff8d103ff35a1f4d9d127a935aadaea7d744227"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-ui-design.md",
+      "sha256": "2a6c8e9cbb796185300e081b87a3569b718615015ae0de91136e79e12eb0d925"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/01-light-editorial.html",
+      "sha256": "bd48d9df406ff915d3fc4b773c39dee65a179df6bd6b4e62b65e68e4b18e2e66"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/02-vibrant-canvas.html",
+      "sha256": "ed10dd481e642ddf070dc1201627719ee58d56c6625ac95f3e2f1b8d9489ce97"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/03-dark-minimal.html",
+      "sha256": "bff19eae2f2cea4eda1475e42a3e704051d2956ddcd0cf91858497a9d62eeb06"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/04-nyx-neon.html",
+      "sha256": "ab2858b6c720d8784dda12d991dc0e2dcb7eaed68abbf83b7dd244220db1c418"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/09-direct-rail.html",
+      "sha256": "b981d6a2dd9fc162c8f398e76c67d51d593a4f997bdb1439c175beb4c72f77b5"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/09-editorial-calm.html",
+      "sha256": "a8890a1bc2062fa35013021017c43c3e51ef134ce582f4543e7de2b6e53dbabf"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/001-initial-architecture/mockups/09-spec-header.html",
+      "sha256": "853cec11eedfec86d8d50b5f912a72a9449f91eb5b15fbcbcefcd0e8774d7b1a"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-changelog.md",
+      "sha256": "bfc08a7f185094f870879004b5f16d44456bdb1f3124cec37f77cfd7b7ef8cd8"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-design.md",
+      "sha256": "969de835dd754bcada46f02c69b30384832a6f543fa049ebcfd219ceb941f727"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-log.md",
+      "sha256": "4c229079e571e2f1ce2eaa74a5ef0691cbd3987499debbb29f758ccc5214c403"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-plan.md",
+      "sha256": "08e8a24137c4538f51944c4769d15edd7bb77a4ca78d10f229a0729106ae456c"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-qa-report.md",
+      "sha256": "9761068e956b0ded8a66ba045c608adf2e2b11402a198b72f446904c4c6c4df7"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-technical-overview.md",
+      "sha256": "726411f26b8faeb93983175598d0c07677347b666f601b22559f678d13c4cbe2"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-test-notes.md",
+      "sha256": "3894419a78b9cd240c0e8c2ed501ed8bb407277041230a566877098a8ee0e9d2"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-ui-design.md",
+      "sha256": "f632d345ec5597989be5978d46e6bb19a265604449f5bd66f18423bf519ba744"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/mockups/01-architecture-canvas.html",
+      "sha256": "81bc3589947140ab5580bb63e07fda9f8a4e529d6f36e86c84db5b3ae43bd9aa"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/mockups/02-studio-workbench.html",
+      "sha256": "68aa4ebe56c2ddb07dabc7329a3a8102cb3e468dbf8e66fbc451384f654c4e97"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/mockups/03-agent-design-loop.html",
+      "sha256": "e9c99cabf6fbf25ff2a6401a79f8c4a2c1a8594a236f09f49bbccd56e13050f5"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/mockups/04-spec-canvas.html",
+      "sha256": "c378a56a208bbf4297d9a5651454a1161fbba3d8c2ff33e833179cd2d5988770"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/002-system-design-studio/mockups/05-studio-canvas.html",
+      "sha256": "ccaec8afdaec6d3deb6c73eee8b76733db95f7ad64d5dd9ef3930f13dc9129ef"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/003-canvas-foundation/003-canvas-foundation-design.md",
+      "sha256": "3d27cac808ec6224053734c721c819b81204fbd22faf09e151124a482130c433"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/003-canvas-foundation/003-canvas-foundation-ui-design.md",
+      "sha256": "bb9f22e273a3d48d9fe973937efd2cdeb4d7881aff0d11cd2092cbd77b291164"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/003-canvas-foundation/mockups/01-nyx-refined.html",
+      "sha256": "855ac37c40d783f0bc510905b5ae6a0feb5b1ae508b758b195f44833ff47733a"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/003-canvas-foundation/mockups/02-blueprint.html",
+      "sha256": "5c79b3340a760c6fca7d0d07484c9ef77a0aa086996d1b662a08d9970e013785"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/003-canvas-foundation/mockups/03-editorial-calm.html",
+      "sha256": "da2bd553082e8d52e183254095eb37f05462d91e2812000f4ba253967303fe90"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/004-generation-loop/004-generation-loop-design.md",
+      "sha256": "695dbff944508d8b22dd2246fa75af0eaa3c124370a9d42d3de4a50a612a3905"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/004-generation-loop/004-generation-loop-ui-design.md",
+      "sha256": "ad42564e90d0a890d066a6b252554c312e1d2e33be0cddf5564f84400ecbe409"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/004-generation-loop/mockups/01-generation-loop.html",
+      "sha256": "70a15dec8ac7972c0481810056c7496459d321e900631000835617f7c9119511"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/plan-index.md",
+      "sha256": "160824e94a4359bef569a5201e41e31569e20d9a802cdc86aacc209e38c905c1"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/plan-instructions.md",
+      "sha256": "a3ec46a25e2eebba739a7b5da713d9e4d401c4995f4a99f29bd0140a8cc13871"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/project/backlog.md",
+      "sha256": "8802bfdde707c542dab6816663e1055551d41e5fd76175f8d8a0973e5e2d31b7"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/project/modules/README.md",
+      "sha256": "4ccf2ae0be76323e802984ca74d2619c1775f23f26c9fee49b4a220a0cb542c5"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/project/project-log.md",
+      "sha256": "4d852b2127364c2cd409ff6336aeecd2f0d7f3fb60fbb516e7ce6f3bc3546f90"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/project/project-overview.md",
+      "sha256": "7e43777cdeb91fa40e016ad909dcf65f88e6b79e5a5d1911ecbf5ad022dbe923"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/clean-code.md",
+      "sha256": "3c9a8baa9309131dc34d95d1c3d4d6bf4499791358c7181cae40195906df6cd8"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/enums-and-constants.md",
+      "sha256": "73214eca501f5a949c9dfed6190f8cf7861ac579efae891d8e202cb8f17994e6"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/error-handling.md",
+      "sha256": "335c2599124dd978a8408d8dcf97272d7c8e4ab39bbde9322731accb840bb98e"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/idiomatic-code.md",
+      "sha256": "6d13c76d9602b077e1180daf3ea6184ae99301b8d68fed176dfd1d5c58f5fe57"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/markdown-quality.md",
+      "sha256": "90429e25df484376a975239c2a46bf3aba3be716adcf03ee3a480334be36e44c"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/naming-conventions.md",
+      "sha256": "e46da23088a9cffdea8a65728de6705d22ce26200edd180860f0b6a66d66ca18"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/quality-checks-index.md",
+      "sha256": "81e7b03399f49c3a014bf1f62d52c418cc4a03a3f3acc2b6dcceca29c9472d7e"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/quality-gates.md",
+      "sha256": "099c1b46b70730788c98e8629b2b96344a9fa1a3d16c06080faa615525c84fa2"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/quality-checks/typed-models.md",
+      "sha256": "32032a32265fc2fcb720bbc84a46e747c7fdf7609c462bd233b6cee0d80bba36"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/references/references-index.md",
+      "sha256": "4353becb44b87a2724f47e7ac5f81fd40c4fc9107dbab18b8817c76754dae919"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/researches/mcp-typescript-sdk-research.md",
+      "sha256": "ff7604c28eb15b484c5dc94afc9795530fb67437ee4a7ca0c9ccd122d45e5738"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/researches/nextjs-node-runtime-mcp-sidecar-research.md",
+      "sha256": "9cbe6844ff94163650ed8d5592b2a50a708a41c6e76e6fa487da242935b146ed"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/researches/node-zip-streaming-research.md",
+      "sha256": "6b8b2f97b8610374beaf43c2e9104c896627dd0fc4dc2161e29094535e4db6c2"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/researches/researches-index.md",
+      "sha256": "1bbae8830ba3362d15e16ccc1e9d81984327b7072c2ae75806b013b9aeae32ea"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/reviews/reviews-index.md",
+      "sha256": "56c2889f9ee05cc918ec73f6131134d675384f50347cdca891c32ed9daadda68"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/agent-instructions.md",
+      "sha256": "cdf090bc37b556d2e74707e598692cf349a9d64679d1f781a6b39b6bf34a5f6f"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/agents-structure-template.md",
+      "sha256": "62fecb52a1f4c37748596041e9311df8be9f374878d5cb97cd5d2b83a5bbaa17"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/backlog-entry-template.md",
+      "sha256": "7e548860e2c49cb07419d3fc09836490fbfa8179feff411423e794df300cee27"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/changelog-template.md",
+      "sha256": "f420e3b09d637216d321200c58c415a9081eeb0709ebabeeb53c3cf9a11ce14c"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/design-template.md",
+      "sha256": "bd7eee53260f4de955c677101a05da8b034b98e854b5168d05bf6757ae34cfe2"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/doc-reference-template.md",
+      "sha256": "90148d8103d5eb53f805572652dfd117c4612704d310bca1f36b27cd9405fae5"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/html-deliverable-template.html",
+      "sha256": "fdfd96b06c40585e74b7f27c6c962ded0fcf92bc54d961cd4742621ab49eb504"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/module-template.md",
+      "sha256": "02946b042bbd05164a8f6ab9ddcf728a45f8a3524caf2eb2985d687c9e49529f"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/plan-log-template.md",
+      "sha256": "3db0f36b7958dc56df303971215577810d1f4446b226e2426d8246a4eb6600f5"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/plan-template.md",
+      "sha256": "3c55b1f292fda8dff4dd4257f6341d6b961d0c26ae5d1420fb4a1addd7d7629d"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/project-log-template.md",
+      "sha256": "e4b84186a4f918ff794103f0822a3a9febaaefa87b2f13199730073e797fa077"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/project-overview-template.md",
+      "sha256": "f2929cecc6b9f4a06337a7471f3a4e9735967c8686813cca7bc6864290f37565"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/qa-report-template.md",
+      "sha256": "01fc212366f48911e273fe1be11e6e1d5e301e20887150d13b9971979efc252d"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/reference-template.md",
+      "sha256": "32f0113f6c6f40afdd177a7144ecd0d52ece106caf5e94cd6b3afff7d1d75bf8"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/research-template.md",
+      "sha256": "398b870eb3d263b9d6e83a5b6d0619a29c7344c648d575b23a7a64d5e377b2b8"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/review-report-template.md",
+      "sha256": "709e1e4e86bb3d191d6b9f2cdb262bfbf5c5871d5c99b00314bc82a75684779f"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/technical-overview-template.md",
+      "sha256": "0194f46982a2bbd2252745b1531b1c97cee17844d4e3391cb62ad04aed38d124"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/templates-index.md",
+      "sha256": "6e962cb652fb76c822f49207b8b2101331351dfaf8566da5ae2bc45b4efba640"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/test-notes-template.md",
+      "sha256": "a136ac05287d9fd8d2000ba10865cb68c5cfb55729b2103624649872fb65a509"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/ui-design-system-template.md",
+      "sha256": "bdaed8dd4edc4f2846f7f2a1b95e502affc5eaba1f3390cb19dc4d7dc3f28e60"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/ui-design-template.md",
+      "sha256": "c264e03f141bb2d239888c2d27a69d0c85bc2a2565d6562a227a1801c5a5851f"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/upstream-contribution-template.md",
+      "sha256": "e582e46b2ffbade31b0a8884891df4a7c0353f1ba1a8c14a720ab9bfd9190aa7"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/ui/references/starter-dashboard.html",
+      "sha256": "c90a7e5e3d914c11b5b0a2d0f44449ee721802acad40a7f0e953c94a099199f1"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/ui/ui-design-system.md",
+      "sha256": "a8a84d6b4649dbfda4d06cf1a67367289d1df35018185131d963678d714e5d1d"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/ui/ui-index.md",
+      "sha256": "74772131ac7c90a45d9567b2193df493e03ad39b3df1b01bcba9630a31fef5c0"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/ui/ui-mockup-discipline.md",
+      "sha256": "1dd66a8a61b9e4f9f96ab998fa9a3ab237f8eeda83490fe46f92280ea5732d14"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/ui/ui-workflow.md",
+      "sha256": "1c1a1455e7c3db0800e37fa33dff4678f1a767e82748eb787b8d0147d7bcd3e9"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/upstream-contributions.md",
+      "sha256": "d22bef9db768b2a37fd9fc06759e5a82e82c21eb556a50edd7d3dd6526119bfc"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/file-conventions.md",
+      "sha256": "c2d17b1ef103e9d4fbb5a7611b988809cab3aa49246fa4b07bf8a95918ac8a5f"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/flowcode-persona.md",
+      "sha256": "f1e29ce1056e3a550c6f77be57e92756496c3c8bf2e9818edfd42c4037a339fc"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/flowcode-rules.md",
+      "sha256": "1dc86ae4639c96e211dfce9d7d7062cb0f3620b6d77b57f4460b70b966a95f44"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/flowcode-tools.md",
+      "sha256": "564a718c0b1c4db096b6b41822ee4c183221006cd5d723d476a47cb4e3c0bcc0"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/flowcode-workflow.md",
+      "sha256": "174c925b70e0ee4cfd4162eb30d0733e1d3c65725c02256e51e3297c52d8403e"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/workflow/git-workflow.md",
+      "sha256": "26a841a6290bd5c63223aa7a7a2a5465ac5c5cbe1a8717a768e9bc54143c4edc"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/artifact-updater-agent.md",
+      "sha256": "b84e52f82136a53bbaa3c63ea6e539f9bdccbac5874fea9958c47e0a147edb6a"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/bootstrap-agent.md",
+      "sha256": "c69b35b01718c413eaeddb02eda061cc8772b61204511b5019eaab20418911ab"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/browser-runner-agent.md",
+      "sha256": "d31b12c056c4416069221bb5e457d9286efb8bd9dff1df6fc88c7d5fab199abb"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/code-explorer-agent.md",
+      "sha256": "5e099a946594dbab2beda27594c597110b282fad8e0e6916a7f6581acced1a80"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/code-reviewer-agent.md",
+      "sha256": "ab4eda6bd14a04c60f46b91b93a0a37d4628a7baef881a5b5cc9499adbef2730"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/designer-agent.md",
+      "sha256": "7dda2c1b7496f3a01ad8883fe901d2aedbca6e1da406639fdc92cff63ff272c4"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/docs-researcher-agent.md",
+      "sha256": "ca40a290c4deb792ee3c5119815b737afc27c988952a48292f250fdb9cceb5a9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/implementer-agent.md",
+      "sha256": "bea415be629ee1fbfa8aa13c053727a2d059b14e1dd7a756c5f93cf4650ba91a"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/migrator-agent.md",
+      "sha256": "f936fe6772c3ead57480f13ca2ea22d6668584ab8ab595efd88013edd002ccca"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/module-explorer-agent.md",
+      "sha256": "6b644b0af099b6247557f4d4a1093283eb342cbe90870b633ce649791b0cba95"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/planner-agent.md",
+      "sha256": "6f78c4a21c7d4314b09a4e33f2edb21dea18ebe82341f77302320f0f6498d815"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/qa-runner-agent.md",
+      "sha256": "d604072043fece7f5b2a49c5f5524f62d851301fb202de1a905b05b514209d9f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/researcher-agent.md",
+      "sha256": "a12a0bcdfde051b4689353a6d742ddf7249ca7d11f820a82bdf4135db3dec805"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/artifact-naming-check.js",
+      "sha256": "fea730dd6714614fd3453dc74b440ebabe12a24508a91d2f404cd3bb2d03dc05"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/feedback-nudge.js",
+      "sha256": "9604ea01786e8e3035da26d201f3b89306e433744bcdd545ba793daf82a73ef9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/frontmatter-summary-check.js",
+      "sha256": "5e4d233f501390c62c1a30e3ba54527ee50a2417dfe69e137535f7a2bc9a3c72"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/harness-leak-check.js",
+      "sha256": "da46a114ba5b2dc8452c6875d20239f395041d21c362e9d655d39e4f1c8ac511"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/markdown-quality-check.js",
+      "sha256": "e01af94d603c079bbd019f5f19a2db6ce2d300750c973bcaed20b75a93089a0f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/notify-sound.js",
+      "sha256": "95e87531f9d33c3177f4f4f82476007b1c8a6420cb92cf0e8ae351908002a187"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/plan-artifact-index.js",
+      "sha256": "78c816b41ba2f37405d29e4af8de86f8a170f1516b215a5e11b4c323bbe7c415"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/project-log-format-check.js",
+      "sha256": "c2612daeeb7d24ce14ba6202606b6cecc190aa99999569b42bd4a708eecd1703"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/hooks/qa-probe-gate.js",
+      "sha256": "56972923336cfb0fab98e5e1a7cb409c8c7fcc60b9d44db95631d50859affb8b"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/bootstrap.md",
+      "sha256": "801822709dbb0aeee6a5fe850f0a256b231eb887c1b19fb88ae4fd77a763ff29"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/brainstorm.md",
+      "sha256": "0336eedecda628e05fae3cb6b7cd836501bd8450e8ef18f064bbe6e6701721d5"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/browser.md",
+      "sha256": "7d192de0d636b6078bb5a812b364403f6bc3f27c269ce8e3c4bccc6a50199aed"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/contributors.md",
+      "sha256": "066d25a70cf47d04e6281081906beed7752ed8c2f74938d4e895c7c93a0be666"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/design.md",
+      "sha256": "59c7993dfc6efdd651e8a637fb4b673ff48451cb6b9145762ec5e9eb5000802a"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/docs.md",
+      "sha256": "ff0c641c9e0abdbae7c52fc72ef2c2112a20109b16c4f778fea4107886d728b7"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/execute.md",
+      "sha256": "a1a8c9e719eca347448008b0def4773cd9a2e536bc40f128ed02fe994940bfc1"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/extend.md",
+      "sha256": "f7fe83bf9bb70efc2be64f220103e4b4e2497d618f258b8c76721c8a535ec9b4"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/feedback.md",
+      "sha256": "da538da0cac291aa2cc202a1b9501e63af4bd2636cb2bdfb4fe6c35b51c0558d"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/migrate.md",
+      "sha256": "264eda9b38081c86fad1394d7b3458561e07f2100b23453891461ab780db9aea"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/mockup.md",
+      "sha256": "2c088d95f4e7d022799096220d3c3424fd80dc4a5c8500b285e1cace8e8aba87"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/module-doc.md",
+      "sha256": "1359ef3b2672649a07c141070e5b472850bbad42c28128fdf992d1b9fa8b60db"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/plan.md",
+      "sha256": "1eb4855f29ab1d5be808158863307979845bff9ce3edad2920b5523ab15771a3"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/reference.md",
+      "sha256": "3f91ece9daffe67f89698fc84f69e0fd2b85ed3c744596813ce466872e0c8e44"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/render-html.md",
+      "sha256": "b8bd093ea2011d01609e8460e9cc0e38feb5c62f70970193102efe1eecbc800e"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/research.md",
+      "sha256": "8729458a363f6bf80e778c5bfce0f45c21738d1973abbbdbea3d74dac3deaa79"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/review.md",
+      "sha256": "91f0f86133f3e7e56fa0eb738424cb8abd70f2458f22c89e95422b0c1573290e"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/bootstrap/SKILL.md",
+      "sha256": "8b71928b07bfdb8e386a0ad738954b17cdb7cf20b1ca39e20e61c60d4e578dd8"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/browser/SKILL.md",
+      "sha256": "0d5b6714204887098c769800fd77efb442b18aac71ee96e005fab31f0349cc8b"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/browser/references/browser-config.schema.md",
+      "sha256": "54b771ac7cc7bbb820e2890f0bce2bce175bd66a344cc9b43716638d107caaa9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/browser/references/capture.mjs",
+      "sha256": "b5ebc59a613c48d96dcc8c4e3cac6ab4fc1bcb343d7f31ad54cc97e6d05c1fd4"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/browser/references/provisioning.md",
+      "sha256": "73c7b261d3a42307cb75e74cc566429e9639d2d1af754244c341b6330d33e605"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/contributors/SKILL.md",
+      "sha256": "6263356eab30660a8fc00bc527a853630fccc777de9f0875cfabf982c4f600d9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/design/SKILL.md",
+      "sha256": "f81219aab9fb30f3407703c776e93e63b6d45c2ac00237207925b3455ff18e49"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/docs/SKILL.md",
+      "sha256": "12a3dba731bb361b4ad56a5f82a178f8a5204adeccaff9d436d5bb8b07f25627"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/execute/SKILL.md",
+      "sha256": "e9479d54720d3352592a35cdbf1e565f5eb3d683f7e7a76501bb5da4bbd3a021"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/feedback/SKILL.md",
+      "sha256": "e15f4bc71b01a2bd4f197859530b0a7fb80b2308b0a60b723808430b7c24b9d6"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/feedback/scripts/analyze-session.sh",
+      "sha256": "0ddac32336dd0a0fd72a28eaaa908c80412711d112bea1ae5fd13390d3fe38a7"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/module-doc/SKILL.md",
+      "sha256": "4cd1b78ea27be5c65a67fe49e5bd6d69f4b684ac01efb2f4bc0da543fab8dd65"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/plan/SKILL.md",
+      "sha256": "5560a46e11b1a0d63c6bf3cae35b6a21d26ceb327b7f75650c10f8ac1648253f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/reference/SKILL.md",
+      "sha256": "6169faa7ef17ee8a813909c86315afa895a9cf36741e19bc7687ad405a5e0a7e"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/research/SKILL.md",
+      "sha256": "77389679444e7ad84a53a3cce9bc7090c305da6b1d2c696a5db10091b2f72a85"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/review/SKILL.md",
+      "sha256": "94df7ecedd4b8a0d947d58823cbbc65deb69d3ac6bcbeea8875454e089b7547a"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/SKILL.md",
+      "sha256": "ff7753828e0e8ded3beb316aee6cdadf61324ba780ee5bd23665bf70cb96ef29"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/house-style.css",
+      "sha256": "4ec00986af51f4868438a7ac75adeb4fba8b656c95b78f34f021c53d838e70cb"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/quality-checklist.md",
+      "sha256": "00aae084b4c9c1e41b9e948c436cbcdd8284d30b79b0ad7dca34d06b8481149f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/brandkit/SKILL.md",
+      "sha256": "b0c4837e1bd140ca816ae54948754ddd2ac1e2a4d3619363777a80caf00b2ede"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/design-taste-frontend/SKILL.md",
+      "sha256": "aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/emil-design-eng/SKILL.md",
+      "sha256": "433b5a239cda18e0576e4e558532e7e53512e21fafe5b85db4894c28ec399b72"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/gpt-taste/SKILL.md",
+      "sha256": "2e64c269953f2656c21bf5a0fa6b4568e82fe0c72b36e8f84758e090349966a5"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/high-end-visual-design/SKILL.md",
+      "sha256": "e1e32f5e2d420872c6c7332b53d5ff7721946766b78c4822b424c2d512c8fdbc"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/SKILL.md",
+      "sha256": "44dec2359cff5c3ede5abbc72a8525c46de38bdaa6a3fcb454c1f581dbc65db3"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/adapt.md",
+      "sha256": "1bc64b9f7bd83bfd0476fa029f1c09e18c3ed6509a08fc5e194e8645c0d7358d"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/animate.md",
+      "sha256": "e8f405be3d3dcbc4c85122e26a8a047de8df0eb168a994e020fd47d9dbe5eac7"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/audit.md",
+      "sha256": "4d126e8e6e32d1b1e0710d24b8d42f1cf1eed8c5bee83d3ef43576f3713145aa"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/bolder.md",
+      "sha256": "e723d23aab04d3824697ae6615815d11420f24a1f02ec3fd8c385c6987f1199c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/brand.md",
+      "sha256": "d39208029aa2b519d27907edb6dfa8bc94be2f058d6faa79e6032704b0b8a662"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/clarify.md",
+      "sha256": "6df9ff83413d15b63c8056fd1107470675a06a6aadc912fc3eb10e7768726794"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/codex.md",
+      "sha256": "b96aad405d4729a9549580a5a3d2f1ae36657a33a3344628a33700d3f22a978d"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/colorize.md",
+      "sha256": "0b60a48af9428118a8ef0fc39c38607e8eb60f91ebd7944e60029f192ef81a34"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/craft.md",
+      "sha256": "6a186a6c93738706aed12918f843824818f852b3b39640406727b4c6446fbdba"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/critique.md",
+      "sha256": "69422a81a44f9d1f8d9685be980fe28b4abae94565d1e45978529dbc2f778122"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/delight.md",
+      "sha256": "045993f60f0c9fb6a81def8015876537543ae0578d6f0db590430a71bab19383"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/distill.md",
+      "sha256": "96c90dd10f6e870529594ece28b84d9cfbafe79b890dcc062f9574ede5d03b4c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/document.md",
+      "sha256": "028c669e87a2c747a19e2e822463a43521476283160a0d854c6e8547e2f1db80"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/extract.md",
+      "sha256": "32f33c58b7b213ecf88e05b6dcfac6c7f96956b84db5694ddb6e1e0f1b307072"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/harden.md",
+      "sha256": "c72525acf34d5a5e1999ed7c8d6d9589a3da0d3a9d9668bf36f897a732bd8dde"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/hooks.md",
+      "sha256": "137f197552da9a931de90de8725137060fdcc798abc78e3d19aafd016929fd3c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/init.md",
+      "sha256": "b1255e0b9a74e6682c4a7f338308b3f9d7dc984421961ee24f7daef538bff793"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/interaction-design.md",
+      "sha256": "ca0b4a91bd380095b6a53c66f524f53efe741e536938af65f9cc184075e83ed3"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/layout.md",
+      "sha256": "008c7ab62cd3dff08e580af2f56316481aba2b4a8bf31797997c35abd67023aa"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/live.md",
+      "sha256": "ee09a05551efb8a32afdb8e19f16f561a37a620e91e7e27816a51a54ce47acce"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/onboard.md",
+      "sha256": "9a2c08ee2516d2ee87129e7ebe6a0895f9990c9852d1f6fa7e70be9a6a88a659"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/optimize.md",
+      "sha256": "73745e94cd4a42653165a89b8c512764a036daae8e5b6da1774b4ddc1659516d"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/overdrive.md",
+      "sha256": "c658bcb4d6f61cb8c74fc8acea8cdded3748102420c9d4952284d536e482811b"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/polish.md",
+      "sha256": "4619c18cdc1f6a873b02d0c1966107980e9dfe4c0693d1631aaceaac67b16b7f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/product.md",
+      "sha256": "9ea8cc99ec208f4c1addc66369980ec6ee2a0ae7732aa8f14672aeed3418b6aa"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/quieter.md",
+      "sha256": "a1a8d2ba3d795be54b1b91f33f34c921b16a6e96d12733ee49f0ddf0823cfe67"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/shape.md",
+      "sha256": "2e8e4105dd7a4c1a4de1f2f0d19d01eb3ab8013b81dc67aef69bfe59b6e6f5fb"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/impeccable/reference/typeset.md",
+      "sha256": "0b100914169f223ea74446ea00bacd81bd3fca8c2cf0227562c89b3b4229c149"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/industrial-brutalist-ui/SKILL.md",
+      "sha256": "fffbaac8597f07679e9d87145533567658aedba3b5eca6f16a7075a333048caa"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/minimalist-ui/SKILL.md",
+      "sha256": "36bc7328f085405f43b476938e62460fa573bf7e984e949e072bcf014831a44c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/redesign-existing-projects/SKILL.md",
+      "sha256": "98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/review-animations/SKILL.md",
+      "sha256": "da7ffae44f21bc8c5104567256f6c66e5dac69fd7118db639ee3d30e0f9d6ba9"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/review-animations/STANDARDS.md",
+      "sha256": "72b1235ea4d7cf64123719d569c0726129b3772713d480369c28f6a5f9f7278c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/stitch-design-taste/DESIGN.md",
+      "sha256": "0ab6740c4ebb1966dbceddb823a66d4bf027e960efbd73faca56cbf8370ae2ad"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/stitch-design-taste/SKILL.md",
+      "sha256": "46bdb08fee2dded38b6ba0a051230a502d6ac6e4044afd47592cb40c256028b5"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/taste/taste-skills-index.md",
+      "sha256": "f19c286246991a454d99271ecb65797c8bc954198b868992727b0f1018e1ed83"
+    }
+  ]
+}

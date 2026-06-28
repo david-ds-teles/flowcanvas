@@ -1,0 +1,84 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/plan-artifact-index.js"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/artifact-naming-check.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/project-log-format-check.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/frontmatter-summary-check.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/harness-leak-check.js"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/qa-probe-gate.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/markdown-quality-check.js"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/notify-sound.js done"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/feedback-nudge.js"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/notify-sound.js input"
+          }
+        ]
+      }
+    ]
+  }
+}
