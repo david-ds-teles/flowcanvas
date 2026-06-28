@@ -1,6 +1,6 @@
 import { MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
 import type { CSSProperties } from 'react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, Side, EdgeOrigin } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, Side, EdgeOrigin, RelationshipType } from './jsoncanvas'
 import { nodeKind } from './jsoncanvas'
 
 const PRESET: Record<string, string> = { '1': '#ff516a', '2': '#f59f00', '3': '#e3b341', '4': '#b6f36a', '5': '#5ef2ff', '6': '#a371f7' }   // nyx §2.4
@@ -28,7 +28,7 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
       width: n.width,
       height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box
       data: { node: n },
-      deletable: false,                                  // edges are key-deletable (Fix 5); nodes are not
+      deletable: true,                                   // nodes + edges are key-deletable; the doc write-back lives in use-canvas-handlers
       ...(parent ? { parentId: n.parentId, extent: 'parent' as const } : {}),
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
@@ -37,7 +37,8 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
     id: e.id, source: e.fromNode, target: e.toNode,
     sourceHandle: e.fromSide, targetHandle: e.toSide,
     type: 'labeled', label: e.label,
-    data: { origin: e.meta?.origin ?? 'user' },
+    data: { origin: e.meta?.origin ?? 'user', rel: e.meta?.rel },   // v2 — rel drives typed-edge styling
+
     markerEnd: (e.toEnd ?? 'arrow') !== 'none' ? { type: MarkerType.ArrowClosed } : undefined,
   }))
   return { nodes, edges }
@@ -66,14 +67,14 @@ export function toJSONCanvas(rfNodes: RFNode[], rfEdges: RFEdge[], prev: Flowcan
   })
   const edges: CanvasEdge[] = rfEdges.map((re) => {
     const base = prevEdgeById.get(re.id)                 // carry color / fromEnd / toEnd that RF state does not model
-    const origin = (re.data as { origin?: EdgeOrigin } | undefined)?.origin
+    const data = re.data as { origin?: EdgeOrigin; rel?: RelationshipType } | undefined
     return {
       ...base,
       id: re.id, fromNode: re.source, toNode: re.target,
       fromSide: re.sourceHandle as Side | undefined, toSide: re.targetHandle as Side | undefined,
       label: typeof re.label === 'string' ? re.label : undefined,
       toEnd: base?.toEnd ?? 'arrow',
-      meta: { origin: origin ?? base?.meta?.origin },
+      meta: { origin: data?.origin ?? base?.meta?.origin, rel: data?.rel ?? base?.meta?.rel },   // v2 — preserve rel
     }
   })
   return { ...prev, nodes, edges }

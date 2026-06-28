@@ -11,13 +11,14 @@ inline on every brief as `DesignBrief.responseContract` (source of truth: `AGENT
    threads addressed by id, and the human's high-level `intent`. No filesystem access is needed to read it.
 2. You (the agent) reply with **exactly one** `AgentResponse` JSON object.
 3. The human imports it. An idempotent, id-keyed merge writes any files you authored, upserts your nodes
-   and edges, attaches your comment replies, re-derives the `links:` edges, and persists — so re-importing
-   the same response is a no-op.
+   and edges (typed via `rel`), attaches your comment replies, and persists — so re-importing the same
+   response is a no-op.
 
-> **`links:` round-trips both ways.** On the canvas, drawing an edge between two file nodes writes the
-> target into the source `.md`'s `links:` frontmatter, and deleting that edge removes it. So the `links:`
-> you see in a brief is the single source of truth for structural relationships — the file and the board
-> always agree. Prefer expressing structure through `links:` (per the rules below) over manual edges.
+> **The canvas is the source of truth for relationships (v2).** Typed/labeled edges live on the board
+> (`meta.rel` + `label`); `links:` frontmatter is demoted to an *extraction input* (seeding a board from a
+> design doc) and an *export projection* (written back only when a portable bundle is exported). Express a
+> structural relationship as a typed edge with a `rel`, or as group containment (`parentId`) — not by
+> editing `links:`.
 
 ## Rules
 
@@ -27,8 +28,17 @@ inline on every brief as `DesignBrief.responseContract` (source of truth: `AGENT
 - **To add a markdown file:** include it in `generatedFiles` (full content **including** YAML frontmatter)
   **and** a matching `upsertNodes` entry with `type:"file"`, `file:"<same path>"`.
 - **Reply to a comment** by setting `parentId` to that comment's `id` from the brief and copying its `anchor`.
-- **Prefer frontmatter `links:`** over manual edges for structural relationships. Never reference a `links:`
-  target that is neither an existing node nor a file you also generate.
+- **Express relationships as typed edges.** Set `rel` to one of `references, depends-on, implements,
+  derives-from, calls, produces, informs, related`; `label` is a short human display (defaults to `rel`).
+  Do not invent `rel` values. Use group containment (`parentId`) for "contains", not an edge.
+- **Extraction (design doc → initial board).** Map each major concept / Module-Boundaries row / component
+  to a node and each subsystem cluster to a `type:"group"` node (label + optional shape; set members'
+  `parentId`). Decompose node content into small generated `.md` files under `<board-stem>.nodes/<slug>.md`,
+  each with `source: { path, anchor }` frontmatter pointing back at the design doc + heading slug. For a
+  pure view of one section, instead emit a `type:"file"` node with `subpath:"<anchor>"` (no new file). Never
+  inline document prose into the `.canvas`; never delete or rewrite the source doc.
+- **Groups.** `type:"group"` carries `label` and an optional `shape` (`rectangle|ellipse|diamond`); child
+  nodes reference it via `parentId`.
 - **Keep coordinates on a 20px grid** and place new nodes in empty regions (the brief's positions reveal the
   occupied layout).
 
@@ -49,11 +59,15 @@ interface AgentResponse {
 
 interface AgentNode {
   id?: string                     // present + known → update; absent or new "ag-*" → create
-  type: 'file' | 'link' | 'text'
+  type: 'file' | 'link' | 'text' | 'group'
   x: number; y: number; width: number; height: number
   file?: string                   // type:'file'  (markdown/image/other, by extension)
   url?: string                    // type:'link'
   text?: string                   // type:'text'  (note, markdown)
+  label?: string                  // type:'group' display label
+  shape?: 'rectangle' | 'ellipse' | 'diamond'   // type:'group' outline (default rectangle)
+  parentId?: string               // group membership — id of the containing group node
+  source?: { path: string; anchor?: string }    // provenance — design doc this node was extracted from
   color?: string                  // "#RRGGBB" or preset "1".."6"
 }
 
@@ -62,7 +76,9 @@ interface AgentEdge {
   fromNode: string; toNode: string
   fromSide?: 'top' | 'right' | 'bottom' | 'left'
   toSide?: 'top' | 'right' | 'bottom' | 'left'
-  label?: string
+  label?: string                  // short human display (defaults to rel)
+  rel?: 'references' | 'depends-on' | 'implements' | 'derives-from'
+       | 'calls' | 'produces' | 'informs' | 'related'   // typed relationship (Decision 1/7)
 }
 
 interface AgentComment {
@@ -103,5 +119,7 @@ A brief that contains a `design ↔ plan` pair and a question on `n-plan`:
 }
 ```
 
-The frontmatter `links: ["examples/plan.md"]` on the generated file auto-derives a `links` edge from the new
-`ag-tests` node to `n-plan` — no manual `upsertEdges` entry needed.
+To relate the new `ag-tests` node to `n-plan`, add a typed edge in `upsertEdges` — e.g.
+`{ "fromNode": "ag-tests", "toNode": "n-plan", "rel": "references" }`. In v2 `links:` frontmatter no longer
+auto-derives board edges: it is an extraction input + an export projection only (the canvas holds the typed
+relationship graph).

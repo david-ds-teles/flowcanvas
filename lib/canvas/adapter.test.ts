@@ -99,6 +99,17 @@ describe('adapter / round-trip', () => {
     expect(back.edges.find((e) => e.id === 'e-user-1')!.meta?.origin).toBe('user')
   })
 
+  it('carries meta.rel onto RFEdge.data and back through the round-trip (v2 typed edges)', () => {
+    const typed: FlowcanvasDoc = {
+      ...doc,
+      edges: [{ id: 'e-rel', fromNode: 'n-design', toNode: 'n-plan', toEnd: 'arrow', label: 'depends on', meta: { origin: 'user', rel: 'depends-on' } }],
+    }
+    const { nodes, edges } = toReactFlow(typed)
+    expect((edges.find((e) => e.id === 'e-rel')!.data as { rel?: string }).rel).toBe('depends-on')
+    const back = toJSONCanvas(nodes, edges, typed)
+    expect(back.edges.find((e) => e.id === 'e-rel')!.meta).toMatchObject({ origin: 'user', rel: 'depends-on' })
+  })
+
   it('preserves edge color/toEnd that React Flow state does not model', () => {
     const { nodes, edges } = toReactFlow(doc)
     const back = toJSONCanvas(nodes, edges, doc)

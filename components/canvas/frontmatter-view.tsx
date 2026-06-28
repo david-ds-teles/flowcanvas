@@ -1,6 +1,17 @@
 'use client'
 import { Fragment } from 'react'
 import { cn } from '@/lib/utils'
+import { useCanvasStore } from '@/lib/canvas/store'
+import type { DocRef } from '@/lib/canvas/refs'
+
+// Build a DocRef from a frontmatter links: entry (root-relative by convention) for navigateRef.
+function frontmatterRef(link: string): DocRef {
+  const isExternal = /^https?:\/\//i.test(link)
+  const h = link.indexOf('#')
+  const anchor = h !== -1 ? link.slice(h + 1) || undefined : undefined
+  const target = h !== -1 ? link.slice(0, h) : link
+  return { kind: 'frontmatter', target, anchor, isExternal }
+}
 
 // Shared frontmatter presentation (Phase 9, issue #5 + #4). Two variants over one composition:
 //   variant="card"   — the in-node block (markdown-node), bordered, compact.
@@ -49,10 +60,13 @@ interface FrontmatterViewProps {
   frontmatter: Record<string, unknown>
   variant?: 'card' | 'reader'
   className?: string
+  /** When set, the ↗ link chips become clickable buttons that call `navigateRef` (Decision 9). */
+  sourceNodeId?: string
 }
 
-export function FrontmatterView({ frontmatter, variant = 'card', className }: FrontmatterViewProps) {
+export function FrontmatterView({ frontmatter, variant = 'card', className, sourceNodeId }: FrontmatterViewProps) {
   const fm = frontmatter ?? {}
+  const navigateRef = useCanvasStore((s) => s.navigateRef)
 
   // Every meaningful field — priority keys first, then the rest (skipping the title + empties).
   const keys = [
@@ -93,14 +107,26 @@ export function FrontmatterView({ frontmatter, variant = 'card', className }: Fr
 
       {links && links.length > 0 && (
         <div className="fc-fm__row">
-          {links.slice(0, MAX_CHIPS).map((l, i) => (
-            <span key={`${String(l)}-${i}`} className="fc-link-chip" title={String(l)}>
-              <span className="fc-link-chip__arrow" aria-hidden="true">
-                ↗
+          {links.slice(0, MAX_CHIPS).map((l, i) =>
+            sourceNodeId ? (
+              <button
+                type="button"
+                key={`${String(l)}-${i}`}
+                className="fc-link-chip fc-link-chip--btn"
+                data-testid="link-chip"
+                title={`Go to ${String(l)}`}
+                onClick={(e) => { e.stopPropagation(); void navigateRef(sourceNodeId, frontmatterRef(String(l))) }}
+              >
+                <span className="fc-link-chip__arrow" aria-hidden="true">↗</span>
+                {basename(String(l))}
+              </button>
+            ) : (
+              <span key={`${String(l)}-${i}`} className="fc-link-chip" data-testid="link-chip" title={String(l)}>
+                <span className="fc-link-chip__arrow" aria-hidden="true">↗</span>
+                {basename(String(l))}
               </span>
-              {basename(String(l))}
-            </span>
-          ))}
+            ),
+          )}
           {links.length > MAX_CHIPS && <span className="fc-fm__more">+{links.length - MAX_CHIPS}</span>}
         </div>
       )}

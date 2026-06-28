@@ -14,6 +14,28 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 002-system-design-studio — Flowcanvas System Design Studio v2 (re-close after Phase 7) — 2026-06-29
+
+**Dev:** david-ds-teles <davidarius2@gmail.com>
+**Delivered:** Re-closed `complete` at **7/7 phases** after **Phase 7 — Runtime Defect Remediation** (operator-directed reopen). Runtime triage (app + MCP sidecar + headless-Chrome CDP + a scripted MCP round-trip and submit→reload→review cycle) found the prime suspect (0-height tri-pane canvas) was a PASS and most v2 surfaces functional; the real gap was that the studio was **unexercisable on launch** — the default board was the stale v0.1 Welcome board and no templates shipped. Fixed four defects, all runtime-verified: **D1** canvas selection sync (`use-canvas-handlers`); **D2** an importable v2 demo board `examples/commerce-platform.canvas` + content + `templates/*.canvas` exercising every studio surface; **D3** MCP `get_board` stamps `session.lastBriefId` (round-trip no longer falsely `stale`); **D4** non-blocking change-review round-ready banner (`use-round-ready`). Closed the coverage gap that let static gates certify a non-working UI: 14 route-contract vitest tests (in-gate) + `npm run smoke:mcp` + `npm run smoke:render`.
+**Phases:** 7/7 — Phases 1–6 `complete`, Phase 7 `done`.
+**Artifacts:** `002-system-design-studio-{qa-report,technical-overview,changelog,test-notes,plan,log}.md` updated; `project-overview.md` (gates 143/143 + smoke gates + Evolution Log); `quality-gates.md` (smoke gates registered).
+**Gates:** tsc 0 · lint 0 (0 warnings) · build ok (full v2 route table) · vitest 143/143 · smoke:mcp PASS · smoke:render PASS · plan-completion review PASS (0 ≥medium; 2 low + 3 info resolved/accepted).
+**Follow-ups:** Decision-10 disk-divergence reconcile banner; 1280-px visual pixel-diff; collapsed-rail thin icon strip; drag-to-canvas templates; scope-aware submit; `instantiateTemplate` uniquify document-template file paths.
+
+---
+
+## [PLAN COMPLETE] 002-system-design-studio — Flowcanvas System Design Studio v2 — 2026-06-28
+
+> **⚠️ AMENDED (2026-06-29): plan REOPENED.** Operator runtime testing found ~half the v2 features non-functional end-to-end — the static gates + code review below never exercised the wired runtime. Plan status is now `active` with **Phase 7 — Runtime Defect Remediation** pending. This entry stands as the historical close record; current state lives in `plan-index.md` (active 6/7), the plan log's `[PLAN REOPENED]` entry, and the qa-report `Operator runtime testing` FAIL check.
+
+**Dev:** david-ds-teles <davidarius2@gmail.com>
+**Delivered:** Canvas-authoritative typed-relation graph (schema v2, `RelationshipType` catalog, `NodeSource` provenance, one-time `0.1→0.2` migration), 7-tool stdio MCP sidecar (`@modelcontextprotocol/sdk` v1.29.0), snapshot-diff change-review (accept/discard), template library, bundle export, and the tri-pane studio shell — 6/6 phases, tsc 0 · lint 0 · build ok · vitest 129/129.
+**Artifacts:** `002-system-design-studio-technical-overview.md`, `002-system-design-studio-changelog.md`, `002-system-design-studio-test-notes.md`, `002-system-design-studio-qa-report.md`
+**Follow-ups:** disk-divergence banner (Decision 10); visual-parity CDP capture at 1280/1440; collapsed-rail thin strip; `lastBriefId` MCP stamp; drag-to-canvas templates; scope-aware submit; live MCP probe
+
+---
+
 ## [PLAN COMPLETE] 001-initial-architecture — Phase 10 canvas mechanics & file I/O — 2026-06-27
 
 **Dev:** david-ds-teles

@@ -1,0 +1,243 @@
+{
+  "nodes": [
+    {
+      "id": "g-edge",
+      "type": "group",
+      "label": "Edge",
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 200,
+      "meta": { "origin": "user", "shape": "rectangle" }
+    },
+    {
+      "id": "g-core",
+      "type": "group",
+      "label": "Core Services",
+      "x": 420,
+      "y": 0,
+      "width": 360,
+      "height": 560,
+      "meta": { "origin": "user", "shape": "rectangle" }
+    },
+    {
+      "id": "g-data",
+      "type": "group",
+      "label": "Data & Events",
+      "x": 900,
+      "y": 0,
+      "width": 320,
+      "height": 360,
+      "meta": { "origin": "user", "shape": "rectangle" }
+    },
+    {
+      "id": "n-gateway",
+      "type": "file",
+      "file": "examples/commerce-platform/api-gateway.md",
+      "x": 40,
+      "y": 60,
+      "width": 240,
+      "height": 120,
+      "parentId": "g-edge",
+      "meta": {
+        "origin": "user",
+        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "edge" }
+      }
+    },
+    {
+      "id": "n-auth",
+      "type": "file",
+      "file": "examples/commerce-platform/auth-service.md",
+      "x": 460,
+      "y": 60,
+      "width": 280,
+      "height": 130,
+      "parentId": "g-core",
+      "meta": {
+        "origin": "import",
+        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "authentication" }
+      }
+    },
+    {
+      "id": "n-order",
+      "type": "file",
+      "file": "examples/commerce-platform/order-service.md",
+      "x": 460,
+      "y": 220,
+      "width": 280,
+      "height": 150,
+      "parentId": "g-core",
+      "meta": {
+        "origin": "import",
+        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "order-lifecycle" }
+      }
+    },
+    {
+      "id": "n-payment",
+      "type": "file",
+      "file": "examples/commerce-platform/payment-service.md",
+      "x": 460,
+      "y": 400,
+      "width": 280,
+      "height": 130,
+      "parentId": "g-core",
+      "meta": {
+        "origin": "import",
+        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "payments" }
+      }
+    },
+    {
+      "id": "n-ordersdb",
+      "type": "file",
+      "file": "examples/commerce-platform/orders-db.md",
+      "x": 940,
+      "y": 60,
+      "width": 240,
+      "height": 120,
+      "parentId": "g-data",
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "n-eventbus",
+      "type": "file",
+      "file": "examples/commerce-platform/event-bus.md",
+      "x": 940,
+      "y": 220,
+      "width": 240,
+      "height": 120,
+      "parentId": "g-data",
+      "meta": { "origin": "agent" }
+    },
+    {
+      "id": "n-design",
+      "type": "file",
+      "file": "examples/commerce-platform/commerce-design.md",
+      "x": 420,
+      "y": 640,
+      "width": 360,
+      "height": 200,
+      "color": "5",
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "n-diagram",
+      "type": "file",
+      "file": "examples/commerce-platform/sequence.svg",
+      "x": 900,
+      "y": 440,
+      "width": 320,
+      "height": 220,
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "n-slo",
+      "type": "text",
+      "text": "## SLOs\np99 < 250ms · 99.95% availability · payment success > 99.5%",
+      "x": 40,
+      "y": 280,
+      "width": 280,
+      "height": 160,
+      "color": "#5ef2ff",
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "n-stripe",
+      "type": "link",
+      "url": "https://stripe.com/docs/api",
+      "x": 900,
+      "y": 720,
+      "width": 260,
+      "height": 90,
+      "color": "6",
+      "meta": { "origin": "user" }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-gw-order",
+      "fromNode": "n-gateway",
+      "toNode": "n-order",
+      "toEnd": "arrow",
+      "label": "POST /orders",
+      "meta": { "origin": "user", "rel": "calls" }
+    },
+    {
+      "id": "e-order-pay",
+      "fromNode": "n-order",
+      "toNode": "n-payment",
+      "toEnd": "arrow",
+      "label": "charge",
+      "meta": { "origin": "user", "rel": "calls" }
+    },
+    {
+      "id": "e-order-bus",
+      "fromNode": "n-order",
+      "toNode": "n-eventbus",
+      "toEnd": "arrow",
+      "label": "order.created",
+      "meta": { "origin": "agent", "rel": "produces" }
+    },
+    {
+      "id": "e-order-db",
+      "fromNode": "n-order",
+      "toNode": "n-ordersdb",
+      "toEnd": "arrow",
+      "label": "depends on",
+      "meta": { "origin": "user", "rel": "depends-on" }
+    },
+    {
+      "id": "e-auth-gw",
+      "fromNode": "n-auth",
+      "toNode": "n-gateway",
+      "toEnd": "arrow",
+      "label": "verifies",
+      "meta": { "origin": "user", "rel": "informs" }
+    },
+    {
+      "id": "e-pay-stripe",
+      "fromNode": "n-payment",
+      "toNode": "n-stripe",
+      "toEnd": "arrow",
+      "label": "depends on",
+      "meta": { "origin": "user", "rel": "depends-on" }
+    },
+    {
+      "id": "e-order-design",
+      "fromNode": "n-order",
+      "toNode": "n-design",
+      "toEnd": "arrow",
+      "label": "derives from",
+      "meta": { "origin": "import", "rel": "derives-from" }
+    },
+    {
+      "id": "e-auth-design",
+      "fromNode": "n-auth",
+      "toNode": "n-design",
+      "toEnd": "arrow",
+      "label": "derives from",
+      "meta": { "origin": "import", "rel": "derives-from" }
+    }
+  ],
+  "flowcanvas": {
+    "schemaVersion": "0.2",
+    "session": {
+      "title": "Commerce Platform",
+      "intent": "Commerce platform — decomposed architecture (v2 System Design Studio demo)",
+      "createdAt": "2026-06-28T00:00:00Z",
+      "updatedAt": "2026-06-28T00:00:00Z",
+      "revision": 1
+    },
+    "comments": [
+      {
+        "id": "c-1",
+        "anchor": { "kind": "node", "nodeId": "n-order", "offsetX": 0.5, "offsetY": 0.1 },
+        "parentId": null,
+        "author": "human:david",
+        "text": "Should order.created be transactional with the DB write?",
+        "createdAt": "2026-06-28T00:05:00Z",
+        "resolvedAt": null,
+        "badge": 1
+      }
+    ]
+  }
+}

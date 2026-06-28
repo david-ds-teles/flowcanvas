@@ -1,10 +1,15 @@
 import { create } from 'zustand'
 import type { Connection } from '@xyflow/react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape } from './jsoncanvas'
-import { isFileNode, nodeKind } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType } from './jsoncanvas'
+import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
 import { deriveLinkEdges, reconcileEdges } from './edges'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
 import type { AgentResponse, DesignBrief, MergeReport } from './brief'
+import { diffDocs } from './review'
+import type { ReviewState, ReviewDiff } from './review'
+import { instantiateTemplate } from './templates'
+import type { CanvasTemplate } from './templates'
+import type { DocRef } from './refs'
 import * as api from '../api'
 
 /** Canvas interaction mode — drives the toolbar's mode group and the comment layer's click capture. */
@@ -23,12 +28,17 @@ interface CanvasState {
   readerNodeId: string | null        // UI-only: markdown node open in the reader drawer (transient)
   readerSize: ReaderSize             // UI-only: reader width preset (transient, never persisted)
   selectedIds: string[]              // UI-only: ids in the current multi-selection (transient, never persisted)
+  reviewState: ReviewState | null    // v2: the submit-time snapshot loaded when a round is pending (transient)
+  focusNodeId: string | null         // v2: navigateRef target the shell should setCenter on (transient, UI consumes + clears)
   load: (path: string) => Promise<void>
   save: () => Promise<void>
   bodyFor: (id: string) => string | undefined
   toggleCollapsed: (id: string) => void
   onConnect: (conn: Connection) => void
   removeEdgeWriteback: (id: string) => void
+  removeNode: (id: string) => void                                                 // delete a node + its edges/comments (orphan group children)
+  newBoard: () => Promise<void>                                                    // create + adopt a fresh empty board
+  clearBoard: () => void                                                           // wipe the current board's nodes/edges/comments (UI confirms)
   setSelection: (ids: string[]) => void                                            // Phase 10: multi-select
   groupSelection: (ids: string[]) => void                                          // Phase 10: wrap ≥2 nodes in a container
   ungroup: (groupId: string) => void                                               // Phase 10: dissolve a container, keep children
@@ -41,6 +51,7 @@ interface CanvasState {
   setNodeLabel: (id: string, label: string) => void
   setNodeShape: (id: string, shape: NodeShape) => void
   relabelEdge: (id: string, label: string) => void
+  setEdgeRel: (id: string, rel: RelationshipType) => void          // v2: typed-edge rel picker (Phase 6)
   setEditingEdge: (id: string | null) => void
   setMode: (mode: CanvasMode) => void
   openReader: (id: string) => void
@@ -48,12 +59,22 @@ interface CanvasState {
   setReaderSize: (size: ReaderSize) => void
   maximizeReader: (id: string) => void
   addNode: (node: CanvasNode) => void
-  addFileNode: (path: string, x: number, y: number) => Promise<void>
+  addFileNode: (path: string, x: number, y: number) => Promise<string>   // returns the new node id (v2: navigateRef edges to it)
   addComment: (anchor: CommentAnchor, text: string, author: string) => string
   replyComment: (rootId: string, text: string, author: string) => void
   resolveComment: (rootId: string) => void
   buildBrief: () => Promise<DesignBrief>
   applyResponse: (resp: AgentResponse) => Promise<MergeReport>
+  // ─── v2 — agent round-trip, change-review, references, templates, reconcile ───
+  submitToAgent: (intent: string) => Promise<void>                 // save + snapshot + active pointer (Decision 5/6)
+  reviewDiff: () => ReviewDiff | null                              // diffDocs(snapshot, doc) when a round is pending (Decision 6)
+  acceptRound: () => Promise<void>                                 // keep the doc, clear the review window (Decision 6)
+  discardRound: () => Promise<void>                                // restore the snapshot, delete the round's files (Decision 6)
+  clearFocus: () => void                                           // shell calls this after centering on focusNodeId
+  focusNode: (id: string) => void                                 // select + request a viewport center (structure rail)
+  navigateRef: (sourceNodeId: string, ref: DocRef) => Promise<void> // focus-or-add + references edge (Decision 9)
+  addTemplate: (t: CanvasTemplate, x: number, y: number) => Promise<void>  // instantiate a template fragment (Decision 8)
+  resyncFile: (path: string) => Promise<void>                     // re-derive one file's links edges + refresh its frontmatter (Decision 10)
 }
 
 /** Short random suffix for a manually-drawn edge id. */
@@ -63,12 +84,8 @@ const commentId = () => `c-${crypto.randomUUID().slice(0, 8)}`
 /** Short random suffix for a user-created node id. */
 const nodeId = () => `n-${crypto.randomUUID().slice(0, 8)}`
 
-/** The backing file of a node id, or null when the node is absent / not file-backed. Used by the
- *  bidirectional `links:` write-back to decide whether an edge is a structural file↔file link. */
-const fileOf = (doc: FlowcanvasDoc, id: string): string | null => {
-  const n = doc.nodes.find((x) => x.id === id)
-  return n && isFileNode(n) ? n.file : null
-}
+/** Normalize a root-relative path for matching (drop a leading `./`, unify separators). */
+const normPath = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
 
 /** Hydrate file nodes' markdown frontmatter into `meta` + bodies map; returns the next nodes + bodies. */
 async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>) {
@@ -89,14 +106,32 @@ async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>)
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [],
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null,
   bodyFor: (id) => get().bodies[id],
+  // Canvas-authoritative load (Decision 4): doc.edges from disk are truth — no per-load reconcile.
+  // One-time 0.1→0.2 migration bakes previously-live-only links: edges into persisted edges, then bumps
+  // the version. Writes the active-board pointer (Decision 5) and loads the review snapshot when a round
+  // is pending (Decision 6).
   async load(path) {
     const doc = await api.getCanvas(path)
     const { nodes, bodies } = await hydrateFiles(doc.nodes, {})
-    // Self-heal the links graph against the freshly-resolved frontmatter; user/agent edges survive.
-    const edges = reconcileEdges(doc.edges, deriveLinkEdges(nodes))
-    set({ path, doc: { ...doc, nodes, edges }, bodies, dirty: false })
+    let edges = doc.edges
+    let migrated = false
+    if (doc.flowcanvas.schemaVersion === '0.1') {
+      edges = reconcileEdges(doc.edges, deriveLinkEdges(nodes))   // bake the derived links: edges once
+      migrated = true
+    }
+    const next: FlowcanvasDoc = {
+      ...doc, nodes, edges,
+      ...(migrated ? { flowcanvas: { ...doc.flowcanvas, schemaVersion: '0.2' as const } } : {}),   // immutable bump
+    }
+    let reviewState: ReviewState | null = null
+    if (next.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
+    set({ path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [] })
+    if (migrated) await get().save()                              // persist the 0.2 bake (one-time)
+    const rev = get().doc?.flowcanvas.session.revision ?? next.flowcanvas.session.revision
+    void api.putActive({ canvasRef: path, baseRevision: rev, intent: next.flowcanvas.session.intent ?? '' })
+      .catch((e) => console.error('putActive failed', e))
   },
   async save() {
     const { path, doc } = get()
@@ -112,53 +147,54 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     )
     set({ doc: { ...doc, nodes }, dirty: true })
   },
-  // Two cases (Phase 8, Fix 5 — bidirectional `links:`):
-  //  • file↔file (or file↔image): a STRUCTURAL link → mint the deterministic `lk:` edge (origin
-  //    'links', so deriveLinkEdges re-derives the identical edge on the next load — idempotent) AND
-  //    patch the source `.md`'s `links:` frontmatter so the file and the canvas agree. No label editor.
-  //  • otherwise: a canvas-only `user` edge with an empty label + the inline editor (no native prompt).
-  // Self-connections are rejected (a node referencing itself is never meaningful; deriveLinkEdges
-  // drops them too).
+  // v2 (Decisions 1/4): the canvas is the authoritative relation graph — every drawn connection becomes
+  // a typed `user` edge (rel:'related', empty label, inline editor). The Phase-8 file↔file `links:`
+  // write-back is retired; structural relationships are typed edges on the board, not frontmatter.
+  // Self-connections are rejected.
   onConnect(conn: Connection) {
     const { doc } = get()
     if (!doc || !conn.source || !conn.target || conn.source === conn.target) return
-    const src = fileOf(doc, conn.source)
-    const tgt = fileOf(doc, conn.target)
-    if (src && tgt) {
-      const id = `lk:${conn.source}->${conn.target}`
-      if (doc.edges.some((e) => e.id === id)) return            // already linked — no duplicate, no re-patch
-      const edge: CanvasEdge = {
-        id, fromNode: conn.source, toNode: conn.target,
-        fromSide: conn.sourceHandle as CanvasEdge['fromSide'],
-        toSide: conn.targetHandle as CanvasEdge['toSide'],
-        label: 'links', color: '6', toEnd: 'arrow', meta: { origin: 'links' },
-      }
-      set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true })
-      // fire-and-forget; reload self-heals. Surface failures so a write-back desync isn't silent.
-      void api.patchLinks(src, { add: [tgt] }).catch((e) => console.error('patchLinks(add) failed', e))
-      return
-    }
     const id = edgeId()
     const edge: CanvasEdge = {
       id, fromNode: conn.source, toNode: conn.target,
       fromSide: conn.sourceHandle as CanvasEdge['fromSide'],
       toSide: conn.targetHandle as CanvasEdge['toSide'],
-      label: '', toEnd: 'arrow', meta: { origin: 'user' },
+      label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' },
     }
     set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
   },
-  // Remove an edge from the doc (so the deletion is durable — it neither resurrects on the next
-  // controlled-state sync nor survives a save) and, when it joined two file nodes, strip the target
-  // from the source `.md`'s `links:`. Called per 'remove' change from the shell's onEdgesChange.
+  // Remove an edge from the doc so the deletion is durable (it neither resurrects on the next
+  // controlled-state sync nor survives a save). v2: no `links:` write-back (Decision 4).
   removeEdgeWriteback(id: string) {
     const { doc } = get()
-    if (!doc) return
-    const e = doc.edges.find((x) => x.id === id)
-    if (!e) return
-    const src = fileOf(doc, e.fromNode)
-    const tgt = fileOf(doc, e.toNode)
+    if (!doc || !doc.edges.some((x) => x.id === id)) return
     set({ doc: { ...doc, edges: doc.edges.filter((x) => x.id !== id) }, dirty: true })
-    if (src && tgt) void api.patchLinks(src, { remove: [tgt] }).catch((e) => console.error('patchLinks(remove) failed', e))
+  },
+  // Delete a node from the board (Delete/Backspace, the toolbar trash, or the inspector). Drops the node,
+  // every edge touching it, and any comment anchored to it; a deleted GROUP orphans its children (clears
+  // their parentId, like ungroup) so they survive as top-level nodes. File nodes leave the .md on disk —
+  // this only removes the board widget. Closes the reader if the open node is the one being removed.
+  removeNode(id: string) {
+    const { doc } = get()
+    if (!doc) return
+    const target = doc.nodes.find((n) => n.id === id)
+    if (!target) return
+    const nodes = doc.nodes
+      .filter((n) => n.id !== id)
+      .map((n) => {
+        if (n.parentId !== id) return n
+        const next: CanvasNode = { ...n }
+        delete (next as { parentId?: string }).parentId
+        return next
+      })
+    const edges = doc.edges.filter((e) => e.fromNode !== id && e.toNode !== id)
+    const comments = doc.flowcanvas.comments.filter((c) => !(c.anchor.kind === 'node' && c.anchor.nodeId === id))
+    set({
+      doc: { ...doc, nodes, edges, flowcanvas: { ...doc.flowcanvas, comments } },
+      dirty: true,
+      selectedIds: get().selectedIds.filter((s) => s !== id),
+      readerNodeId: get().readerNodeId === id ? null : get().readerNodeId,
+    })
   },
   // ─── Phase 10: multi-select, true group containers, bulk layout, board file I/O ───
   // Selection is UI-only (never persisted, never dirties). Equality-guarded so React Flow's
@@ -229,6 +265,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       u.searchParams.set('path', path)
       window.history.replaceState(null, '', u.toString())
     }
+    void api.putActive({ canvasRef: path, baseRevision: doc.flowcanvas.session.revision, intent: doc.flowcanvas.session.intent ?? '' })
+      .catch((e) => console.error('putActive failed', e))
   },
   // Switch the active board (the caller — BoardDialog — owns the unsaved-changes guard): load the doc,
   // clear selection, and update the URL `?path=` so a refresh stays on it.
@@ -240,6 +278,44 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       u.searchParams.set('path', path)
       window.history.replaceState(null, '', u.toString())
     }
+  },
+  // Create + adopt a fresh empty board: mint an `untitled-*.canvas`, write it so a reload reopens it,
+  // adopt its path + active-board pointer, and reset transient UI. The canvas renders the "No board open"
+  // empty state (nodes.length === 0) until the operator adds content, opens another board, or submits.
+  async newBoard() {
+    const now = new Date().toISOString()
+    const path = `untitled-${crypto.randomUUID().slice(0, 8)}.canvas`
+    const doc: FlowcanvasDoc = {
+      nodes: [], edges: [],
+      flowcanvas: {
+        schemaVersion: '0.2',
+        session: { title: 'Untitled board', intent: '', createdAt: now, updatedAt: now, revision: 0 },
+        comments: [],
+      },
+    }
+    set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], readerNodeId: null })
+    doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href)
+      u.searchParams.set('path', path)
+      window.history.replaceState(null, '', u.toString())
+    }
+    void api.putActive({ canvasRef: path, baseRevision: doc.flowcanvas.session.revision, intent: '' })
+      .catch((e) => console.error('putActive failed', e))
+  },
+  // Wipe the CURRENT board to empty (the UI gates this behind a confirm modal — it is destructive once
+  // saved). Keeps the board's path + session identity; drops all nodes/edges/comments and clears any
+  // pending review window. Dirties so the operator can Save to persist (or reload to restore).
+  clearBoard() {
+    const { doc } = get()
+    if (!doc) return
+    set({
+      doc: {
+        ...doc, nodes: [], edges: [],
+        flowcanvas: { ...doc.flowcanvas, comments: [], session: { ...doc.flowcanvas.session, pendingReview: false } },
+      },
+      bodies: {}, dirty: true, selectedIds: [], readerNodeId: null, reviewState: null,
+    })
   },
   setNodePosition(id: string, x: number, y: number) {
     const { doc } = get()
@@ -286,6 +362,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     )
     set({ doc: { ...doc, edges }, dirty: true })
   },
+  // Set an edge's typed relationship (rel picker, Phase 6). Defaults the display label from REL_LABELS
+  // when the edge has no free-form label yet; a links-origin edge is promoted to user (now hand-typed).
+  setEdgeRel(id: string, rel: RelationshipType) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => {
+      if (e.id !== id) return e
+      const label = e.label && e.label.trim() ? e.label : REL_LABELS[rel]
+      return { ...e, label, meta: { ...e.meta, rel, origin: e.meta?.origin === 'links' ? 'user' : (e.meta?.origin ?? 'user') } }
+    })
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
   setEditingEdge(id: string | null) {
     set({ editingEdgeId: id })
   },
@@ -314,16 +402,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ doc: { ...doc, nodes: [...doc.nodes, node] }, dirty: true })
   },
   // Add a markdown/image file node (from the add-node picker, an upload, or a drop). Resolves the new
-  // file's frontmatter/body and re-derives the links graph so a markdown file's `links:` edges appear.
+  // file's frontmatter/body. v2 (Decision 4): canvas-authoritative — NO links: re-derive; relationships
+  // are typed edges. Returns the new node id so navigateRef can draw a references edge to it.
   async addFileNode(path: string, x: number, y: number) {
     const { doc, bodies } = get()
-    if (!doc) return
+    if (!doc) return ''
     const probe: CanvasNode = { id: nodeId(), type: 'file', file: path, x, y, width: 380, height: 320, meta: { origin: 'user' } }
     const isImage = nodeKind(probe) === 'image'
     const node: CanvasNode = isImage ? { ...probe, height: 260 } : probe
     const { nodes, bodies: nextBodies } = await hydrateFiles([...doc.nodes, node], bodies)
-    const edges = reconcileEdges(doc.edges, deriveLinkEdges(nodes))
-    set({ doc: { ...doc, nodes, edges }, bodies: nextBodies, dirty: true })
+    // v2: canvas-authoritative — no links: re-derive (Decision 4); relationships are typed edges.
+    set({ doc: { ...doc, nodes }, bodies: nextBodies, dirty: true })
+    return node.id
   },
   // Immutable append of a root comment. Badge is the next sequential number across existing roots
   // (replies — parentId set — never carry one). Returns the new id so the caller can open its thread.
@@ -392,9 +482,148 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { next, report } = applyResponsePure(doc, resp, (p) => p + crypto.randomUUID().slice(0, 8), new Date().toISOString())
     for (const g of resp.generatedFiles ?? []) await api.writeFileApi(g.path, g.content)   // (2)
     const { nodes, bodies: nextBodies } = await hydrateFiles(next.nodes, bodies)            // (4)
-    const edges = reconcileEdges(next.edges, deriveLinkEdges(nodes))
-    set({ doc: { ...next, nodes, edges }, bodies: nextBodies, dirty: true })
+    // v2: next.edges are authoritative — no links: re-derive (Decision 4).
+    set({ doc: { ...next, nodes }, bodies: nextBodies, dirty: true })
     await get().save()
     return report
+  },
+  // ─── v2 — agent round-trip, change-review, references, templates, reconcile ───
+  // Submit the board to the agent: persist it + the intent, open the review window at the saved revision,
+  // and publish the active-board pointer the MCP sidecar reads. The round runs out-of-band (the harness
+  // drives the MCP tools); the later revision bump + pendingReview drive change-review on reload.
+  async submitToAgent(intent: string) {
+    const { doc, path } = get()
+    if (!doc || !path) throw new Error('no board loaded')
+    const withIntent: FlowcanvasDoc = {
+      ...doc,
+      flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, intent, pendingReview: true } },
+    }
+    set({ doc: withIntent, dirty: true })
+    await get().save()                                   // persist intent + pendingReview (bumps revision)
+    const saved = get().doc
+    if (!saved) return
+    const baseRevision = saved.flowcanvas.session.revision
+    const review: ReviewState = {
+      baseRevision,
+      briefId: saved.flowcanvas.session.lastBriefId ?? '',
+      capturedAt: new Date().toISOString(),
+      snapshot: saved,
+      roundGeneratedFiles: [],
+    }
+    await api.putReview(path, review)
+    await api.putActive({ canvasRef: path, baseRevision, intent })
+    set({ reviewState: review })
+  },
+  // The navigable diff of the current doc against the submit-time snapshot; `files` = the round's added
+  // file-node paths (the generated files) so discard can roll them back.
+  reviewDiff() {
+    const { reviewState, doc } = get()
+    if (!reviewState || !doc) return null
+    const base = diffDocs(reviewState.snapshot, doc)
+    const added = new Set(base.nodes.added)
+    const files = doc.nodes
+      .filter((n) => added.has(n.id) && isFileNode(n))
+      .map((n) => (n as { file: string }).file)
+    return { ...base, files }
+  },
+  // Accept the round: keep the merged doc, clear the review window + snapshot, persist.
+  async acceptRound() {
+    const { doc, path } = get()
+    if (!doc || !path) return
+    const cleared: FlowcanvasDoc = {
+      ...doc,
+      flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, pendingReview: false } },
+    }
+    set({ doc: cleared, reviewState: null, dirty: true })
+    await api.clearReview(path).catch((e) => console.error('clearReview failed', e))
+    await get().save()
+  },
+  // Discard the round: restore the submit-time snapshot, delete exactly the files the round generated,
+  // clear the review window, persist (a new revision over the snapshot).
+  async discardRound() {
+    const { reviewState, path, bodies } = get()
+    if (!reviewState || !path) return
+    const round = get().reviewDiff()
+    const restored: FlowcanvasDoc = {
+      ...reviewState.snapshot,
+      flowcanvas: {
+        ...reviewState.snapshot.flowcanvas,
+        session: { ...reviewState.snapshot.flowcanvas.session, pendingReview: false },
+      },
+    }
+    const { nodes, bodies: nextBodies } = await hydrateFiles(restored.nodes, bodies)
+    set({ doc: { ...restored, nodes }, bodies: nextBodies, reviewState: null, dirty: true })
+    for (const f of round?.files ?? []) await api.deleteFileApi(f).catch((e) => console.error('deleteFile failed', f, e))
+    await api.clearReview(path).catch((e) => console.error('clearReview failed', e))
+    await get().save()
+  },
+  clearFocus() {
+    set({ focusNodeId: null })
+  },
+  // Select a node and request the viewport center on it (the FocusBridge consumes focusNodeId).
+  focusNode(id: string) {
+    set({ selectedIds: [id], focusNodeId: id })
+  },
+  // Reference navigation (Decision 9): focus the target node if it is on the board, else add it near the
+  // source and draw a rel:'references' edge from the source to it. Bounded by one click.
+  async navigateRef(sourceNodeId: string, ref: DocRef) {
+    const { doc } = get()
+    if (!doc) return
+    const existing = doc.nodes.find((n) =>
+      ref.isExternal
+        ? n.type === 'link' && n.url === ref.target
+        : isFileNode(n) && normPath(n.file) === normPath(ref.target),
+    )
+    if (existing) {
+      set({ selectedIds: [existing.id], focusNodeId: existing.id })
+      return
+    }
+    const src = doc.nodes.find((n) => n.id === sourceNodeId)
+    const x = src ? src.x + src.width + 80 : 0
+    const y = src ? src.y : 0
+    let targetId: string
+    if (ref.isExternal) {
+      targetId = nodeId()
+      get().addNode({ id: targetId, type: 'link', url: ref.target, x, y, width: 260, height: 80, meta: { origin: 'user' } })
+    } else {
+      targetId = await get().addFileNode(ref.target, x, y)
+    }
+    const cur = get().doc
+    if (!cur || !targetId) return
+    const rel: RelationshipType = 'references'
+    const edge: CanvasEdge = {
+      id: edgeId(), fromNode: sourceNodeId, toNode: targetId,
+      label: 'references', toEnd: 'arrow', meta: { origin: 'user', rel },
+    }
+    set({ doc: { ...cur, edges: [...cur.edges, edge] }, selectedIds: [targetId], focusNodeId: targetId, dirty: true })
+  },
+  // Instantiate a template fragment at a drop point (Decision 8): clone with fresh ids + rebased coords,
+  // write any document scaffolds, hydrate, and append.
+  async addTemplate(t: CanvasTemplate, x: number, y: number) {
+    const { doc, bodies } = get()
+    if (!doc) return
+    const { nodes: cloned, edges: clonedEdges, files } = instantiateTemplate(t, x, y, (p) => p + crypto.randomUUID().slice(0, 8))
+    for (const f of files) await api.writeFileApi(f.path, f.content)
+    const { nodes, bodies: nextBodies } = await hydrateFiles([...doc.nodes, ...cloned], bodies)
+    set({ doc: { ...doc, nodes, edges: [...doc.edges, ...clonedEdges] }, bodies: nextBodies, dirty: true })
+  },
+  // Per-file reconcile (Decision 10): re-read THIS file from disk, refresh its frontmatter cache + body,
+  // and re-derive only its links: edges — leaving every other file's edges and all user/agent edges intact.
+  async resyncFile(path: string) {
+    const { doc } = get()
+    if (!doc) return
+    const target = doc.nodes.find((n) => isFileNode(n) && normPath(n.file) === normPath(path))
+    if (!target || !isFileNode(target)) return
+    const [resolved] = await api.resolvePaths([target.file])
+    const nodes = doc.nodes.map((n) =>
+      n.id === target.id ? { ...n, meta: { ...n.meta, frontmatter: resolved?.frontmatter } } : n,
+    )
+    const bodies = { ...get().bodies }
+    if (resolved?.body) bodies[target.id] = resolved.body
+    const prefix = `lk:${target.id}->`
+    const kept = doc.edges.filter((e) => !e.id.startsWith(prefix))   // drop only this file's derived links edges
+    const seen = new Set(kept.map((e) => `${e.fromNode}>${e.toNode}`))
+    const fresh = deriveLinkEdges(nodes).filter((e) => e.fromNode === target.id && !seen.has(`${e.fromNode}>${e.toNode}`))
+    set({ doc: { ...doc, nodes, edges: [...kept, ...fresh] }, bodies, dirty: true })
   },
 }))

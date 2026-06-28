@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas v2 — Agent Design Loop (03)</title>
+<!--
+  002 System Design Studio — iteration "agent-design-loop" (round-trip-forward / copilot).
+  Direction: organize the whole product around the human↔agent ITERATION cycle.
+    · A persistent horizontal ROUND-RAIL spine (R1…R4) under the toolbar — each round carries
+      an intent summary + a +N/~N/−N diff badge + a rev window (7→8); R4 is "pending review".
+    · SUBMIT is a first-class prominent COMMAND bar (get_board → apply_response over MCP).
+    · CHANGE-REVIEW is the CENTERPIECE — a large left-docked diff surface; the live board sits
+      BESIDE it with this round's agent additions (payment-service, cache, charge / order.created
+      / stripe edges) GLOWING + "+ this round" markers; accept/discard visibly affects them.
+    · Templates / typed-edge picker / ref-nav are quick-actions framed inside the loop.
+  System rendered (identical across all 4 iterations): agent-extracted "Commerce Platform".
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx) + plans/001/.../04-nyx-neon.html (tokens +
+  component CSS) + v2 surface CSS from 01-studio-drawer / 03-command-spotlight. Self-contained.
+  Top .statebar toggles every state via data-go + JS. Desktop-only.
+-->
+<style>
+  :root{
+    /* ── nyx :root token block — copied verbatim from plans/001/.../04-nyx-neon.html ── */
+    --bg:#0b1326; --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33;
+    --c-high:#222a3d; --c-highest:#2d3449; --bright:#31394d;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --on-primary:#1000a9;
+    --secondary:#ddb7ff; --secondary-cont:#6f00be;
+    --tertiary:#ffb2b7; --tertiary-cont:#ff516a; --error:#ffb4ab;
+    --neon-cyan:#5ef2ff; --neon-lime:#b6f36a; --neon-rose:#ff8fb0;
+    --glass-fill:rgba(23,31,51,.55); --glass-fill-2:rgba(34,42,61,.62);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    --r-lg:16px; --r-md:8px; --r-sm:4px; --r-full:999px; --u:8px;
+    /* ── promoted literals → tokens so ZERO hex lives outside :root (§0 rule 2 / §13) ── */
+    --amber:#f59f00;                /* status-amber (§2.3) */
+    --primary-2:#6f5bff;            /* indigo-gradient end stop */
+    --accent-grad-2:#8fd84a;        /* lime accept-button end stop */
+    --ink-lime:#06220a;             /* text on lime */
+    --ink-cyan:#06222a;             /* text on cyan/agent */
+    --ink-cyan2:#062a30;            /* deep text on agent gradient */
+    --user-ink:#e7e7ff;             /* text on user edge label */
+    --white:#ffffff;                /* text/stroke on solid accent */
+    --orb-deep:#3a0d8c;             /* empty-state orb core */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%), var(--bg);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased}
+
+  /* ───── mockup state nav (not part of the app shell) ───── */
+  .statebar{position:sticky;top:0;z-index:90;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:9px 16px;background:rgba(6,14,32,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .statebar .brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--on-var);margin-right:auto}
+  .statebar .brand b{color:var(--primary);font-weight:600}
+  .statebar button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:7px 11px;min-height:34px;border-radius:var(--r-md);cursor:pointer;
+    transition:border-color .14s ease,color .14s ease,box-shadow .14s ease}
+  .statebar button:hover{color:var(--on);box-shadow:var(--glow-indigo)}
+  .statebar button[aria-current="true"]{color:var(--white);border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),var(--primary-2));box-shadow:var(--glow-indigo)}
+  .statebar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ───── app shell ───── */
+  .app{position:relative;height:calc(100vh - 54px);overflow:hidden}
+
+  /* ───── toolbar (§7) ───── */
+  .toolbar{position:absolute;inset:0 0 auto 0;height:56px;z-index:40;display:flex;align-items:center;gap:6px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .ttitle{font-family:var(--mono);font-size:12px;color:var(--on-var);margin-right:6px;letter-spacing:.04em;display:flex;gap:8px;align-items:center;white-space:nowrap}
+  .ttitle .dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .tdiv{width:1px;height:26px;background:var(--outline-var);margin:0 4px;flex:0 0 auto}
+  .tspring{margin-left:auto}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 10px;
+    border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .tbtn .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px}
+  .tbtn.primary{background:linear-gradient(135deg,var(--primary-cont),var(--primary-2));color:var(--white);border-color:transparent}
+  .tbtn[aria-pressed="true"]{border-color:transparent;color:var(--white);background:linear-gradient(135deg,rgba(128,131,255,.9),rgba(94,242,255,.5));box-shadow:0 0 18px -2px rgba(94,242,255,.5)}
+  .save-dot{width:8px;height:8px;border-radius:var(--r-full);background:var(--tertiary-cont);box-shadow:0 0 10px var(--tertiary-cont)}
+  .seg{display:flex;border:1px solid var(--outline-var);border-radius:var(--r-md);overflow:hidden;flex:0 0 auto}
+  .seg .tbtn{border:0;border-radius:0;background:transparent;height:36px;min-width:40px;padding:0 11px}
+  .seg .tbtn + .tbtn{border-left:1px solid var(--outline-var)}
+  .mcp{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 10px;color:var(--on-var)}
+  .mcp .d{width:7px;height:7px;border-radius:var(--r-full)}
+  .mcp.ok .d{background:var(--neon-lime);box-shadow:0 0 8px var(--neon-lime)}
+  .mcp.off .d{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  /* add-node menu */
+  .menu-wrap{position:relative}
+  .menu{position:absolute;top:46px;left:0;z-index:60;min-width:208px;padding:6px;display:none;border:1px solid transparent;border-radius:var(--r-md);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px)}
+  .app[data-menu="open"] .menu{display:block}
+  .menu button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--on);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .menu button:hover{background:rgba(255,255,255,.06)}
+  .menu button svg{width:15px;height:15px;stroke:var(--primary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .menu button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.04em}
+  .menu button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+
+  /* ═════ ROUND-RAIL — the iteration spine (unique to this direction) ═════ */
+  .round-rail{position:absolute;top:56px;left:0;right:0;height:60px;z-index:38;display:flex;align-items:center;gap:14px;padding:0 16px;
+    background:rgba(11,19,38,.55);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .rr-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--primary);display:flex;gap:8px;align-items:center;white-space:nowrap}
+  .rr-title::before{content:"";width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .rr-track{display:flex;align-items:center;gap:0;margin:0;padding:2px 0;list-style:none;overflow-x:auto;overflow-y:hidden;flex:1;height:100%}
+  .rr-track li{display:flex;align-items:center;flex:0 0 auto}
+  .rr-track li + li::before{content:"";width:24px;height:2px;flex:0 0 auto;margin:0 3px;border-radius:2px;background:linear-gradient(90deg,var(--outline-var),var(--primary-cont))}
+  .round-item{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:190px;max-width:236px;text-align:left;cursor:pointer;
+    border:1px solid var(--outline-var);border-radius:var(--r-md);background:rgba(34,42,61,.4);padding:7px 11px;color:var(--on);font-family:var(--ui);
+    transition:box-shadow .14s ease,border-color .14s ease}
+  .round-item:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .round-item:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .round-item .ri-top{display:flex;align-items:center;gap:8px;width:100%}
+  .round-item .rid{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--primary);letter-spacing:.04em}
+  .round-item .rrev{font-family:var(--mono);font-size:9px;color:var(--on-var);margin-left:auto}
+  .round-item .ri-intent{font-size:11px;color:var(--on-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:212px}
+  .round-item .ri-diff{font-family:var(--mono);font-size:9px;display:flex;gap:8px;letter-spacing:.02em}
+  .ri-diff .a{color:var(--neon-lime)}.ri-diff .u{color:var(--neon-cyan)}.ri-diff .r{color:var(--tertiary-cont)}
+  .round-item.pending{border-color:transparent;background:linear-gradient(180deg,rgba(94,242,255,.10),rgba(128,131,255,.05));
+    box-shadow:0 0 0 1px rgba(94,242,255,.5),0 0 18px -5px rgba(94,242,255,.55);animation:pendPulse 2.4s ease-in-out infinite}
+  .round-item.pending .rid{color:var(--neon-cyan)}
+  .round-item .ri-badge{font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-cyan);
+    background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-radius:var(--r-full);padding:1px 7px}
+  @keyframes pendPulse{0%,100%{box-shadow:0 0 0 1px rgba(94,242,255,.45),0 0 14px -6px rgba(94,242,255,.5)}50%{box-shadow:0 0 0 1px rgba(94,242,255,.75),0 0 26px -3px rgba(94,242,255,.7)}}
+  .rr-compose{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;cursor:pointer;
+    font-family:var(--ui);font-size:12px;color:var(--on);border:1px dashed rgba(128,131,255,.5);border-radius:var(--r-md);background:rgba(128,131,255,.08);
+    transition:box-shadow .14s ease,border-color .14s ease}
+  .rr-compose:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .rr-compose:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .rr-compose svg{width:14px;height:14px;stroke:var(--primary);fill:none;stroke-width:1.7}
+
+  /* ═════ BOARD ═════ */
+  .board{position:absolute;left:0;right:0;top:116px;bottom:0;overflow:hidden}
+  .app.dim .board{filter:saturate(.85) brightness(.62)}
+  .canvas{position:absolute;left:50%;top:20px;transform:translateX(-50%);width:1320px;height:770px;
+    background-image:radial-gradient(rgba(146,143,160,.16) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+  .app[data-frame="empty"] .canvas{display:none}
+
+  /* edges (all strokes/gradients via CSS vars — no hex in SVG) */
+  .edges{position:absolute;inset:0;width:1320px;height:770px;pointer-events:none;z-index:5}
+  .edges path.e{fill:none}
+  .edges .user{stroke:var(--primary);stroke-width:1.6}
+  .edges .agent{stroke:url(#gA);stroke-width:2;filter:drop-shadow(0 0 5px rgba(94,242,255,.7))}
+  .edges .links{stroke:var(--outline);stroke-width:1.5;stroke-dasharray:5 4}
+  .edges .import{stroke:var(--secondary);stroke-width:1.5;stroke-dasharray:2 5}
+  .edges .fresh{filter:drop-shadow(0 0 8px rgba(94,242,255,.9));stroke-dasharray:7 5;animation:flow 1s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-24}}
+  .edges marker path{fill:none}
+  .edges marker.m-user path{stroke:var(--primary);stroke-width:1.6}
+  .edges marker.m-agent path{stroke:var(--neon-cyan);stroke-width:1.7}
+  .edges marker.m-link path{stroke:var(--outline);stroke-width:1.4}
+  .edges marker.m-import path{stroke:var(--secondary);stroke-width:1.4}
+  #gA .s0{stop-color:var(--neon-cyan)} #gA .s1{stop-color:var(--secondary)}
+
+  /* edge labels (rel eyebrow + label) */
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--on-var);
+    padding:3px 8px;border-radius:var(--r-full);white-space:nowrap;background:rgba(13,21,40,.85);border:1px solid var(--outline-var);display:flex;gap:6px;align-items:center}
+  button.elabel{cursor:pointer}
+  .elabel .rel{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary)}
+  .elabel .lock{font-size:9px;opacity:.85}
+  .elabel.user{color:var(--user-ink);border-color:rgba(128,131,255,.5)}
+  .elabel.import{color:var(--secondary);border-color:rgba(221,183,255,.45)}
+  .elabel.import .rel{color:var(--secondary)}
+  .elabel.agent{color:var(--ink-cyan2);background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-color:transparent;box-shadow:0 0 16px -3px rgba(94,242,255,.6)}
+  .elabel.agent .rel{color:var(--ink-cyan)}
+  .elabel.fresh{box-shadow:0 0 18px -2px rgba(94,242,255,.85)}
+  .elabel .new{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-cyan);background:rgba(6,34,42,.45);border-radius:var(--r-full);padding:0 5px}
+  .elabel:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* groups */
+  .group{position:absolute;border-radius:var(--r-lg);border:1px dashed rgba(128,131,255,.4);background:linear-gradient(180deg,rgba(128,131,255,.07),rgba(94,242,255,.03));z-index:2}
+  .group > .glabel{position:absolute;top:-13px;left:18px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);
+    padding:3px 10px;border-radius:var(--r-full);background:rgba(11,19,38,.92);border:1px solid rgba(128,131,255,.45);display:flex;gap:7px;align-items:center}
+  .group > .glabel svg{width:12px;height:12px;stroke:var(--primary);fill:none;stroke-width:1.6}
+
+  /* node base (glass §8) */
+  .node{position:absolute;z-index:10;border-radius:var(--r-lg);border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    transition:box-shadow .14s ease,border-color .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node.selected{box-shadow:0 0 0 2px var(--primary),0 0 26px -4px rgba(192,193,255,.6)}
+  /* nodes added THIS ROUND — neon glow + "+ this round" marker */
+  .node.fresh,.text-node.fresh{box-shadow:0 0 0 1px rgba(94,242,255,.5),0 0 26px -4px rgba(94,242,255,.55)}
+  .node.fresh:hover,.text-node.fresh:hover{box-shadow:0 0 0 1px rgba(94,242,255,.72),0 0 30px -2px rgba(94,242,255,.72)}
+  .freshtag{position:absolute;top:-10px;right:10px;z-index:12;font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-cyan);
+    background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-radius:var(--r-full);padding:2px 8px;box-shadow:0 0 14px -3px rgba(94,242,255,.7)}
+  .node .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--outline-var)}
+  .node .name{font-size:13px;font-weight:600;color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto}
+  .node .collapse{flex:0 0 auto;width:24px;height:24px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);cursor:pointer;font-size:14px;line-height:1;transition:color .14s ease,border-color .14s ease}
+  .node .collapse:hover{color:var(--on);border-color:var(--primary)}
+  .node .collapse:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .src-eyebrow{font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--neon-lime);padding:6px 12px 0}
+  .fmrow{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px}
+  .chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:var(--r-full);background:rgba(221,183,255,.14);color:var(--secondary)}
+  .chip.ok{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .chip.act{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .chip.rev{background:rgba(245,159,0,.16);color:var(--amber)}
+  .tag{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:var(--r-sm);background:rgba(221,183,255,.12);color:var(--secondary)}
+  /* rendered markdown — node body (never raw ## / *) */
+  .body{padding:4px 12px 12px;overflow:hidden;position:relative;flex:1}
+  .body h2,.body h3{margin:2px 0 5px;font-family:var(--mono);font-weight:600;color:var(--neon-cyan);letter-spacing:.01em;font-size:12px}
+  .body p{margin:0 0 6px;font-size:11.5px;line-height:1.5;color:var(--on-var)}
+  .body p:last-child{margin-bottom:0}
+  .body strong{color:var(--on);font-weight:600}.body em{color:var(--secondary);font-style:italic}
+  .body ul{margin:0 0 6px;padding:0;list-style:none}
+  .body li{position:relative;padding-left:14px;font-size:11px;line-height:1.45;color:var(--on-var);margin-bottom:3px}
+  .body li::before{content:"";position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:1px;background:var(--neon-cyan);box-shadow:0 0 6px -1px var(--neon-cyan)}
+  .body code{font-family:var(--mono);font-size:10.5px;color:var(--neon-cyan);background:rgba(94,242,255,.1);padding:0 4px;border-radius:3px;border:1px solid rgba(94,242,255,.16)}
+  .node.collapsed .body,.node.collapsed .fmrow,.node.collapsed .reflist{display:none}
+
+  /* reference ↗ chip — inline focus/add (quick-action, from 03-command-spotlight) */
+  .reflist{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 10px}
+  .lchip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;color:var(--secondary);border:1px solid rgba(221,183,255,.3);border-radius:var(--r-full);overflow:hidden}
+  .lchip .arr{padding:2px 5px 2px 8px;color:var(--neon-cyan)}
+  .lchip .nm{padding:2px 4px}
+  .lchip .act{padding:2px 9px;border:0;border-left:1px solid var(--outline-var);cursor:pointer;color:var(--on-var);background:transparent;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+  .lchip .act:hover{color:var(--neon-lime)}
+  .lchip .act[aria-pressed="true"]{color:var(--ink-cyan);background:linear-gradient(135deg,var(--neon-cyan),var(--secondary))}
+  .lchip .act:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+
+  /* handles */
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-full);background:var(--c-highest);border:1px solid var(--primary);z-index:11;transition:box-shadow .14s ease,background-color .14s ease}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+  .app[data-mode="connect"] .handle{background:var(--neon-cyan);border-color:var(--white);box-shadow:0 0 12px var(--neon-cyan);animation:hpulse 1.4s ease-in-out infinite}
+  @keyframes hpulse{0%,100%{box-shadow:0 0 7px var(--neon-cyan)}50%{box-shadow:0 0 16px var(--neon-cyan)}}
+
+  /* image node */
+  .node.img .imgwrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(6,14,32,.5);overflow:hidden;border-radius:0 0 var(--r-lg) var(--r-lg)}
+  .node.img .imgwrap svg{width:82%;height:82%}
+  .diag .c1{stroke:var(--neon-cyan)}.diag .c2{stroke:var(--primary)}.diag .c3{stroke:var(--secondary)}.diag .c0{stroke:var(--outline)}
+  .diag [class]{fill:none;stroke-width:1.5}
+
+  /* text / note + link nodes */
+  .text-node{position:absolute;z-index:10;border-radius:var(--r-lg);padding:13px 15px;backdrop-filter:blur(16px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.5),rgba(13,21,40,.5)),linear-gradient(135deg,rgba(94,242,255,.4),rgba(128,131,255,.12));background-origin:border-box;background-clip:padding-box,border-box}
+  .text-node .nt{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--neon-cyan)}
+  .text-node h3{margin:6px 0 4px;font-family:var(--mono);font-size:13px;color:var(--on)}
+  .text-node ul{margin:0;padding:0;list-style:none}
+  .text-node li{position:relative;padding-left:13px;font-size:11px;line-height:1.5;color:var(--on-var);margin-bottom:2px}
+  .text-node li::before{content:"";position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:1px;background:var(--neon-cyan)}
+  .text-node code{font-family:var(--mono);font-size:10.5px;color:var(--neon-cyan)}
+  .link-node{position:absolute;z-index:10;display:flex;gap:10px;align-items:center;border-radius:var(--r-md);padding:0 14px;text-decoration:none;color:var(--on);
+    backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);transition:box-shadow .14s ease}
+  .link-node:hover{box-shadow:var(--glow-indigo)}
+  .link-node:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .link-node svg{width:16px;height:16px;stroke:var(--secondary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .link-node .u{font-family:var(--mono);font-size:12px;color:var(--secondary)}
+  .link-node small{display:block;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.06em;text-transform:uppercase}
+
+  /* comment pin (§8) */
+  .pin{position:absolute;z-index:20;width:26px;height:26px;cursor:pointer;border:0;background:transparent;padding:0}
+  .pin i{position:absolute;inset:0;border-radius:var(--r-full) var(--r-full) 2px var(--r-full);background:linear-gradient(135deg,var(--tertiary-cont),var(--neon-rose));
+    box-shadow:0 0 16px -2px rgba(255,81,106,.7);display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:700;font-style:normal}
+  .pin:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r-full)}
+
+  /* chrome: minimap / controls / legend (§7) */
+  .minimap{position:absolute;z-index:30;right:20px;bottom:18px;width:200px;height:124px;border-radius:var(--r-md);backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);overflow:hidden}
+  .minimap .mm-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:14px 14px}
+  .minimap b{position:absolute;border-radius:3px;display:block}
+  .controls{position:absolute;z-index:30;left:20px;bottom:18px;display:flex;flex-direction:column;gap:6px}
+  .controls button{width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.55);backdrop-filter:blur(16px);color:var(--on);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:box-shadow .14s ease}
+  .controls button:hover{box-shadow:var(--glow-indigo)}
+  .controls button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .legend{position:absolute;z-index:30;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:15px;align-items:center;height:34px;padding:0 15px;border-radius:var(--r-full);backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--on-var)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:20px;height:0}
+  .legend .lk{border-top:2px dashed var(--outline)}.legend .us{border-top:2px solid var(--primary)}
+  .legend .im{border-top:2px dotted var(--secondary)}
+  .legend .ag{border-top:2px solid var(--neon-cyan);box-shadow:0 0 8px var(--neon-cyan)}
+  .legend .nw{width:10px;height:10px;border-radius:var(--r-full);background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));box-shadow:0 0 10px -1px var(--neon-cyan)}
+
+  /* ═════ RECONCILE banner (amber, §12 stale-merge family) ═════ */
+  .reconcile{position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:39;display:none;align-items:center;gap:12px;
+    padding:9px 14px;border-radius:var(--r-md);background:linear-gradient(180deg,rgba(245,159,0,.16),rgba(245,159,0,.07));border:1px solid rgba(245,159,0,.5);
+    backdrop-filter:blur(20px);color:var(--on);font-size:12px;box-shadow:0 24px 60px -20px rgba(0,0,0,.7)}
+  .app[data-banner="reconcile"] .reconcile{display:flex}
+  .reconcile svg{width:16px;height:16px;stroke:var(--amber);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .reconcile .rc-btn{height:30px;padding:0 12px;border-radius:var(--r-sm);border:1px solid rgba(245,159,0,.5);background:transparent;color:var(--amber);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+  .reconcile .rc-btn.ghost{border-color:var(--outline-var);color:var(--on-var)}
+  .reconcile .rc-btn:hover{box-shadow:0 0 14px -4px rgba(245,159,0,.6)}
+  .reconcile .rc-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ═════ SUBMIT — prominent command bar (spotlight, from 03-command-spotlight) ═════ */
+  .spot{position:absolute;left:50%;top:9%;transform:translateX(-50%);z-index:48;width:min(720px,92vw);display:none;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.95),rgba(13,21,40,.95)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 40px 100px -24px rgba(0,0,0,.8),var(--glow-indigo)}
+  .app[data-panel="submit"] .spot{display:block}
+  .spot .sround{display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--outline-var);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var)}
+  .spot .sround .pill{color:var(--neon-cyan);border:1px solid rgba(94,242,255,.4);border-radius:var(--r-full);padding:2px 9px}
+  .spot .si{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--outline-var)}
+  .spot .si .ic{font-family:var(--mono);font-size:14px;color:var(--neon-cyan)}
+  .spot .si input{flex:1;background:transparent;border:0;color:var(--on);font-family:var(--ui);font-size:17px;outline:none}
+  .spot .si input::placeholder{color:var(--outline)}
+  .spot .si .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:2px 6px}
+  .spot .sb{padding:14px 20px 18px}
+  .spot .mcp-line{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .spot .hint{font-family:var(--mono);font-size:11px;color:var(--on-var);line-height:1.65}
+  .spot .hint code{color:var(--neon-cyan)}
+  .spot .sa{display:flex;gap:12px;margin-top:16px;align-items:center}
+  .spot .send{height:42px;padding:0 22px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--primary-cont),var(--primary-2));color:var(--white);font-size:14px;cursor:pointer}
+  .spot .send:hover{box-shadow:var(--glow-indigo)}
+  .spot .send:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .spot .scope{display:flex;gap:6px;margin-left:auto}
+  .spot .scope button{font-family:var(--mono);font-size:10px;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:6px 12px;cursor:pointer}
+  .spot .scope button[aria-pressed="true"]{color:var(--white);border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),var(--primary-2))}
+  .spot .scope button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ═════ CHANGE-REVIEW — CENTERPIECE (left-docked; board glows beside it) ═════ */
+  .review-dock{position:absolute;top:116px;left:0;bottom:0;width:min(47vw,572px);z-index:46;display:flex;flex-direction:column;
+    transform:translateX(-100%);transition:transform .22s cubic-bezier(.23,1,.32,1);
+    border-right:1px solid transparent;background-image:linear-gradient(rgba(11,19,38,.93),rgba(11,19,38,.93)),linear-gradient(160deg,rgba(94,242,255,.32),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:30px 0 80px -30px rgba(0,0,0,.75)}
+  .app[data-panel="review"] .review-dock{transform:translateX(0)}
+  .rv-hd{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--outline-var)}
+  .rv-hd b{font-size:16px;display:block}
+  .rv-hd .meta{font-family:var(--mono);font-size:10px;color:var(--on-var);letter-spacing:.04em;margin-top:3px}
+  .rv-hd .meta .rev{color:var(--neon-cyan)}
+  .x{margin-left:auto;width:34px;height:34px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer;font-size:16px;flex:0 0 auto}
+  .x:hover{box-shadow:var(--glow-indigo)} .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .rv-controls{display:flex;align-items:center;gap:10px;padding:12px 20px 4px;flex-wrap:wrap}
+  .filters{display:flex;gap:6px;flex-wrap:wrap}
+  .filters button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:5px 11px;cursor:pointer}
+  .filters button[aria-pressed="true"]{color:var(--white);border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),var(--primary-2))}
+  .filters button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .stepper{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--on-var);margin-left:auto}
+  .stepper .pos{color:var(--on)}
+  .ghost{height:32px;min-width:32px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer}
+  .ghost:hover{box-shadow:var(--glow-indigo)} .ghost:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .rv-body{overflow:auto;padding:6px 20px 12px;flex:1}
+  .grp{margin:14px 0}
+  .grp .gh{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--on-var);margin-bottom:8px;display:flex;gap:8px;align-items:center}
+  .grp .gh .ct{color:var(--primary)}
+  .ritem{border:1px solid var(--outline-var);border-radius:var(--r-md);padding:11px 13px;margin-bottom:9px;background:rgba(6,14,32,.4);cursor:pointer;transition:box-shadow .14s ease,border-color .14s ease}
+  .ritem:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .ritem.active{border-color:transparent;box-shadow:var(--glow-indigo)}
+  .ritem:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ritem .rt{display:flex;gap:8px;align-items:center}
+  .badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-sm)}
+  .badge.add{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .badge.upd{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .badge.rem{background:rgba(255,81,106,.14);color:var(--tertiary-cont)}
+  .ritem .rn{font-size:13px;font-weight:600}
+  .ritem .rk{font-family:var(--mono);font-size:10px;color:var(--on-var);margin-left:auto}
+  .ritem.fresh-row{border-color:rgba(94,242,255,.45);box-shadow:0 0 18px -8px rgba(94,242,255,.6)}
+  .ritem .rd{font-size:12px;color:var(--on-var);line-height:1.5;margin-top:6px}
+  .ritem .rd code{font-family:var(--mono);font-size:11px;color:var(--neon-cyan)}
+  .ritem .diff{font-family:var(--mono);font-size:11px;margin-top:8px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--outline-var)}
+  .diff .o{background:rgba(255,81,106,.08);color:var(--tertiary);padding:3px 9px}
+  .diff .n{background:rgba(182,243,106,.08);color:var(--neon-lime);padding:3px 9px}
+  .rv-foot{display:flex;gap:10px;align-items:center;padding:14px 20px;border-top:1px solid var(--outline-var)}
+  .rv-foot .sum{font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .rv-foot .spring{margin-left:auto}
+  .btn-rem{height:42px;padding:0 16px;border-radius:var(--r-md);border:1px solid rgba(255,81,106,.5);background:transparent;color:var(--tertiary-cont);font-size:13px;cursor:pointer}
+  .btn-rem:hover{box-shadow:0 0 16px -4px rgba(255,81,106,.55)}
+  .btn-ok{height:42px;padding:0 20px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--neon-lime),var(--accent-grad-2));color:var(--ink-lime);font-weight:600;font-size:13px;cursor:pointer}
+  .btn-ok:hover{box-shadow:0 0 18px -4px rgba(182,243,106,.6)}
+  .btn-rem:focus-visible,.btn-ok:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ═════ TEMPLATES — quick-action bottom dock (from 03-command-spotlight) ═════ */
+  .dock{position:absolute;left:50%;bottom:0;transform:translateX(-50%);z-index:47;width:min(1100px,96vw);display:none;flex-direction:column;border-radius:var(--r-lg) var(--r-lg) 0 0;border:1px solid transparent;border-bottom:0;
+    background-image:linear-gradient(rgba(13,21,40,.93),rgba(13,21,40,.93)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px);box-shadow:0 -24px 60px -24px rgba(0,0,0,.7)}
+  .app[data-panel="templates"] .dock{display:flex}
+  .dkh{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--outline-var)}
+  .dkh b{font-size:13px}
+  .dkh .sub{font-family:var(--mono);font-size:10px;color:var(--on-var)}
+  .tfilter{display:flex;gap:6px;margin-left:8px}
+  .tfilter button{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 11px;cursor:pointer}
+  .tfilter button[aria-pressed="true"]{color:var(--white);border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),var(--primary-2))}
+  .tfilter button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .dkh .x{margin-left:auto;width:30px;height:30px}
+  .dkrow{display:flex;gap:12px;padding:14px 18px;overflow:auto}
+  .tcard{flex:0 0 206px;border:1px solid var(--outline-var);border-radius:var(--r-md);padding:12px;background:rgba(6,14,32,.4);cursor:grab;transition:box-shadow .14s ease,border-color .14s ease}
+  .tcard:hover{box-shadow:var(--glow-indigo);border-color:transparent}.tcard:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tcard .tkind{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--neon-cyan)}
+  .tcard h4{margin:6px 0 4px;font-size:13px}.tcard p{font-size:11px;color:var(--on-var);margin:0 0 8px;line-height:1.45}
+  .tcard .mini{height:52px;border-radius:var(--r-sm);border:1px dashed var(--outline-var);background:radial-gradient(rgba(146,143,160,.16) 1px,transparent 1px);background-size:10px 10px;position:relative}
+  .tcard .mini b{position:absolute;border-radius:3px;background:rgba(192,193,255,.5);display:block}
+  .tadd{margin-top:8px;width:100%;height:30px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on);font-size:12px;cursor:pointer}
+  .tadd:hover{box-shadow:var(--glow-indigo);border-color:transparent}.tadd:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ═════ TYPED-EDGE rel picker (from 01-studio-drawer) ═════ */
+  .relpick{position:absolute;z-index:47;display:none;min-width:236px;padding:8px;border-radius:var(--r-md);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    backdrop-filter:blur(40px);box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo)}
+  .app[data-edge="open"] .relpick{display:block}
+  .relpick .rp-h{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var);padding:2px 6px 8px}
+  .relpick .rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .relpick button.opt{font-family:var(--mono);font-size:11px;color:var(--on);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:6px 8px;cursor:pointer;text-align:left}
+  .relpick button.opt[aria-pressed="true"]{border-color:transparent;color:var(--white);background:linear-gradient(135deg,var(--primary-cont),var(--primary-2))}
+  .relpick button.opt:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .relpick button.opt:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .relpick .rp-row{display:flex;gap:6px;margin-top:8px}
+  .relpick input{flex:1;height:32px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--ui);font-size:12px;padding:0 10px}
+  .relpick input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .relpick .rp-row .ghost{flex:0 0 auto}
+
+  /* ═════ frames: empty / loading / error (§12) ═════ */
+  .frame{position:absolute;inset:0;z-index:32;display:none;align-items:center;justify-content:center}
+  .app[data-frame="empty"] .frame.empty,
+  .app[data-frame="loading"] .frame.loading,
+  .app[data-frame="error"] .frame.error{display:flex}
+  .frame .card{width:440px;text-align:center;padding:38px 32px;border-radius:var(--r-lg);backdrop-filter:blur(24px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.62),rgba(13,21,40,.62)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .frame .orb{width:60px;height:60px;margin:0 auto 18px;border-radius:var(--r-full);background:radial-gradient(circle at 35% 30%,var(--neon-cyan),var(--primary-cont) 55%,var(--orb-deep));box-shadow:0 0 40px -6px rgba(128,131,255,.7)}
+  .frame h2{margin:0 0 8px;font-size:21px;letter-spacing:-.01em}
+  .frame p{color:var(--on-var);font-size:13px;line-height:1.5;margin:0 0 20px}
+  .frame code{font-family:var(--mono);font-size:12px;color:var(--neon-cyan)}
+  .frame .actions{display:flex;gap:10px;justify-content:center}
+  .frame.error h2{color:var(--tertiary-cont)}.frame.error .card{border-color:rgba(255,81,106,.4)}
+  .spinner{width:36px;height:36px;border-radius:var(--r-full);border:3px solid var(--outline-var);border-top-color:var(--neon-cyan);margin:0 auto 16px;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (prefers-reduced-motion: reduce){
+    .review-dock{transition:none}
+    .spinner{animation:none}
+    .round-item.pending{animation:none}
+    .edges .fresh{animation:none}
+    .app[data-mode="connect"] .handle{animation:none}
+    .tbtn:active{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- mockup state switcher — toggles every §12 state via data-go -->
+<nav class="statebar" aria-label="Mockup states">
+  <span class="brand"><b>03</b> · agent-design-loop · v2 surfaces</span>
+  <button data-go="review" aria-current="true">Change-review</button>
+  <button data-go="submit">Submit</button>
+  <button data-go="loaded">Loaded</button>
+  <button data-go="templates">Templates</button>
+  <button data-go="typededge">Typed edge</button>
+  <button data-go="refnav">Ref-nav</button>
+  <button data-go="reconcile">Reconcile</button>
+  <button data-go="empty">Empty</button>
+  <button data-go="loading">Loading</button>
+  <button data-go="error">Error</button>
+</nav>
+
+<!-- data-panel: none|submit|review|templates · data-frame: none|empty|loading|error · data-edge: closed|open · data-banner: none|reconcile · data-mode: select|connect|comment -->
+<div class="app" data-panel="review" data-frame="none" data-edge="closed" data-banner="none" data-mode="select" data-menu="closed">
+
+  <!-- ════════ TOOLBAR ════════ -->
+  <header class="toolbar">
+    <span class="ttitle"><span class="dot"></span>commerce-platform.canvas</span>
+
+    <!-- canvas modes -->
+    <div class="seg" role="group" aria-label="Canvas modes">
+      <button class="tbtn" data-mode="select" data-testid="toolbar-select" aria-pressed="true" aria-label="Select and move">
+        <svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+      <button class="tbtn" data-mode="connect" data-testid="toolbar-connect" aria-pressed="false" aria-label="Connect nodes (draw edge)">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+      <button class="tbtn" data-mode="comment" data-testid="toolbar-comment-mode" aria-pressed="false" aria-label="Comment mode">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+    </div>
+
+    <span class="tdiv"></span>
+
+    <!-- insert: add node + templates -->
+    <div class="menu-wrap">
+      <button class="tbtn" id="addBtn" data-testid="toolbar-add-node" aria-haspopup="true" aria-expanded="false" aria-label="Add node or shape">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add</span><svg viewBox="0 0 24 24" style="width:12px"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="menu" role="menu" aria-label="Add node or shape">
+        <button role="menuitem" data-testid="add-node-markdown"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg>Markdown file…<small>pick from repo</small></button>
+        <button role="menuitem" data-testid="add-node-text"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Note (text)</button>
+        <button role="menuitem" data-testid="add-node-rectangle"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Group / subsystem</button>
+        <button role="menuitem" data-testid="add-node-image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg>Image…<small>pick / upload</small></button>
+        <button role="menuitem" data-testid="add-node-link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>External link…</button>
+      </div>
+    </div>
+    <button class="tbtn" data-go="templates" data-testid="toolbar-templates" aria-label="Template library">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg><span>Templates</span></button>
+
+    <span class="tspring"></span>
+
+    <span class="mcp ok" data-testid="submit-mcp-status" title="MCP sidecar connected"><span class="d"></span>MCP ready</span>
+    <button class="tbtn" data-testid="toolbar-bundle" aria-label="Export bundle">
+      <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span>Bundle</span></button>
+    <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="tbtn primary" data-go="submit" data-testid="toolbar-submit" aria-label="Submit to agent">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Submit</span><span class="kbd">⌘↵</span></button>
+    <button class="tbtn" data-testid="toolbar-save" aria-label="Save board (unsaved changes)">
+      <span class="save-dot" title="unsaved changes"></span><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7M8 20v-6h8v6"/></svg></button>
+  </header>
+
+  <!-- ════════ ROUND-RAIL — the iteration spine ════════ -->
+  <!-- each round = an agent turn; the latest (R4) is "pending review". Click a round to open its diff. -->
+  <div class="round-rail" data-testid="round-rail" role="group" aria-label="Agent round history">
+    <span class="rr-title">Agent loop</span>
+    <ol class="rr-track">
+      <li><button class="round-item" data-testid="round-item" data-go="review" aria-label="Round 1 diff">
+        <span class="ri-top"><span class="rid">R1</span><span class="rrev">rev 4→5</span></span>
+        <span class="ri-intent">Extract EDGE + CORE services from commerce-design.md</span>
+        <span class="ri-diff"><span class="a">+6</span><span class="u">~0</span><span class="r">−0</span></span></button></li>
+      <li><button class="round-item" data-testid="round-item" data-go="review" aria-label="Round 2 diff">
+        <span class="ri-top"><span class="rid">R2</span><span class="rrev">rev 5→6</span></span>
+        <span class="ri-intent">Add DATA &amp; EVENTS group · orders-db, event-bus</span>
+        <span class="ri-diff"><span class="a">+3</span><span class="u">~1</span><span class="r">−0</span></span></button></li>
+      <li><button class="round-item" data-testid="round-item" data-go="review" aria-label="Round 3 diff">
+        <span class="ri-top"><span class="rid">R3</span><span class="rrev">rev 6→7</span></span>
+        <span class="ri-intent">Wire typed call edges · external stripe, sendgrid</span>
+        <span class="ri-diff"><span class="a">+4</span><span class="u">~2</span><span class="r">−1</span></span></button></li>
+      <li><button class="round-item pending" data-testid="round-item" data-go="review" aria-label="Round 4 — pending review">
+        <span class="ri-top"><span class="rid">R4</span><span class="ri-badge">review</span><span class="rrev">rev 7→8</span></span>
+        <span class="ri-intent">Add payment-service + cache · charge / order.created</span>
+        <span class="ri-diff"><span class="a">+3</span><span class="u">~1</span><span class="r">−0</span></span></button></li>
+    </ol>
+    <button class="rr-compose" data-go="submit" data-testid="rail-compose" aria-label="Compose round 5">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Compose round 5</button>
+  </div>
+
+  <!-- ════════ BOARD — the live result; R4 additions GLOW beside the review ════════ -->
+  <div class="board">
+    <div class="canvas">
+
+      <svg class="edges" viewBox="0 0 1320 770" aria-hidden="true">
+        <defs>
+          <marker class="m-user" id="ar-user" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8"/></marker>
+          <marker class="m-agent" id="ar-agent" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M1 1L8 5L1 9"/></marker>
+          <marker class="m-link" id="ar-link" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8"/></marker>
+          <marker class="m-import" id="ar-import" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8"/></marker>
+          <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop class="s0" offset="0"/><stop class="s1" offset="1"/></linearGradient>
+        </defs>
+        <!-- 1 · api-gateway → auth-service (user · depends-on) -->
+        <path class="e user" d="M548,185 C590,170 600,152 632,152" marker-end="url(#ar-user)"/>
+        <!-- 2 · api-gateway → order-service (agent · calls POST /orders, prior round) -->
+        <path class="e agent" d="M548,225 C590,250 600,310 632,310" marker-end="url(#ar-agent)"/>
+        <!-- 3 · order-service → payment-service (agent · calls "charge" · THIS ROUND) -->
+        <path class="e agent fresh" d="M822,300 C832,300 840,305 850,305" marker-end="url(#ar-agent)"/>
+        <!-- 4 · order-service → event-bus (agent · produces "order.created" · THIS ROUND) -->
+        <path class="e agent fresh" d="M822,290 C920,210 1010,200 1110,272" marker-end="url(#ar-agent)"/>
+        <!-- 5 · order-service → orders-db (user · depends-on) -->
+        <path class="e user" d="M822,272 C920,180 1010,160 1110,156" marker-end="url(#ar-user)"/>
+        <!-- 6 · order-service → order-schema.md (user · implements "contract") -->
+        <path class="e user" d="M632,330 C480,360 300,500 256,665" marker-end="url(#ar-user)"/>
+        <!-- 7 · payment-service → stripe (agent · calls · THIS ROUND) -->
+        <path class="e agent fresh" d="M940,370 C940,470 1050,540 1110,560" marker-end="url(#ar-agent)"/>
+        <!-- 8 · inventory-service → order-service (links · informs · dashed+lock, off-typed) -->
+        <path class="e links" d="M727,410 L727,382" marker-end="url(#ar-link)"/>
+        <!-- 9 · auth-service → commerce-design.md (import · derives-from · dotted violet) -->
+        <path class="e import" d="M632,152 C480,150 360,196 256,212" marker-end="url(#ar-import)"/>
+        <!-- 10 · cache → orders-db (user · depends-on; routed around event-bus · THIS ROUND node) -->
+        <path class="e user" d="M1280,388 C1316,360 1316,232 1280,204" marker-end="url(#ar-user)"/>
+      </svg>
+
+      <!-- edge labels (rel eyebrow + label; origin styling) -->
+      <div class="elabel user" style="left:589px;top:158px"><span class="rel">depends-on</span></div>
+      <div class="elabel agent" style="left:592px;top:272px"><span class="rel">calls</span>POST /orders</div>
+      <!-- the typed-edge quick-action lives on this fresh agent edge -->
+      <button class="elabel agent fresh" data-go="typededge" data-testid="edge-rel-pill" style="left:836px;top:288px"><span class="rel">calls</span>charge<span class="new">new</span></button>
+      <div class="elabel agent fresh" style="left:968px;top:212px"><span class="rel">produces</span>order.created<span class="new">new</span></div>
+      <div class="elabel user" style="left:980px;top:176px"><span class="rel">depends-on</span></div>
+      <div class="elabel user" style="left:372px;top:452px"><span class="rel">implements</span>contract</div>
+      <div class="elabel agent fresh" style="left:1010px;top:472px"><span class="rel">calls</span>stripe API<span class="new">new</span></div>
+      <div class="elabel" style="left:740px;top:396px"><span class="lock">&#128274;</span>informs</div>
+      <div class="elabel import" style="left:436px;top:166px"><span class="rel">derives-from</span>source</div>
+      <div class="elabel user" style="left:1300px;top:296px"><span class="rel">depends-on</span></div>
+
+      <!-- groups -->
+      <div class="group" style="left:300px;top:110px;width:270px;height:290px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>EDGE</span></div>
+      <div class="group" style="left:610px;top:70px;width:440px;height:480px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>CORE SERVICES</span></div>
+      <div class="group" style="left:1090px;top:70px;width:210px;height:380px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>DATA &amp; EVENTS</span></div>
+      <div class="group" style="left:1090px;top:500px;width:210px;height:180px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>EXTERNAL</span></div>
+
+      <!-- ── loose: SOURCE provenance + sequence image + SLOs note + schema document ── -->
+      <article class="node md" style="left:40px;top:150px;width:216px;height:150px">
+        <div class="hd"><span class="name">commerce-design.md</span><span class="kind">md</span>
+          <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node">–</button></div>
+        <div class="src-eyebrow">source · provenance</div>
+        <div class="body"><p>The agent decomposed this doc into the board. Nodes carry <code>source:</code> back to its sections.</p></div>
+      </article>
+
+      <figure class="node img" style="left:40px;top:330px;width:216px;height:152px;margin:0">
+        <div class="hd"><span class="name">sequence.png</span><span class="kind">img</span></div>
+        <div class="imgwrap">
+          <svg class="diag" viewBox="0 0 120 70" aria-label="sequence diagram">
+            <rect class="c1" x="8" y="10" width="26" height="14" rx="3"/>
+            <rect class="c2" x="86" y="10" width="26" height="14" rx="3"/>
+            <rect class="c3" x="47" y="44" width="26" height="14" rx="3"/>
+            <path class="c0" d="M34 17h52M21 24v12l25 8M99 24v12l-25 8"/>
+          </svg>
+        </div>
+      </figure>
+
+      <div class="text-node" style="left:40px;top:512px;width:216px;height:96px">
+        <span class="nt">text · note</span>
+        <h3>SLOs</h3>
+        <ul><li>order p99 <code>&lt; 250ms</code></li><li>charge success <code>&ge; 99.9%</code></li></ul>
+      </div>
+
+      <article class="node md" style="left:40px;top:620px;width:216px;height:120px">
+        <div class="hd"><span class="name">order-schema.md</span><span class="kind">doc</span></div>
+        <div class="fmrow"><span class="chip act">contract</span><span class="tag">schema</span><span class="tag">openapi</span></div>
+        <div class="body"><p>Canonical <strong>order</strong> shape — order-service <em>implements</em> this contract.</p></div>
+      </article>
+
+      <!-- ── EDGE group ── -->
+      <article class="node md" style="left:322px;top:150px;width:226px;height:110px">
+        <div class="hd"><span class="name">api-gateway</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="chip act">active</span><span class="tag">edge</span><span class="tag">routing</span></div>
+        <div class="reflist">
+          <span class="lchip" data-testid="link-chip"><span class="arr">↗</span><span class="nm">auth-service.md</span><button class="act" data-testid="refnav-focus" aria-pressed="false">focus</button></span>
+        </div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+      <article class="node md" style="left:322px;top:300px;width:226px;height:88px">
+        <div class="hd"><span class="name">web-bff</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="chip act">active</span><span class="tag">edge</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- ── CORE SERVICES group ── -->
+      <article class="node md" style="left:632px;top:100px;width:190px;height:104px">
+        <div class="hd"><span class="name">auth-service</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- order-service: the hub (selected, expanded body, ref chips) -->
+      <article class="node md selected" style="left:632px;top:240px;width:190px;height:140px">
+        <div class="hd"><span class="name">order-service</span><span class="kind">md</span>
+          <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node">–</button></div>
+        <div class="fmrow"><span class="chip rev">review</span><span class="tag">service</span></div>
+        <div class="reflist">
+          <span class="lchip" data-testid="link-chip"><span class="arr">↗</span><span class="nm">order-schema.md</span><button class="act" data-testid="refnav-focus" aria-pressed="true">focus</button></span>
+          <span class="lchip" data-testid="link-chip"><span class="arr">↗</span><span class="nm">sequence.png</span><button class="act" data-testid="refnav-add" aria-pressed="false">add</button></span>
+        </div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <article class="node md" style="left:842px;top:110px;width:178px;height:104px">
+        <div class="hd"><span class="name">inventory-service</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- payment-service: ADDED THIS ROUND (R4) -->
+      <article class="node md fresh" style="left:842px;top:240px;width:178px;height:130px">
+        <span class="freshtag">+ this round</span>
+        <div class="hd"><span class="name">payment-service</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="chip rev">review</span><span class="tag">service</span></div>
+        <div class="body"><h3>Charge</h3><ul><li><code>charge</code> via stripe</li><li>idempotency keys</li></ul></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- ── DATA & EVENTS group ── -->
+      <article class="node md" style="left:1110px;top:110px;width:170px;height:92px">
+        <div class="hd"><span class="name">orders-db</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="tag">data</span><span class="tag">postgres</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+      <article class="node md" style="left:1110px;top:228px;width:170px;height:88px">
+        <div class="hd"><span class="name">event-bus</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="tag">events</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+      <!-- cache: ADDED THIS ROUND (R4) -->
+      <article class="node md fresh" style="left:1110px;top:345px;width:170px;height:92px">
+        <span class="freshtag">+ this round</span>
+        <div class="hd"><span class="name">cache</span><span class="kind">md</span></div>
+        <div class="fmrow"><span class="tag">data</span><span class="tag">redis</span></div>
+        <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+      </article>
+
+      <!-- ── EXTERNAL group: link nodes ↗ ── -->
+      <a class="link-node" style="left:1110px;top:538px;width:170px;height:56px" href="#" aria-label="Open stripe.com">
+        <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>
+        <span><span class="u">stripe.com ↗</span><small>link · payments</small></span></a>
+      <a class="link-node" style="left:1110px;top:610px;width:170px;height:56px" href="#" aria-label="Open sendgrid.com">
+        <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>
+        <span><span class="u">sendgrid.com ↗</span><small>link · email</small></span></a>
+
+      <!-- comment pin (review references a reply on c-3) -->
+      <button class="pin" data-testid="comment-pin" style="left:806px;top:228px" aria-label="Comment thread 3 on order-service"><i>3</i></button>
+
+    </div><!-- /canvas -->
+
+    <!-- typed-edge rel picker (quick-action, anchored near the "charge" pill) -->
+    <div class="relpick" style="left:610px;top:430px" role="dialog" aria-label="Edge relationship" data-testid="edge-rel-picker">
+      <div class="rp-h">Relationship type · order-service → payment-service</div>
+      <div class="rp-grid">
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="true">calls</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">depends-on</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">references</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">implements</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">derives-from</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">produces</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">informs</button>
+        <button class="opt" data-testid="edge-rel-option" aria-pressed="false">related</button>
+      </div>
+      <div class="rp-row"><input data-testid="edge-label-input" value="charge" aria-label="Edge label" placeholder="label (defaults to type)"><button class="ghost" data-go="loaded" aria-label="Apply relationship">✓</button></div>
+    </div>
+
+    <!-- reconcile banner (file changed on disk vs canvas) -->
+    <div class="reconcile" data-testid="reconcile-banner" role="alert">
+      <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <span><strong>order-service.md</strong> changed on disk since this board loaded — the canvas copy and the file diverge.</span>
+      <button class="rc-btn" data-go="loaded" data-testid="resync-file">Resync from file</button>
+      <button class="rc-btn ghost" data-go="loaded" data-testid="keep-canvas">Keep canvas</button>
+    </div>
+
+    <!-- chrome -->
+    <div class="minimap" aria-hidden="true">
+      <span class="mm-grid"></span>
+      <b style="left:14px;top:50px;width:18px;height:14px;background:rgba(146,143,160,.5)"></b>
+      <b style="left:46px;top:30px;width:30px;height:42px;background:rgba(128,131,255,.45)"></b>
+      <b style="left:86px;top:18px;width:46px;height:74px;background:rgba(192,193,255,.5)"></b>
+      <b style="left:110px;top:48px;width:16px;height:14px;background:rgba(94,242,255,.75);box-shadow:0 0 8px rgba(94,242,255,.7)"></b>
+      <b style="left:148px;top:18px;width:34px;height:50px;background:rgba(146,143,160,.5)"></b>
+      <b style="left:148px;top:60px;width:16px;height:12px;background:rgba(94,242,255,.75);box-shadow:0 0 8px rgba(94,242,255,.7)"></b>
+      <b style="left:148px;top:90px;width:34px;height:22px;background:rgba(221,183,255,.55)"></b>
+    </div>
+    <div class="controls">
+      <button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button>
+    </div>
+    <div class="legend">
+      <span><i class="lk"></i>links</span><span><i class="us"></i>user</span><span><i class="im"></i>import</span><span><i class="ag"></i>agent</span><span><i class="nw"></i>this round</span>
+    </div>
+  </div><!-- /board -->
+
+  <!-- ════════ SUBMIT — prominent command bar (get_board → apply_response over MCP) ════════ -->
+  <div class="spot" role="dialog" aria-label="Submit to agent" data-testid="submit-panel">
+    <div class="sround"><span class="pill">Round 5</span>compose &amp; send · harness-relay</div>
+    <div class="si"><span class="ic">⌁</span>
+      <input data-testid="submit-intent" placeholder="What should the agent do this round?" value="Add idempotency keys to order-service and a retry policy around the stripe charge.">
+      <span class="kbd">⏎ send</span></div>
+    <div class="sb">
+      <div class="mcp-line">
+        <span class="mcp ok"><span class="d"></span>MCP sidecar connected · board saved at rev 8</span>
+        <span class="mcp off"><span class="d"></span>no LLM in-app</span>
+      </div>
+      <p class="hint">On send: the board is saved (rev 8), a submit-time <strong>snapshot</strong> is captured, and the active-board pointer is handed to your harness. The harness runs <code>get_board</code> → <code>apply_response</code> over MCP; <code>links:</code> are extraction input only. Change-review opens automatically when the round lands.</p>
+      <div class="sa">
+        <button class="send" data-go="loading" data-testid="submit-send">Send round →</button>
+        <div class="scope" role="group" aria-label="Round scope">
+          <button aria-pressed="true" data-testid="submit-scope">whole board</button>
+          <button aria-pressed="false" data-testid="submit-scope">selection</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ CHANGE-REVIEW — the CENTERPIECE (left-docked; board glows beside) ════════ -->
+  <aside class="review-dock" role="dialog" aria-label="Agent change-review" data-testid="review-panel">
+    <div class="rv-hd">
+      <div><b>Change-review</b><div class="meta">Round 4 · snapshot <span class="rev">rev 7 → 8</span> · 8 changes pending</div></div>
+      <button class="x" data-go="loaded" data-testid="review-close" aria-label="Close review">✕</button>
+    </div>
+    <div class="rv-controls">
+      <div class="filters" role="group" aria-label="Filter changes">
+        <button data-testid="review-filter-all" aria-pressed="true">all · 8</button>
+        <button data-testid="review-filter-nodes" aria-pressed="false">nodes · 3</button>
+        <button data-testid="review-filter-edges" aria-pressed="false">edges · 3</button>
+        <button data-testid="review-filter-comments" aria-pressed="false">comments · 1</button>
+        <button data-testid="review-filter-files" aria-pressed="false">files · 1</button>
+      </div>
+      <div class="stepper">
+        <button class="ghost" data-testid="review-prev" aria-label="Previous change">‹</button>
+        <button class="ghost" data-testid="review-next" aria-label="Next change">›</button>
+        <span class="pos">1 / 8</span>
+      </div>
+    </div>
+    <div class="rv-body">
+      <div class="grp">
+        <div class="gh">Nodes <span class="ct">· 3</span></div>
+        <div class="ritem active fresh-row" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">payment-service</span><span class="rk">md · CORE SERVICES</span></div>
+          <div class="rd">New service node. Source <code>commerce-design.md#payments</code>. Glowing on the board → right.</div>
+        </div>
+        <div class="ritem fresh-row" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">cache</span><span class="rk">md · DATA &amp; EVENTS</span></div>
+          <div class="rd">Redis cache; depends-on <code>orders-db</code>.</div>
+        </div>
+        <div class="ritem" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge upd">updated</span><span class="rn">order-service</span><span class="rk">md</span></div>
+          <div class="rd">Frontmatter status moved to review; gained an outgoing <code>calls</code> edge.</div>
+          <div class="diff"><div class="o">- status: active</div><div class="n">+ status: review</div></div>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gh">Edges <span class="ct">· 3</span></div>
+        <div class="ritem fresh-row" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">order-service → payment-service</span><span class="rk">calls · agent</span></div>
+          <div class="rd">Typed <code>calls</code> · label "charge".</div>
+        </div>
+        <div class="ritem fresh-row" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">order-service → event-bus</span><span class="rk">produces · agent</span></div>
+          <div class="rd">Typed <code>produces</code> · label "order.created".</div>
+        </div>
+        <div class="ritem fresh-row" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">payment-service → stripe</span><span class="rk">calls · agent</span></div>
+          <div class="rd">External <code>calls</code> to the stripe link node.</div>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gh">Comments <span class="ct">· 1</span> &nbsp;·&nbsp; Files <span class="ct">· 1</span></div>
+        <div class="ritem" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">reply on c-3</span><span class="rk">comment</span></div>
+          <div class="rd">Agent: "split charge + capture into payment-service."</div>
+        </div>
+        <div class="ritem" data-testid="review-item" tabindex="0">
+          <div class="rt"><span class="badge add">added</span><span class="rn">commerce-platform.nodes/payment-service.md</span><span class="rk">file</span></div>
+          <div class="rd">Generated content file. <strong>Discard deletes it from disk</strong> (roundGeneratedFiles).</div>
+        </div>
+      </div>
+    </div>
+    <div class="rv-foot">
+      <span class="sum">+5 · ~1 · −0 · 1 file</span><span class="spring"></span>
+      <button class="btn-rem" data-go="loaded" data-testid="review-discard">Discard round</button>
+      <button class="btn-ok" data-go="loaded" data-testid="review-accept">Accept round → rev 8</button>
+    </div>
+  </aside>
+
+  <!-- ════════ TEMPLATES — quick-action bottom dock ════════ -->
+  <div class="dock" aria-label="Template library" data-testid="template-tray">
+    <div class="dkh"><b>Templates</b><span class="sub">drag onto board · instantiate as a starting point</span>
+      <div class="tfilter" role="group" aria-label="Template kind">
+        <button data-testid="template-kind-filter" aria-pressed="true">all</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">node</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">diagram</button>
+        <button data-testid="template-kind-filter" aria-pressed="false">document</button>
+      </div>
+      <button class="x" data-go="loaded" data-testid="template-close" aria-label="Close templates">✕</button>
+    </div>
+    <div class="dkrow">
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Service + DB + Cache</h4><p>3 nodes · typed depends-on</p><div class="mini"><b style="left:8px;top:8px;width:28px;height:14px"></b><b style="left:48px;top:8px;width:28px;height:14px"></b><b style="left:28px;top:30px;width:28px;height:14px"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">document</span><h4>ADR scaffold</h4><p>md node + source frontmatter</p><div class="mini"><b style="left:24px;top:14px;width:40px;height:22px"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">node</span><h4>External system</h4><p>link node + informs edge</p><div class="mini"><b style="left:28px;top:18px;width:34px;height:16px;background:rgba(221,183,255,.55)"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+      <div class="tcard" draggable="true" tabindex="0" data-testid="template-card"><span class="tkind">diagram</span><h4>Subsystem group</h4><p>group container + 4 slots</p><div class="mini"><b style="left:6px;top:6px;width:72px;height:40px;background:rgba(128,131,255,.18)"></b></div><button class="tadd" data-testid="template-instantiate">+ Instantiate</button></div>
+    </div>
+  </div>
+
+  <!-- ════════ frames: empty / loading / error ════════ -->
+  <div class="frame empty">
+    <div class="card"><div class="orb"></div>
+      <h2>No board open</h2>
+      <p>Submit a flowcode design doc to the agent to extract an initial board, or open an existing <code>.canvas</code>.</p>
+      <div class="actions"><button class="tbtn primary" data-go="loaded" data-testid="empty-open">Open .canvas…</button><button class="tbtn" data-go="submit">Submit a design doc</button></div>
+    </div>
+  </div>
+  <div class="frame loading">
+    <div class="card"><div class="spinner" aria-hidden="true"></div>
+      <h2>Agent working…</h2>
+      <p>The MCP sidecar is reading the board (<code>get_board</code>) and applying the response (<code>apply_response</code>). Change-review opens when the round lands.</p>
+    </div>
+  </div>
+  <div class="frame error">
+    <div class="card">
+      <h2>Round failed</h2>
+      <p><code>briefId</code> mismatch — the board changed since Submit (snapshot rev 8 ≠ current rev 9). Re-submit to capture a fresh snapshot.</p>
+      <button class="tbtn" data-go="submit" data-testid="error-retry">Re-submit</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+  var app = document.querySelector('.app');
+  var FRAMES = { empty:1, loading:1, error:1 };
+  var PANELS = { submit:1, review:1, templates:1 };
+
+  function syncNav(go){
+    document.querySelectorAll('.statebar [data-go]').forEach(function(b){
+      b.setAttribute('aria-current', String(b.dataset.go === go));
+    });
+  }
+
+  // central state machine — every state is reachable & mutually exclusive
+  function show(go){
+    // typed-edge picker toggles in place (overlay quick-action)
+    if(go === 'typededge'){
+      app.setAttribute('data-edge', app.getAttribute('data-edge') === 'open' ? 'closed' : 'open');
+      return;
+    }
+    app.setAttribute('data-edge','closed');
+    app.setAttribute('data-menu','closed');
+
+    if(go === 'refnav'){                       // toggle the ref ↗ chip focus/add buttons
+      app.setAttribute('data-frame','none'); app.setAttribute('data-panel','none'); app.setAttribute('data-banner','none');
+      app.classList.remove('dim'); toggleChips(); syncNav(go); return;
+    }
+    if(go === 'reconcile'){                     // amber stale-file banner over the board
+      app.setAttribute('data-frame','none'); app.setAttribute('data-panel','none'); app.setAttribute('data-banner','reconcile');
+      app.classList.remove('dim'); syncNav(go); return;
+    }
+    app.setAttribute('data-banner','none');
+
+    if(FRAMES[go]){                             // empty / loading / error
+      app.setAttribute('data-frame', go); app.setAttribute('data-panel','none'); app.classList.remove('dim');
+    } else if(PANELS[go]){                      // submit / review / templates
+      app.setAttribute('data-frame','none'); app.setAttribute('data-panel', go);
+      // dim the board only for Submit (focus compose). Review keeps the board bright so additions glow beside it.
+      app.classList.toggle('dim', go === 'submit');
+    } else {                                    // loaded (default)
+      app.setAttribute('data-frame','none'); app.setAttribute('data-panel','none'); app.classList.remove('dim');
+    }
+    syncNav(go);
+  }
+
+  // ref ↗ chips: flip focus/add pressed-state (visual)
+  function toggleChips(){
+    document.querySelectorAll('[data-testid="link-chip"] .act').forEach(function(a){
+      a.setAttribute('aria-pressed', String(a.getAttribute('aria-pressed') !== 'true'));
+    });
+  }
+
+  // wire every [data-go] (statebar, toolbar, round-rail, panel actions)
+  document.querySelectorAll('[data-go]').forEach(function(b){
+    b.addEventListener('click', function(e){ e.stopPropagation(); show(b.dataset.go); });
+  });
+
+  // canvas mode segment (select / connect / comment)
+  document.querySelectorAll('.seg [data-mode]').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.seg [data-mode]').forEach(function(o){ o.setAttribute('aria-pressed', String(o === b)); });
+      app.setAttribute('data-mode', b.dataset.mode);
+    });
+  });
+
+  // add-node menu
+  var addBtn = document.getElementById('addBtn');
+  addBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var open = app.getAttribute('data-menu') === 'open';
+    app.setAttribute('data-menu', open ? 'closed' : 'open');
+    addBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', function(){ app.setAttribute('data-menu','closed'); addBtn.setAttribute('aria-expanded','false'); });
+
+  // collapse toggles
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(e){
+      e.stopPropagation();
+      var n = t.closest('.node'); n.classList.toggle('collapsed');
+      t.textContent = n.classList.contains('collapsed') ? '+' : '–';
+      t.setAttribute('aria-label', n.classList.contains('collapsed') ? 'Expand node' : 'Collapse node');
+    });
+  });
+
+  // review: filter pressed-state + steppable item highlight
+  document.querySelectorAll('.filters [data-testid^="review-filter"]').forEach(function(f){
+    f.addEventListener('click', function(){
+      document.querySelectorAll('.filters [data-testid^="review-filter"]').forEach(function(o){ o.setAttribute('aria-pressed', String(o === f)); });
+    });
+  });
+  var items = Array.prototype.slice.call(document.querySelectorAll('.ritem[data-testid="review-item"]'));
+  function setActive(i){
+    i = (i + items.length) % items.length;
+    items.forEach(function(el,idx){ el.classList.toggle('active', idx === i); });
+    var pos = document.querySelector('.stepper .pos'); if(pos) pos.textContent = (i+1) + ' / ' + items.length;
+    return i;
+  }
+  var cur = 0;
+  items.forEach(function(el,idx){ el.addEventListener('click', function(){ cur = setActive(idx); }); });
+  var prev = document.querySelector('[data-testid="review-prev"]'); if(prev) prev.addEventListener('click', function(e){ e.stopPropagation(); cur = setActive(cur-1); });
+  var next = document.querySelector('[data-testid="review-next"]'); if(next) next.addEventListener('click', function(e){ e.stopPropagation(); cur = setActive(cur+1); });
+
+  // typed-edge rel options + template kind filter pressed-state
+  document.querySelectorAll('[data-testid="edge-rel-picker"] .opt').forEach(function(o){
+    o.addEventListener('click', function(){
+      document.querySelectorAll('[data-testid="edge-rel-picker"] .opt').forEach(function(x){ x.setAttribute('aria-pressed', String(x === o)); });
+    });
+  });
+  document.querySelectorAll('[data-testid="template-kind-filter"]').forEach(function(o){
+    o.addEventListener('click', function(){
+      document.querySelectorAll('[data-testid="template-kind-filter"]').forEach(function(x){ x.setAttribute('aria-pressed', String(x === o)); });
+    });
+  });
+  document.querySelectorAll('.spot .scope [data-testid="submit-scope"]').forEach(function(o){
+    o.addEventListener('click', function(){
+      document.querySelectorAll('.spot .scope [data-testid="submit-scope"]').forEach(function(x){ x.setAttribute('aria-pressed', String(x === o)); });
+    });
+  });
+
+  // Esc closes any overlay → loaded
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') show('loaded'); });
+</script>
+</body>
+</html>

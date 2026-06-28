@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
-import { uploadFile, type DirEntry } from '@/lib/api'
+import { uploadFile, bundleUrl, type DirEntry } from '@/lib/api'
 import type { CanvasNode, NodeShape } from '@/lib/canvas/jsoncanvas'
 import { computeLayout, type MeasuredSizes } from '@/lib/canvas/layout'
 import { FilePicker } from './file-picker'
@@ -35,17 +35,27 @@ export function useSaveShortcut() {
 interface CanvasToolbarProps {
   onOpenAgent: (tab: 'export' | 'import') => void
   onOpenBoard: (mode: 'open' | 'save') => void
+  onClearBoard: () => void
+  railLeft: 'open' | 'collapsed'
+  railRight: 'open' | 'collapsed'
+  onToggleRailLeft: () => void
+  onToggleRailRight: () => void
+  onOpenTemplates: () => void
+  onOpenSubmit: () => void
 }
 
-export function CanvasToolbar({ onOpenAgent, onOpenBoard }: CanvasToolbarProps) {
+export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft, railRight, onToggleRailLeft, onToggleRailRight, onOpenTemplates, onOpenSubmit }: CanvasToolbarProps) {
   useSaveShortcut()
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow()
+  const path = useCanvasStore((s) => s.path)
   const mode = useCanvasStore((s) => s.mode)
   const setMode = useCanvasStore((s) => s.setMode)
   const dirty = useCanvasStore((s) => s.dirty)
   const save = useCanvasStore((s) => s.save)
   const addNode = useCanvasStore((s) => s.addNode)
   const addFileNode = useCanvasStore((s) => s.addFileNode)
+  const newBoard = useCanvasStore((s) => s.newBoard)
+  const removeNode = useCanvasStore((s) => s.removeNode)
   const doc = useCanvasStore((s) => s.doc)
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const groupSelection = useCanvasStore((s) => s.groupSelection)
@@ -193,6 +203,10 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard }: CanvasToolbarProps) 
 
   return (
     <header className="fc-toolbar" ref={toolbarRef} data-testid="toolbar">
+      <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toggle-rail-left" aria-pressed={railLeft === 'open'} aria-label="Toggle structure rail" title="Toggle structure rail" onClick={onToggleRailLeft}>
+        {sv(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>)}
+      </button>
+
       <span className="fc-toolbar__mark">◐ flowcanvas</span>
 
       <span className="fc-toolbar__divider" aria-hidden="true" />
@@ -281,6 +295,9 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard }: CanvasToolbarProps) 
         </button>
         {open === 'file' && (
           <div className="fc-menu fc-menu--file" role="menu" aria-label="File" data-testid="file-menu">
+            <button className="fc-menu__item" data-testid="toolbar-new-board" role="menuitem" onClick={() => { void newBoard(); close() }}>✨ New board</button>
+            <button className="fc-menu__item" data-testid="toolbar-clear-board" role="menuitem" onClick={() => { onClearBoard(); close() }}>🧹 Clear board…</button>
+            <div className="fc-menu__sep" aria-hidden="true" />
             <button className="fc-menu__item" data-testid="toolbar-open-board" role="menuitem" onClick={() => { onOpenBoard('open'); close() }}>📂 Open board…</button>
             <button className="fc-menu__item" data-testid="toolbar-saveas-board" role="menuitem" onClick={() => { onOpenBoard('save'); close() }}>💾 Save as…</button>
             <div className="fc-menu__sep" aria-hidden="true" />
@@ -306,9 +323,27 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard }: CanvasToolbarProps) 
         <button type="button" className={`fc-tbtn fc-tbtn--icon${reorganizing ? ' is-busy' : ''}`} data-testid="toolbar-reorganize" disabled={!doc || reorganizing} aria-busy={reorganizing} aria-label="Re-organize" title="Re-organize — auto-layout" onClick={() => void reorganize()}>
           {sv(<><path d="M4 6h7M4 12h7M4 18h7" /><path d="M16 8l3-3 3 3M19 5v14" /></>)}
         </button>
+        <button type="button" className="fc-tbtn fc-tbtn--icon fc-tbtn--danger" data-testid="toolbar-delete" disabled={selectedIds.length === 0} aria-disabled={selectedIds.length === 0} aria-label="Delete selection" title={selectedIds.length ? `Delete selection (${selectedIds.length}) · Del` : 'Delete selection (select a node · Del)'} onClick={() => selectedIds.forEach((id) => removeNode(id))}>
+          {sv(<><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" /><path d="M10 11v6M14 11v6" /></>)}
+        </button>
       </div>
 
       <div className="fc-toolbar__spacer" />
+
+      {/* v2 — agent round-trip + studio surfaces */}
+      <button type="button" className="fc-tbtn fc-tbtn--primary" data-testid="toolbar-submit" aria-label="Submit to agent" title="Submit to agent" onClick={onOpenSubmit}>
+        {sv(<path d="M4 12l16-8-6 16-3-6z" />)}<span>Submit</span>
+      </button>
+      <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-templates" aria-label="Template library" title="Template library" onClick={onOpenTemplates}>
+        {sv(<><rect x="4" y="4" width="7" height="7" rx="1" /><rect x="13" y="4" width="7" height="7" rx="1" /><rect x="4" y="13" width="7" height="7" rx="1" /></>)}
+      </button>
+      {path && (
+        <a className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-bundle" aria-label="Export bundle (zip)" title="Export bundle (zip)" href={bundleUrl(path)} download>
+          {sv(<><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" /><path d="M3.3 7L12 12l8.7-5M12 22V12" /></>)}
+        </a>
+      )}
+
+      <span className="fc-toolbar__divider" aria-hidden="true" />
 
       <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-fit-view" aria-label="Fit view" title="Fit view" onClick={() => fitView({ duration: 240, padding: 0.2 })}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4" /></svg>
@@ -316,6 +351,10 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard }: CanvasToolbarProps) 
 
       <button type="button" className="fc-tbtn fc-tbtn--save" data-testid="toolbar-save" aria-label="Save (⌘S)" title="Save (⌘S)" onClick={() => void save()}>
         Save{dirty && <span className="fc-toolbar__dot" data-testid="dirty-dot" aria-hidden="true" />}
+      </button>
+
+      <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toggle-rail-right" aria-pressed={railRight === 'open'} aria-label="Toggle inspector" title="Toggle inspector" onClick={onToggleRailRight}>
+        {sv(<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>)}
       </button>
     </header>
   )

@@ -1,0 +1,194 @@
+/* Template tray — docked in the left rail (Phase 6, system-design-studio).
+   Ported from mockup 05-studio-canvas.html (.tphead / .tfilter / .tcard / .tkind / .tadd)
+   with namespaced classes (fc-tpl__*) and app token names from globals.css @theme.
+
+   Token substitution applied:
+     --primary-cont   → --color-primary-cont
+     --on             → --color-text-primary
+     --on-var         → --color-text-secondary
+     --outline-var    → --color-outline-variant
+     --neon-cyan      → --color-neon-cyan
+     --mono           → var(--font-mono)
+     --r-full         → 999px  (inline)
+     --r-md           → 8px    (inline; matches --radius-control)
+     --r-sm           → 4px    (inline)
+     --glow-indigo    → 0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55)  (inline)
+*/
+
+/* ─── tray container (scrollable, fills the rail pane) ─── */
+.fc-tpl {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ─── header row ─── */
+.fc-tpl__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fc-tpl__title {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* × close affordance */
+.fc-tpl__close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.14s ease, border-color 0.14s ease;
+}
+.fc-tpl__close:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+}
+.fc-tpl__close:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ─── kind filter strip ─── */
+.fc-tpl__filter {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.fc-tpl__filter-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+}
+.fc-tpl__filter-btn[aria-pressed="true"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-primary-cont), #6f5bff);
+}
+.fc-tpl__filter-btn:hover {
+  color: var(--color-text-primary);
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(128, 131, 255, 0.35), 0 0 22px -6px rgba(128, 131, 255, 0.55);
+}
+.fc-tpl__filter-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ─── template card ─── */
+.fc-tpl__card {
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 8px;
+  padding: 11px;
+  background: rgba(6, 14, 32, 0.4);
+  cursor: default; /* drag-to-canvas not wired yet — the Instantiate button is the interaction */
+  margin-bottom: 10px;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.fc-tpl__card:hover {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(128, 131, 255, 0.35), 0 0 22px -6px rgba(128, 131, 255, 0.55);
+}
+.fc-tpl__card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* kind eyebrow — neon-cyan mono uppercase */
+.fc-tpl__kind {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-neon-cyan);
+  display: block;
+}
+
+/* card name */
+.fc-tpl__name {
+  margin: 5px 0 3px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* card description */
+.fc-tpl__desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+/* schematic mini-preview — dot-grid area (a richer SVG layer can be wired later) */
+.fc-tpl__preview {
+  height: 50px;
+  border-radius: 4px;
+  border: 1px dashed var(--color-outline-variant);
+  background:
+    radial-gradient(rgba(146, 143, 160, 0.16) 1px, transparent 1px);
+  background-size: 10px 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* instantiate button */
+.fc-tpl__add {
+  display: block;
+  margin-top: 8px;
+  width: 100%;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.fc-tpl__add:hover:not(:disabled) {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(128, 131, 255, 0.35), 0 0 22px -6px rgba(128, 131, 255, 0.55);
+}
+.fc-tpl__add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.fc-tpl__add:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ─── empty state ─── */
+.fc-tpl__empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 24px 0;
+  font-family: var(--font-mono);
+}

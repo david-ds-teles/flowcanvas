@@ -20,10 +20,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { path: rel, doc } = (await req.json()) as { path: string; doc: FlowcanvasDoc }
+  const { path: rel, doc, bump } = (await req.json()) as { path: string; doc: FlowcanvasDoc; bump?: boolean }
   if (!isCanvas(rel) || !doc?.nodes || !doc?.flowcanvas?.session) return NextResponse.json({ error: 'invalid' }, { status: 400 })
   try {
-    doc.flowcanvas.session.revision += 1
+    // `bump:false` persists a metadata-only stamp (e.g. the MCP get_board writing session.lastBriefId)
+    // WITHOUT advancing the optimistic-concurrency revision — so the brief's baseRevision stays valid
+    // and the change-review round-ready poll does not false-fire. Default (omitted/true) bumps as before.
+    if (bump !== false) doc.flowcanvas.session.revision += 1
     doc.flowcanvas.session.updatedAt = new Date().toISOString()
     const abs = guardPath(rel)
     await mkdir(path.dirname(abs), { recursive: true })

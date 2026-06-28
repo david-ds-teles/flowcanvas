@@ -1,0 +1,20 @@
+{
+  "id": "tpl-note",
+  "kind": "node",
+  "name": "Sticky note",
+  "description": "A single markdown scratch note.",
+  "nodes": [
+    {
+      "id": "t-note",
+      "type": "text",
+      "text": "## Note\n\nWrite something…",
+      "x": 0,
+      "y": 0,
+      "width": 240,
+      "height": 140,
+      "color": "#5ef2ff",
+      "meta": { "origin": "user" }
+    }
+  ],
+  "edges": []
+}

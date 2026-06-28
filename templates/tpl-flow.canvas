@@ -1,0 +1,56 @@
+{
+  "id": "tpl-flow",
+  "kind": "diagram",
+  "name": "Request flow",
+  "description": "Client → Service → Store with typed call / depends-on edges.",
+  "nodes": [
+    {
+      "id": "t-client",
+      "type": "text",
+      "text": "Client",
+      "x": 0,
+      "y": 0,
+      "width": 160,
+      "height": 80,
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "t-svc",
+      "type": "text",
+      "text": "Service",
+      "x": 240,
+      "y": 0,
+      "width": 160,
+      "height": 80,
+      "meta": { "origin": "user" }
+    },
+    {
+      "id": "t-store",
+      "type": "text",
+      "text": "Store",
+      "x": 480,
+      "y": 0,
+      "width": 160,
+      "height": 80,
+      "meta": { "origin": "user" }
+    }
+  ],
+  "edges": [
+    {
+      "id": "te-call",
+      "fromNode": "t-client",
+      "toNode": "t-svc",
+      "label": "calls",
+      "toEnd": "arrow",
+      "meta": { "origin": "user", "rel": "calls" }
+    },
+    {
+      "id": "te-dep",
+      "fromNode": "t-svc",
+      "toNode": "t-store",
+      "label": "depends on",
+      "toEnd": "arrow",
+      "meta": { "origin": "user", "rel": "depends-on" }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { CanvasNode, CanvasEdge } from './jsoncanvas'
+import type { CanvasNode, CanvasEdge, FlowcanvasDoc } from './jsoncanvas'
 import { isFileNode } from './jsoncanvas'
 
 /** Normalize a path for matching: drop a leading `./` or `/`, unify separators. */
@@ -47,4 +47,24 @@ export function reconcileEdges(existing: CanvasEdge[], derived: CanvasEdge[]): C
   const pairs = new Set(keep.map((e) => `${e.fromNode}>${e.toNode}`))
   const fresh = derived.filter((e) => !pairs.has(`${e.fromNode}>${e.toNode}`)) // drop dupes of a manual/agent pair
   return [...keep, ...fresh]                                                    // stale 'links' dropped
+}
+
+/**
+ * Inverse of `deriveLinkEdges`: project canvas file→file edges back into per-file `links:` lists.
+ * For every edge whose both endpoints are file nodes, the target's path is appended to the source
+ * path's list. Each list is deduped. Non-file endpoints (text, link, group) are silently skipped.
+ * Used by the bundle-export route to reconstruct frontmatter-compatible `links:` from the canvas.
+ */
+export function projectLinksForExport(doc: FlowcanvasDoc): Record<string, string[]> {
+  const pathById = new Map<string, string>()
+  for (const n of doc.nodes) if (isFileNode(n)) pathById.set(n.id, n.file)
+  const out: Record<string, string[]> = {}
+  for (const e of doc.edges) {
+    const from = pathById.get(e.fromNode)
+    const to = pathById.get(e.toNode)
+    if (!from || !to) continue                 // only file→file edges project to links:
+    ;(out[from] ??= []).push(to)
+  }
+  for (const k of Object.keys(out)) out[k] = [...new Set(out[k])]
+  return out
 }

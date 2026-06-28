@@ -1,7 +1,7 @@
 ---
 name: 002-system-design-studio-ui-design
-description: UI design artifact for Flowcanvas System Design Studio (v2) — the five new agent/relation surfaces (Submit, change-review, typed-edge affordance, reference-navigation chip, template library) over the nyx glass shell; three iterations for operator selection.
-status: draft
+description: UI design artifact for Flowcanvas System Design Studio (v2) — the five new agent/relation surfaces (Submit, change-review, typed-edge affordance, reference-navigation chip, template library) over the nyx glass shell; four genuinely-distinct full-tool iterations for operator selection.
+status: approved
 tags: [ui-design, frontend, mockups, canvas, agent, mcp, nyx]
 links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.md, .flowcode/ui/ui-workflow.md, .flowcode/ui/ui-mockup-discipline.md, .flowcode/ui/ui-design-system.md]
 ---
@@ -9,11 +9,13 @@ links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.m
 # 002-system-design-studio — System Design Studio UI Design
 
 - Adds five surfaces to the v0.1 nyx canvas: Submit-to-agent, agent change-review/diff, typed-relationship edge affordance, reference-navigation ↗ chip (focus-or-add), and the template library.
-- Three iterations authored and ready for operator selection — they differ in where the agent surfaces live, not in the visual language (all nyx-conformant against `ui-design-system.md`).
+- Four exploratory iterations + a selected fusion — each exploratory iteration is a **genuinely-distinct product IA** (board-hero diagram / tri-pane model-IDE / agent-round-loop / spec↔canvas split), not the same board with a panel moved. All render the **same full, dense decomposed system** (a "Commerce Platform" — 4 subsystem groups, ~14 varied nodes, 10 typed edges, provenance, enriched legend + minimap) and carry **all five v2 surfaces**, nyx-token-locked against `ui-design-system.md`.
+- **Selected:** the operator chose the **fusion of `01` (clean canvas) + `02` (premium, complete workbench)** → `05-studio-canvas.html`: the diagram-first canvas hero inside the tri-pane workbench shell, with collapsible rails toggling `canvas-focus` ⇄ `workbench`.
+- Supersedes the first hand-authored set (`studio-drawer` / `review-stepper` / `command-spotlight`), which was rejected for varying only by **agent-panel placement** over a near-empty 2–3-node board — it failed the "three distinct directions" rule (`ui-mockups §4` / `ui-workflow §1`) and did not depict a full system-design tool.
 - The chosen iteration's `data-testid` names and tokens carry verbatim into implementation; rejected iterations stay in the folder as history.
 - Reuses the v0.1 glass shell (§7), `fc-node`, `fc-edge-label`, `agent-panel`, and reader prose unchanged; the new surfaces are additive overlays.
 - Desktop-only (≥1024 / ≥1440), per `ui-design-system §6`; no mobile.
-- Status: **draft** — operator must select one iteration before it flips to `approved` and the plan is unblocked.
+- Status: **approved** — operator selected `05-studio-canvas.html` (the `01`+`02` fusion) on 2026-06-27; the UI direction is locked. The plan is unblocked once the sibling `002-system-design-studio-design.md` (technical design) is also approved.
 - Sibling plan: `002-system-design-studio-plan.md` (created after this design + the sibling technical design are approved).
 
 ---
@@ -22,7 +24,7 @@ links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.m
 
 v0.1 ships the nyx glass board with a clipboard agent round-trip in the right `agent-panel` (Export brief / Import response — `components/canvas/export-panel.tsx`). v2 makes the canvas the authoritative relation graph and runs the round-trip natively over MCP. That introduces five UI surfaces the v0.1 shell has no home for: a **Submit** kickoff (intent + send), a **change-review** surface to accept/discard an agent round, a **typed-relationship** affordance on edges (the `rel` enum from the design's Decision 7), a **reference-navigation** chip that focuses-or-adds a referenced node (Decision 9), and the **template library** (Decision 8).
 
-These are additive — the fixed shell (full-viewport void, dot grid, 56px toolbar, right drawers) is unchanged. The three iterations explore *where* each surface lives (right drawer family vs focused stepper vs command palette/dock), which is the real UX decision; the tokens, glass mechanics, and component shapes are identical and nyx-locked across all three.
+These are additive over the fixed nyx primitives (full-viewport void, dot grid, 56px toolbar, glass nodes/edges/drawers). The **real UX decision is the product's organizing principle** — how the authoritative design graph and the agent loop are foregrounded — so the four iterations explore four different information architectures, each rendering a *full* decomposed system on the board rather than a 2–3-node placeholder. The tokens, fonts, glass mechanics, and component shapes are identical and nyx-locked across all four; only the IA, layout, and what is foregrounded differ.
 
 ---
 
@@ -34,20 +36,24 @@ These are additive — the fixed shell (full-viewport void, dot grid, 56px toolb
 
 **States covered (per iteration mockup):** `submit` · `change-review` (added / updated / removed / file / comment entries) · `templates` (kind-filtered library) · `typed-edge` (rel picker open) · `reference-navigation` (focus vs add) · `empty` · `loading` (agent working) · `error` (stale-round / briefId mismatch).
 
-**Mockup assets (three iterations — all five surfaces + the eight states in each):**
-- `.flowcode/plans/002-system-design-studio/mockups/01-studio-drawer.html`
-- `.flowcode/plans/002-system-design-studio/mockups/02-review-stepper.html`
-- `.flowcode/plans/002-system-design-studio/mockups/03-command-spotlight.html`
+**Mockup assets (four exploratory iterations + the selected fusion — every state, all five v2 surfaces, the same full Commerce-Platform board in each):**
+- `.flowcode/plans/002-system-design-studio/mockups/01-architecture-canvas.html`
+- `.flowcode/plans/002-system-design-studio/mockups/02-studio-workbench.html`
+- `.flowcode/plans/002-system-design-studio/mockups/03-agent-design-loop.html`
+- `.flowcode/plans/002-system-design-studio/mockups/04-spec-canvas.html`
+- `.flowcode/plans/002-system-design-studio/mockups/05-studio-canvas.html` ← **selected** (fusion of 01 + 02)
 
-**Iteration directions:**
+**Iteration directions (each a distinct product IA, not a panel-placement variant):**
 
-| Iteration | Direction | Tradeoff |
-|-----------|-----------|----------|
-| `01-studio-drawer.html` | Every agent surface in the right glass drawer family (extends `agent-panel`); review is a scrollable list + stepper; rel-picker popover off the edge label; templates a right drawer | Most cohesive with v0.1 drawers; lowest build risk; review can feel cramped on a large round |
-| `02-review-stepper.html` | Change-review is a focused, full-height centered stepper (one change, big before/after, filmstrip); Submit a bottom command bar; templates a left rail; rel a segmented control | Best for careful, change-by-change review; Submit/templates split across three edges adds spatial load |
-| `03-command-spotlight.html` | Submit a center command palette (⌘K); review a grouped overlay inspector (sections by kind, expand a row for the diff); templates a bottom dock; rel a quick-pick gem flyout | Fastest kickoff + whole-round scannability; overlays dim the board more aggressively |
+| Iteration | Organizing principle | Tradeoff |
+|-----------|----------------------|----------|
+| `01-architecture-canvas.html` | **Board-hero / diagram-first.** The dense decomposed architecture IS the screen — subsystem group containers, the full typed-edge graph + enriched legend + minimap dominate; v2 surfaces are lightweight & contextual (rel-picker popover, ref-nav chips on nodes, Submit/Templates/Review as right glass drawers over a dimmed board). | Reads instantly as a real system-design tool; lowest new-shell risk (reuses v0.1 board chrome). Review/templates compete with the board for the right edge on large rounds. |
+| `02-studio-workbench.html` | **Tri-pane model-IDE.** Left structure rail (design graph as a collapsible subsystem→node outline) · center canvas · right persistent inspector (selected node's IN/OUT typed relations, `meta.source` provenance, refs; Submit/Review as inspector modes). Navigate the architecture both structurally and spatially. | Best for large graphs + relation/provenance editing; the model tree scales. Densest shell — three panes shrink the canvas; highest build cost. |
+| `03-agent-design-loop.html` | **Agent-round-loop / copilot.** The human↔agent cycle is the spine: a round-history rail (R1…Rn, intent + ±diff + rev window), Submit as the first-class command, change-review as the centerpiece diff; the board highlights the current round's agent additions (glowing). | Best for iterative agent-driven design + careful round review; foregrounds the v2 thesis. Round rail + review claim screen real-estate from the static board. |
+| `04-spec-canvas.html` | **Spec ↔ canvas split (document-grounded).** The source design.md renders as flawless nyx prose on the left with live, clickable in-prose reference chips (focus-or-add on the board); the decomposed board sits on the right with `source` provenance chips that scroll the spec to their heading. Extraction + ref-nav + reconcile are the spine. | Best embodiment of "canvas as a true view over real md" + reference navigation + disk reconcile; the two panes stay in sync. Half the width goes to the doc; least canvas room of the four. |
+| `05-studio-canvas.html` ← **selected** | **Studio Canvas — fusion of 01 + 02 (best of both).** The premium, complete tri-pane workbench shell from `02` (structure rail · canvas · relation/provenance inspector; Submit/Review as inspector modes; templates docked in the rail) wrapped around the **clean, diagram-first canvas hero from `01`**. Both side rails are **collapsible** via `toggle-rail-left` / `toggle-rail-right`: expanded = full Studio Workbench, collapsed (`canvas-focus`) = near-full-width clean Architecture Canvas — one surface that is either, on demand. | Delivers operator-chosen "clean canvas + premium complete experience" in one shell; the collapse mechanic resolves the tri-pane-vs-canvas-room tradeoff. Slightly more interaction surface to build (rail-collapse state machine). |
 
-**Selected iteration:** _pending operator selection_ — present all three; on sign-off, record the choice here and flip `Status:` to `approved`. **Designer recommendation:** `01-studio-drawer.html` — it reuses the proven v0.1 drawer pattern (lowest implementation risk, one panel idiom to learn), and the change-review list+stepper scales to large rounds; pull the grouped-by-kind inspector idea from `03` into it if the operator wants whole-round scannability.
+**Selected iteration:** `05-studio-canvas.html` — the operator chose the **fusion of `01-architecture-canvas` (clean, diagram-first canvas) and `02-studio-workbench` (premium, complete tri-pane experience)**; `05` realizes that as one shell with collapsible rails (`canvas-focus` ⇄ `workbench`). Iterations `01`–`04` stay in the folder as the explored history. Approved by the operator on 2026-06-27 — `Status:` flipped to `approved`; `05`'s `data-testid` names + tokens carry verbatim into implementation (collapsed rails confirmed as thin clickable icon rails, not fully hidden). A later phase may still graft in `03`'s round-history strip once multi-round iteration matters.
 
 **Key elements (data-testid carried to implementation, consistent across iterations):**
 - **Submit** — `toolbar-submit`, `submit-panel`, `submit-intent`, `submit-send`, `submit-mcp-status`, `submit-scope` (03).
@@ -63,7 +69,7 @@ These are additive — the fixed shell (full-viewport void, dot grid, 56px toolb
 
 | Name | Width | Mockup File |
 |------|-------|-------------|
-| desktop | 1280px | `mockups/01-studio-drawer.html` (fluid; 02 + 03 likewise) |
+| desktop | 1280px | `mockups/01-architecture-canvas.html` (fluid; 02 / 03 / 04 likewise) |
 | large | 1440px | same — no layout change, more canvas |
 
 Desktop-first canvas; the board fills the viewport at both sizes. **Mobile is out of scope (v2)** per `ui-design-system §6` — do not author mobile mockups. Each mockup is a single fluid layout that covers both breakpoints.
@@ -137,6 +143,7 @@ Regressions link to their finding-as-section entry in `002-system-design-studio-
 
 ## Open Questions
 
-- [ ] Operator selects one of the three iterations (designer recommends `01-studio-drawer.html`); record the choice + flip `Status:` to `approved`.
-- [ ] `flowcode:ui-mockups` composer skill was not dispatchable in this pass — the three iterations were hand-authored per `ui-workflow.md` (Required-MCPs fallback) against `ui-design-system.md`. Re-run through the composer if richer live-engine taste exploration is wanted before lock-in.
-- [ ] Confirm the change-review surface placement for very large rounds (50+ changes) — does the chosen iteration need pagination / virtualized list, or is the kind-grouped inspector (`03`) the better base?
+- [x] Operator selected `05-studio-canvas.html` (fusion of `01` clean canvas + `02` premium workbench) on 2026-06-27; choice recorded + `Status:` flipped to `approved`.
+- [ ] Iterations rebuilt 2026-06-27: the first hand-authored set varied only by agent-panel placement over a near-empty 2–3-node board and was rejected (did not depict a full system-design tool; failed the "distinct directions" rule). The replacement set gives four distinct product IAs, each rendering the full decomposed Commerce-Platform board + all five v2 surfaces, grounded verbatim in the v0.1 nyx primitives (`04-nyx-neon.html`). Still hand-authored against `ui-design-system.md` (the `flowcode:ui-mockups` composer's live taste engines were not dispatchable this pass) — re-run through the composer if richer taste exploration is wanted before lock-in.
+- [ ] Confirm the change-review surface for very large rounds (50+ changes) — virtualized list vs. the kind-grouped inspector — once an iteration is chosen.
+- [ ] If `01` is chosen, decide whether to graft in `02`'s relation/provenance inspector and `03`'s round-history strip now or defer to a later phase.

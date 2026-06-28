@@ -1,14 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import type { FlowcanvasDoc } from './jsoncanvas'
 import { useCanvasStore } from './store'
-import * as api from '../api'
 
-// Stub the fs-backed `links:` write-back so onConnect / removeEdgeWriteback can be asserted without a
-// server (the real patchLinks hits /api/canvas/links). Everything else in api stays real but unused here.
-vi.mock('../api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../api')>()
-  return { ...actual, patchLinks: vi.fn().mockResolvedValue([]) }
-})
+// v2: onConnect / removeEdgeWriteback no longer touch the fs — the Phase-8 links: write-back is retired
+// (Decision 4) — so these synchronous store actions are exercised directly with no api stub. Actions that
+// hit the server (load/save/submit/accept/discard/addTemplate/navigateRef-add/resyncFile) are integration-
+// level; this suite covers the api-free, synchronous store logic, as before.
 
 // The manual-edge / promotion / drag-write-back store actions can't be drag-simulated in the
 // node test env, so they're exercised directly against a seeded doc (zustand outside React).
@@ -26,29 +23,21 @@ function seed(): FlowcanvasDoc {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [] })
+  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null })
 })
 
-describe('store / onConnect', () => {
-  it('file↔file: mints the deterministic links edge, patches the source file, no label editor (Fix 5)', () => {
-    // a and b are both markdown files; b→a is not yet linked (seed has only a→b).
+describe('store / onConnect (v2 — typed user edges)', () => {
+  it('mints a typed user edge (rel:related, empty label) and opens its inline editor — no fs write-back', () => {
     useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     const { doc, dirty, editingEdgeId } = useCanvasStore.getState()
-    const minted = doc!.edges.find((e) => e.id === 'lk:b->a')!
-    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', fromSide: 'right', toSide: 'left', label: 'links', color: '6', toEnd: 'arrow', meta: { origin: 'links' } })
-    expect(api.patchLinks).toHaveBeenCalledWith('b.md', { add: ['a.md'] })
-    expect(editingEdgeId).toBeNull()  // structural link — no inline label editor
+    const minted = doc!.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
+    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', fromSide: 'right', toSide: 'left', label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
+    expect(minted.id.startsWith('e-')).toBe(true)   // a minted user edge, not a deterministic lk: id
+    expect(editingEdgeId).toBe(minted.id)           // inline label editor opens
     expect(dirty).toBe(true)
   })
 
-  it('file↔file: an already-linked pair is a no-op (no duplicate edge, no re-patch)', () => {
-    useCanvasStore.getState().onConnect({ source: 'a', target: 'b', sourceHandle: 'right', targetHandle: 'left' }) // lk:a->b exists in seed
-    expect(useCanvasStore.getState().doc!.edges.filter((e) => e.id === 'lk:a->b')).toHaveLength(1)
-    expect(api.patchLinks).not.toHaveBeenCalled()
-  })
-
-  it('non-file endpoint: mints an empty-label user edge, opens its inline editor, no file write-back', () => {
+  it('mints the same typed user edge for a non-file endpoint (uniform v2 behavior)', () => {
     useCanvasStore.setState({ doc: { ...seed(),
       nodes: [
         { id: 't', type: 'text', text: 'note', x: 0, y: 0, width: 100, height: 100, meta: { origin: 'user' } },
@@ -57,11 +46,9 @@ describe('store / onConnect', () => {
       edges: [],
     } })
     useCanvasStore.getState().onConnect({ source: 't', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
-    const { doc, editingEdgeId } = useCanvasStore.getState()
-    const minted = doc!.edges.find((e) => e.fromNode === 't' && e.toNode === 'a')!
-    expect(minted).toMatchObject({ fromNode: 't', toNode: 'a', label: '', toEnd: 'arrow', meta: { origin: 'user' } })
-    expect(editingEdgeId).toBe(minted.id)  // editor opens on the freshly-minted edge — no native prompt
-    expect(api.patchLinks).not.toHaveBeenCalled()
+    const minted = useCanvasStore.getState().doc!.edges.find((e) => e.fromNode === 't' && e.toNode === 'a')!
+    expect(minted).toMatchObject({ label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
+    expect(useCanvasStore.getState().editingEdgeId).toBe(minted.id)
   })
 
   it('ignores a connection with a missing endpoint', () => {
@@ -74,29 +61,14 @@ describe('store / onConnect', () => {
     useCanvasStore.getState().onConnect({ source: 'a', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     expect(useCanvasStore.getState().doc!.edges).toHaveLength(1) // unchanged — no self-edge minted
     expect(useCanvasStore.getState().editingEdgeId).toBeNull()
-    expect(api.patchLinks).not.toHaveBeenCalled()
   })
 })
 
-describe('store / removeEdgeWriteback (Fix 5)', () => {
-  it('removes a file↔file edge from the doc and strips the link from the source file', () => {
-    useCanvasStore.getState().removeEdgeWriteback('lk:a->b') // seed edge a.md -> b.md
+describe('store / removeEdgeWriteback (v2 — no fs write-back)', () => {
+  it('removes an edge from the doc and marks dirty', () => {
+    useCanvasStore.getState().removeEdgeWriteback('lk:a->b') // seed edge
     expect(useCanvasStore.getState().doc!.edges.find((e) => e.id === 'lk:a->b')).toBeUndefined()
-    expect(api.patchLinks).toHaveBeenCalledWith('a.md', { remove: ['b.md'] })
     expect(useCanvasStore.getState().dirty).toBe(true)
-  })
-
-  it('removes a non-file edge from the doc without patching any file', () => {
-    useCanvasStore.setState({ doc: { ...seed(),
-      nodes: [
-        { id: 't', type: 'text', text: 'note', x: 0, y: 0, width: 100, height: 100, meta: { origin: 'user' } },
-        { id: 'a', type: 'file', file: 'a.md', x: 200, y: 0, width: 100, height: 100, meta: { origin: 'user', frontmatter: {} } },
-      ],
-      edges: [{ id: 'e1', fromNode: 't', toNode: 'a', label: 'x', meta: { origin: 'user' } }],
-    } })
-    useCanvasStore.getState().removeEdgeWriteback('e1')
-    expect(useCanvasStore.getState().doc!.edges).toHaveLength(0)
-    expect(api.patchLinks).not.toHaveBeenCalled()
   })
 
   it('is a no-op (stays clean) for an unknown edge id', () => {
@@ -104,7 +76,6 @@ describe('store / removeEdgeWriteback (Fix 5)', () => {
     useCanvasStore.getState().removeEdgeWriteback('nope')
     expect(useCanvasStore.getState().doc!.edges).toHaveLength(1)
     expect(useCanvasStore.getState().dirty).toBe(false)
-    expect(api.patchLinks).not.toHaveBeenCalled()
   })
 })
 
@@ -331,5 +302,35 @@ describe('store / Phase 10 — selection, grouping, bulk layout', () => {
     expect({ x: doc!.nodes.find((n) => n.id === 'a')!.x, y: doc!.nodes.find((n) => n.id === 'a')!.y }).toEqual({ x: 500, y: 600 })
     expect({ x: doc!.nodes.find((n) => n.id === 'b')!.x, y: doc!.nodes.find((n) => n.id === 'b')!.y }).toEqual({ x: 200, y: 0 }) // untouched
     expect(dirty).toBe(true)
+  })
+})
+
+describe('store / v2 — reviewDiff + navigateRef (focus)', () => {
+  it('reviewDiff returns null when no round is pending', () => {
+    useCanvasStore.setState({ reviewState: null })
+    expect(useCanvasStore.getState().reviewDiff()).toBeNull()
+  })
+
+  it('reviewDiff diffs the snapshot vs the current doc; added file nodes appear in files', () => {
+    const snapshot = seed()                         // nodes a, b ; edge lk:a->b
+    const current: FlowcanvasDoc = {
+      ...seed(),
+      nodes: [...seed().nodes, { id: 'c', type: 'file', file: 'c.md', x: 400, y: 0, width: 100, height: 100, meta: { origin: 'agent' } }],
+      edges: [...seed().edges, { id: 'ag-e', fromNode: 'a', toNode: 'c', label: 'calls', toEnd: 'arrow', meta: { origin: 'agent', rel: 'calls' } }],
+    }
+    useCanvasStore.setState({ doc: current, reviewState: { baseRevision: 0, briefId: 'b', capturedAt: 'now', snapshot, roundGeneratedFiles: [] } })
+    const diff = useCanvasStore.getState().reviewDiff()!
+    expect(diff.nodes.added).toEqual(['c'])
+    expect(diff.edges.added).toEqual(['ag-e'])
+    expect(diff.files).toEqual(['c.md'])            // the round's added file-node path
+  })
+
+  it('navigateRef focuses an existing target node (select + focusNodeId) without adding a node', () => {
+    // seed has a file node b = b.md; the focus branch runs synchronously (no await before set)
+    void useCanvasStore.getState().navigateRef('a', { kind: 'link', target: 'b.md', isExternal: false })
+    const { selectedIds, focusNodeId, doc } = useCanvasStore.getState()
+    expect(selectedIds).toEqual(['b'])
+    expect(focusNodeId).toBe('b')
+    expect(doc!.nodes).toHaveLength(2)              // no new node added
   })
 })

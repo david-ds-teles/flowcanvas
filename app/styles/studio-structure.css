@@ -1,0 +1,251 @@
+/* Structure rail — subsystem → node outline tree (Phase 002 — system-design-studio).
+   Ported from 002 mockup 05-studio-canvas.html (.tfilterbar/.tsec/.tgrp/.tkids/.titem).
+
+   Token mapping (mockup raw var → app CSS var):
+     --on           → --color-text-primary
+     --on-var       → --color-text-secondary
+     --primary      → --color-primary
+     --primary-cont → --color-primary-cont
+     --secondary    → --color-secondary
+     --outline      → --color-outline
+     --outline-var  → --color-outline-variant
+     --neon-cyan    → --color-neon-cyan
+     --neon-lime    → --color-neon-lime
+     --c            → --color-surface
+     --bg           → --color-bg
+     --ui           → var(--font-sans)
+     --mono         → var(--font-mono)
+     --r-md         → 8px  (var(--radius-control))
+     --r-sm         → 4px
+     --r-full       → 999px
+     --glow-indigo  → 0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55)
+
+   All classes are BEM-namespaced under `fc-srail` to avoid any collision with
+   the existing global ruleset.
+*/
+
+/* ─── container ─────────────────────────────────────────────────────────────
+   Fills the rail-pane slot: scrollable, with uniform padding.
+   The host shell sets flex:1 / min-height:0 on the slot. */
+.fc-srail {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── filter bar ─────────────────────────────────────────────────────────── */
+.fc-srail__filterbar {
+  position: relative;
+  margin-bottom: 12px;
+  flex: 0 0 auto;
+}
+
+.fc-srail__filterbar-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  stroke: var(--color-outline);
+  fill: none;
+  stroke-width: 1.6;
+  pointer-events: none;
+}
+
+.fc-srail__filter-input {
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(6, 14, 32, 0.55);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 0 10px 0 30px;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  /* reset browser search-input chrome */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fc-srail__filter-input::placeholder {
+  color: var(--color-outline);
+}
+
+.fc-srail__filter-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+/* ─── section wrapper ───────────────────────────────────────────────────────
+   One .fc-srail__sec per group + one trailing "Ungrouped" bucket. */
+.fc-srail__sec {
+  margin-bottom: 4px;
+  flex: 0 0 auto;
+}
+
+/* ─── group header button ───────────────────────────────────────────────────
+   Uppercase mono label in primary colour; full-width flex row. */
+.fc-srail__grp {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  transition: background-color 0.14s ease;
+}
+
+.fc-srail__grp:hover {
+  background: rgba(128, 131, 255, 0.08);
+}
+
+.fc-srail__grp:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* ─── chevron icon ──────────────────────────────────────────────────────────
+   Points down when expanded, rotates to point right when collapsed. */
+.fc-srail__chev {
+  stroke: var(--color-primary);
+  fill: none;
+  stroke-width: 1.8;
+  flex: 0 0 auto;
+  transition: transform 0.14s ease;
+}
+
+.fc-srail__chev--collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ─── group label + count ───────────────────────────────────────────────────*/
+.fc-srail__gname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.fc-srail__gcount {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 999px;
+  padding: 0 6px;
+  letter-spacing: 0;
+  flex: 0 0 auto;
+}
+
+/* ─── children container ────────────────────────────────────────────────────
+   Indented with a left hairline border — mirrors the mockup's .tkids rule. */
+.fc-srail__kids {
+  padding: 2px 0 6px 8px;
+  margin-left: 5px;
+  border-left: 1px solid var(--color-outline-variant);
+}
+
+/* ─── node item button ──────────────────────────────────────────────────────
+   Full-width flex row: kind glyph + truncated name.
+   Default: muted colour; hover: brightens; selected: gradient fill + glow ring. */
+.fc-srail__item {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-align: left;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.fc-srail__item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+}
+
+.fc-srail__item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* selected state — gradient fill + inner glow ring (matches .titem.sel in the mockup) */
+.fc-srail__item--sel {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    rgba(128, 131, 255, 0.28),
+    rgba(94, 242, 255, 0.12)
+  );
+  box-shadow: inset 0 0 0 1px rgba(128, 131, 255, 0.4);
+}
+
+/* ─── kind glyph icon ───────────────────────────────────────────────────────
+   15×15 SVG; stroke colour varies by node kind (matches .kg.* in the mockup). */
+.fc-srail__kg {
+  flex: 0 0 auto;
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.fc-srail__kg--markdown,
+.fc-srail__kg--note {
+  stroke: var(--color-neon-cyan);
+}
+
+.fc-srail__kg--file {
+  stroke: var(--color-primary);
+}
+
+.fc-srail__kg--link {
+  stroke: var(--color-secondary);
+}
+
+.fc-srail__kg--image {
+  stroke: var(--color-neon-lime);
+}
+
+.fc-srail__kg--group {
+  stroke: var(--color-primary);
+}
+
+/* ─── node display name ─────────────────────────────────────────────────────
+   Single-line, truncates with ellipsis. */
+.fc-srail__tn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ─── reduced-motion overrides ──────────────────────────────────────────────*/
+@media (prefers-reduced-motion: reduce) {
+  .fc-srail__chev,
+  .fc-srail__item,
+  .fc-srail__grp,
+  .fc-srail__filter-input {
+    transition: none;
+  }
+}

@@ -23,7 +23,9 @@ links: [.flowcode/quality-checks/quality-checks-index.md, .flowcode/workflow/git
 | typecheck | tsc | `npx tsc --noEmit` | post-phase | Exit 0 — all phases | — |
 | lint | ESLint (next lint) | `npm run lint` | post-phase | Exit 0 — phases 1, 7 | — |
 | build | next build | `npm run build` | post-phase | Exit 0 — all phases | — |
-| unit | vitest | `npx vitest run` | post-phase | Pass — pure modules (adapter, edges, brief); phases 2, 5, 7 | — |
+| unit | vitest | `npx vitest run` | post-phase | Pass — pure modules (adapter, edges, brief) + route contracts (`app/api/**`); phases 2, 5, 7 | — |
+| integration | MCP smoke | `npm run smoke:mcp` | pre-close (app running) | Pass — 7-tool round-trip, non-stale apply; phase 7 | `scripts/smoke-mcp.mjs` |
+| e2e | render smoke | `npm run smoke:render` | pre-close (app running + Chrome) | Pass — tri-pane renders, non-zero canvas; phase 7 | `scripts/smoke-render.mjs` |
 
 ## Gate Types
 

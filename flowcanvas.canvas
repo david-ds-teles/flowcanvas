@@ -1,153 +1,72 @@
 {
   "nodes": [
-    {
-      "id": "n-welcome",
-      "type": "file",
-      "file": "examples/welcome.md",
-      "x": -575.1173708920188,
-      "y": -296.76056338028167,
-      "width": 400,
-      "height": 360,
-      "color": "5",
-      "meta": {
-        "origin": "user",
-        "frontmatter": {
-          "name": "Welcome to Flowcanvas",
-          "status": "living",
-          "tags": [
-            "canvas",
-            "markdown",
-            "getting-started"
-          ],
-          "description": "This board is what loads by default — it is itself a .canvas file on disk.",
-          "links": [
-            "examples/schema.md"
-          ]
-        }
-      }
-    },
-    {
-      "id": "n-schema",
-      "type": "file",
-      "file": "examples/schema.md",
-      "x": -100,
-      "y": -280,
-      "width": 380,
-      "height": 320,
-      "meta": {
-        "origin": "user",
-        "frontmatter": {
-          "name": "Extended JSONCanvas",
-          "status": "stable",
-          "tags": [
-            "schema",
-            "jsoncanvas",
-            "adapter"
-          ],
-          "description": "Flowcanvas stores boards as an extended JSONCanvas document."
-        }
-      }
-    },
-    {
-      "id": "n-spec",
-      "type": "link",
-      "url": "https://jsoncanvas.org",
-      "x": 320,
-      "y": -280,
-      "width": 240,
-      "height": 110,
-      "color": "6",
-      "meta": {
-        "origin": "user"
-      }
-    },
-    {
-      "id": "n-note",
-      "type": "text",
-      "text": "## Pinned note\nComments and edges land in the next phases — for now, **content nodes** are live.",
-      "x": 320,
-      "y": -130,
-      "width": 260,
-      "height": 170,
-      "color": "#5ef2ff",
-      "meta": {
-        "origin": "user"
-      }
-    },
-    {
-      "id": "n-arch",
-      "type": "file",
-      "file": "examples/architecture.svg",
-      "x": -540,
-      "y": 120,
-      "width": 420,
-      "height": 280,
-      "meta": {
-        "origin": "user"
-      }
-    },
-    {
-      "id": "n-e9343ca2",
-      "type": "file",
-      "file": "README.md",
-      "x": 210.77656371531398,
-      "y": 13.350084591842958,
-      "width": 380,
-      "height": 320,
-      "meta": {
-        "origin": "user",
-        "frontmatter": {}
-      }
-    },
-    {
-      "id": "n-af995d24",
-      "type": "file",
-      "file": "assets/008-parallel-aware-plan-execution.md",
-      "x": -195.03391580296687,
-      "y": 7.227943737041315,
-      "width": 380,
-      "height": 320,
-      "meta": {
-        "origin": "user",
-        "frontmatter": {}
-      }
-    },
-    {
-      "id": "n-560e117c",
-      "type": "group",
-      "label": "",
-      "x": 564.1769293563156,
-      "y": -67.28968413707908,
-      "width": 272,
-      "height": 132,
-      "meta": {
-        "origin": "user",
-        "shape": "diamond"
-      }
-    }
+    { "id": "g-lib", "type": "group", "label": "Pure Library · lib/canvas", "x": 0, "y": 0, "width": 300, "height": 1240, "meta": { "origin": "user", "shape": "rectangle" } },
+    { "id": "g-state", "type": "group", "label": "State · Zustand", "x": 420, "y": 0, "width": 300, "height": 250, "meta": { "origin": "user", "shape": "rectangle" } },
+    { "id": "g-backend", "type": "group", "label": "Backend · app/api · fs", "x": 420, "y": 350, "width": 300, "height": 540, "meta": { "origin": "user", "shape": "rectangle" } },
+    { "id": "g-ui", "type": "group", "label": "UI · components/canvas", "x": 820, "y": 0, "width": 320, "height": 1010, "meta": { "origin": "user", "shape": "rectangle" } },
+
+    { "id": "n-schema", "type": "file", "file": "docs/architecture/schema.md", "x": 30, "y": 60, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-1-on-disk-schema" } } },
+    { "id": "n-frontmatter", "type": "file", "file": "docs/architecture/frontmatter.md", "x": 30, "y": 290, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
+    { "id": "n-adapter", "type": "file", "file": "docs/architecture/adapter.md", "x": 30, "y": 520, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-2-canvas-rendering-engine" } } },
+    { "id": "n-edges", "type": "file", "file": "docs/architecture/edges.md", "x": 30, "y": 750, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-6-edge-derivation-provenance" } } },
+    { "id": "n-brief", "type": "file", "file": "docs/architecture/brief.md", "x": 30, "y": 980, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "the-agent-contract" } } },
+
+    { "id": "n-store", "type": "file", "file": "docs/architecture/store.md", "x": 450, "y": 60, "width": 240, "height": 150, "parentId": "g-state", "color": "5", "meta": { "origin": "user", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
+
+    { "id": "n-api", "type": "file", "file": "docs/architecture/api.md", "x": 450, "y": 410, "width": 240, "height": 150, "parentId": "g-backend", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
+    { "id": "n-guard", "type": "file", "file": "docs/architecture/fs-guard.md", "x": 450, "y": 660, "width": 240, "height": 150, "parentId": "g-backend", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
+
+    { "id": "n-shell", "type": "file", "file": "docs/architecture/canvas-shell.md", "x": 850, "y": 60, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-3-application-shape" } } },
+    { "id": "n-reader", "type": "file", "file": "docs/architecture/reader.md", "x": 850, "y": 290, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-4-markdown-rendering-split-perf" } } },
+    { "id": "n-export", "type": "file", "file": "docs/architecture/export-import.md", "x": 850, "y": 520, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "solution-overview" } } },
+    { "id": "n-comments", "type": "file", "file": "docs/architecture/comments.md", "x": 850, "y": 750, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-5-comment-model" } } },
+
+    { "id": "n-design", "type": "file", "file": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "x": 420, "y": 960, "width": 380, "height": 260, "color": "5", "meta": { "origin": "user" } },
+
+    { "id": "n-jsoncanvas", "type": "link", "url": "https://jsoncanvas.org", "x": 0, "y": -160, "width": 300, "height": 90, "color": "6", "meta": { "origin": "user" } },
+    { "id": "n-reactflow", "type": "link", "url": "https://reactflow.dev", "x": 340, "y": -160, "width": 300, "height": 90, "color": "6", "meta": { "origin": "user" } },
+
+    { "id": "n-loop", "type": "text", "text": "## Agent loop\nExport packs the board into a self-contained **DesignBrief** → the agent answers with an **AgentResponse** → Import runs the idempotent id-keyed merge. The brief embeds parsed frontmatter + body, so the agent needs no filesystem access.", "x": 1200, "y": 0, "width": 300, "height": 230, "color": "#5ef2ff", "meta": { "origin": "user" } }
   ],
   "edges": [
-    {
-      "id": "lk:n-welcome->n-schema",
-      "fromNode": "n-welcome",
-      "toNode": "n-schema",
-      "toEnd": "arrow",
-      "label": "links",
-      "color": "6",
-      "meta": {
-        "origin": "links"
-      }
-    }
+    { "id": "e-adapter-schema", "fromNode": "n-adapter", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-brief-schema", "fromNode": "n-brief", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-edges-schema", "fromNode": "n-edges", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-store-adapter", "fromNode": "n-store", "toNode": "n-adapter", "toEnd": "arrow", "label": "toReactFlow", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-store-brief", "fromNode": "n-store", "toNode": "n-brief", "toEnd": "arrow", "label": "buildBrief · applyResponse", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-store-edges", "fromNode": "n-store", "toNode": "n-edges", "toEnd": "arrow", "label": "deriveLinkEdges", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-store-api", "fromNode": "n-store", "toNode": "n-api", "toEnd": "arrow", "label": "GET/POST fs", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-shell-store", "fromNode": "n-shell", "toNode": "n-store", "toEnd": "arrow", "label": "subscribe", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-shell-reader", "fromNode": "n-shell", "toNode": "n-reader", "toEnd": "arrow", "label": "opens", "meta": { "origin": "user", "rel": "related" } },
+    { "id": "e-reader-api", "fromNode": "n-reader", "toNode": "n-api", "toEnd": "arrow", "label": "render md", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-export-store", "fromNode": "n-export", "toNode": "n-store", "toEnd": "arrow", "label": "brief · apply", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-comments-store", "fromNode": "n-comments", "toNode": "n-store", "toEnd": "arrow", "label": "comment actions", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-api-guard", "fromNode": "n-api", "toNode": "n-guard", "toEnd": "arrow", "label": "guardPath", "meta": { "origin": "user", "rel": "depends-on" } },
+    { "id": "e-api-frontmatter", "fromNode": "n-api", "toNode": "n-frontmatter", "toEnd": "arrow", "label": "gray-matter parse", "meta": { "origin": "user", "rel": "calls" } },
+    { "id": "e-brief-frontmatter", "fromNode": "n-brief", "toNode": "n-frontmatter", "toEnd": "arrow", "label": "embeds fm+body", "meta": { "origin": "user", "rel": "references" } },
+    { "id": "e-schema-design", "fromNode": "n-schema", "toNode": "n-design", "toEnd": "arrow", "label": "Decision 1", "meta": { "origin": "import", "rel": "derives-from" } },
+    { "id": "e-edges-design", "fromNode": "n-edges", "toNode": "n-design", "toEnd": "arrow", "label": "Decision 6", "meta": { "origin": "import", "rel": "derives-from" } }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.1",
+    "schemaVersion": "0.2",
     "session": {
-      "title": "Flowcanvas — Welcome",
-      "intent": "Default demo board for content nodes",
-      "createdAt": "2026-06-26T00:00:00Z",
-      "updatedAt": "2026-06-27T16:06:24.454Z",
-      "revision": 2
+      "title": "Flowcanvas — Initial Architecture (001)",
+      "intent": "Self-referential architecture board extracted from 001-initial-architecture-design.md",
+      "createdAt": "2026-06-28T00:00:00Z",
+      "updatedAt": "2026-06-28T00:00:00Z",
+      "revision": 1
     },
-    "comments": []
+    "comments": [
+      {
+        "id": "c-1",
+        "anchor": { "kind": "node", "nodeId": "n-store", "offsetX": 0.5, "offsetY": 0.1 },
+        "parentId": null,
+        "author": "human:david",
+        "text": "Should load() reconcile edges on every load, or cache the derived set?",
+        "createdAt": "2026-06-28T00:05:00Z",
+        "resolvedAt": null,
+        "badge": 1
+      }
+    ]
   }
 }

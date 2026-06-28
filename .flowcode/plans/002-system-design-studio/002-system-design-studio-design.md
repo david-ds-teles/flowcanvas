@@ -1,7 +1,7 @@
 ---
 name: 002-system-design-studio-design
 description: Design artifact for Flowcanvas System Design Studio (v2) — canvas-authoritative relation graph, agent-driven extraction import, typed linking, reference navigation, templates, MCP round-trip, change-review, and bundle export.
-status: draft
+status: approved
 tags: [design, architecture, decisions, canvas, agent, mcp]
 links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.md, .flowcode/plans/002-system-design-studio/002-system-design-studio-ui-design.md]
 ---
@@ -17,7 +17,7 @@ links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.m
 - **Reference navigation** (≤1 action), a **template library**, and **bundle export** (portable folder/zip) all read and write the one canvas graph — no second source to reconcile.
 - Scope — in: canvas-schema v2, extraction spec, agent-driven import, typed linking, reference navigation/hydration, templates, richer agent loop, MCP wire, change-review, `links:` demotion, bundle export, load-time reconcile. Out: in-app LLM chat, live file-watching, multi-level nesting (plus BL-003…BL-008).
 - Key decisions: source-of-truth → canvas-authoritative (content in md); import → agent-driven extraction; agent transport → MCP-native + harness-relay.
-- Status `draft`; author human (scope) + `flowcode:designer-agent` (technical depth); dated 2026-06-27. Sibling plan `002-system-design-studio-plan.md` created after this design is approved. Builds on plan 001 Phase 10 (multi-select + true groups, ELK, save/open-board).
+- Status `approved` (operator, 2026-06-27); author human (scope) + `flowcode:designer-agent` (technical depth). Sibling UI design `002-system-design-studio-ui-design.md` also approved (selected `05-studio-canvas.html`). Sibling plan `002-system-design-studio-plan.md` created after this design is approved. Builds on plan 001 Phase 10 (multi-select + true groups, ELK, save/open-board).
 
 ---
 

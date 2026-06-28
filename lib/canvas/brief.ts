@@ -21,8 +21,12 @@ import type {
   FileNode,
   LinkNode,
   TextNode,
+  RelationshipType,
+  NodeSource,
+  NodeShape,
 } from './jsoncanvas'
-import { nodeKind } from './jsoncanvas'
+import { nodeKind, REL_LABELS } from './jsoncanvas'
+import { extractRefs, type DocRef } from './refs'
 
 // ─────────────────────────── Direction A: DesignBrief (human → agent) ───────────────────────────
 
@@ -33,6 +37,10 @@ export interface BriefNode {
   path?: string                          // markdown/image/file — root-relative
   url?: string                           // link
   text?: string                          // note
+  label?: string                         // group — display label (v2)
+  parentId?: string                      // group membership (v2)
+  source?: NodeSource                    // provenance back to the source doc (v2, Decision 2)
+  refs?: DocRef[]                         // parsed frontmatter + body refs (v2, Decision 9)
   frontmatter?: Record<string, unknown>  // markdown — parsed
   body?: string                          // markdown — body WITHOUT frontmatter, embedded
   truncated?: boolean                    // body capped (> BODY_CAP) — agent may request full
@@ -42,6 +50,7 @@ export interface BriefEdge {
   from: string
   to: string
   label?: string
+  rel?: RelationshipType                 // typed relationship (v2, Decision 1)
   origin: EdgeOrigin
 }
 export interface BriefComment {
@@ -74,7 +83,7 @@ export interface GeneratedFile {
 }
 export interface AgentNode {
   id?: string                            // present + known → update; absent or new → create
-  type: 'file' | 'link' | 'text'
+  type: 'file' | 'link' | 'text' | 'group'
   x: number
   y: number
   width: number
@@ -82,6 +91,10 @@ export interface AgentNode {
   file?: string
   url?: string
   text?: string
+  label?: string                         // group — display label (v2)
+  shape?: NodeShape                      // group — outline shape (v2)
+  parentId?: string                      // group membership for the node (v2)
+  source?: NodeSource                    // provenance — extraction source doc (v2, Decision 2)
   color?: CanvasColor
 }
 export interface AgentEdge {
@@ -91,6 +104,7 @@ export interface AgentEdge {
   fromSide?: Side
   toSide?: Side
   label?: string
+  rel?: RelationshipType                 // typed relationship (v2, Decision 1)
 }
 export interface AgentComment {
   id?: string
@@ -131,8 +145,23 @@ Echo briefId from the brief (it is the concurrency token).
 Mint new ids with the "ag-" prefix; reuse an existing brief id to update that item.
 To add a markdown file: include it in generatedFiles (full content INCLUDING YAML frontmatter) AND a matching upsertNodes entry { type:"file", file:"<same path>" }.
 Reply to a comment by setting parentId to that comment's id from the brief and copying its anchor.
-Prefer frontmatter links: over manual edges for structural relationships; never reference a links: target that is neither an existing node nor a file you also generate.
-Keep coordinates on a 20px grid and place new nodes in empty regions (the brief's positions reveal the occupied layout).`
+Keep coordinates on a 20px grid and place new nodes in empty regions (the brief's positions reveal the occupied layout).
+
+EXTRACTION (design doc -> initial board):
+- Map each major concept / Module-Boundaries row / component to one node; each subsystem
+  cluster to a group node (type:"group", give it a label + optional shape, set members'
+  parentId to it). Map each documented relationship/arrow to a typed edge.
+- Decompose node content into small generated .md files (one per node) under
+  "<board-stem>.nodes/<slug>.md", each with frontmatter source: { path, anchor } pointing
+  back at the design doc + heading slug. For a pure view of one section, instead emit a
+  type:"file" node with subpath:"<anchor>" (no new file). Use type:"text" only for scratch.
+- Never inline document prose into the .canvas; never delete or rewrite the source doc.
+TYPED EDGES:
+- Set meta via the edge: choose rel from [references, depends-on, implements, derives-from,
+  calls, produces, informs, related]. Set label to a short human display (defaults to rel).
+  Do NOT invent rel values. Use containment (parentId) for "contains", not an edge.
+GROUPS:
+- type:"group" carries label, optional shape (rectangle|ellipse|diamond); children set parentId.`
 
 // ─────────────────────────── buildBrief (human → agent) ───────────────────────────
 
@@ -147,17 +176,25 @@ export function buildBrief(
   const nodes: BriefNode[] = doc.nodes.map((n) => {
     const kind: NodeKind = nodeKind(n)
     const position = { x: n.x, y: n.y, width: n.width, height: n.height }
+    const common = {
+      ...(n.parentId ? { parentId: n.parentId } : {}),
+      ...(n.meta?.source ? { source: n.meta.source } : {}),
+    }
     if (n.type === 'file') {
       const r = resolved.get(n.file)
-      return { id: n.id, kind, position, path: n.file, frontmatter: r?.frontmatter, body: r?.body, truncated: r?.truncated }
+      const refs: DocRef[] = extractRefs(n.file, r?.frontmatter, r?.body)
+      return { id: n.id, kind, position, path: n.file, frontmatter: r?.frontmatter, body: r?.body,
+        truncated: r?.truncated, ...(refs.length ? { refs } : {}), ...common }
     }
-    if (n.type === 'link') return { id: n.id, kind, position, url: n.url }
-    if (n.type === 'text') return { id: n.id, kind, position, text: n.text }
-    return { id: n.id, kind, position }
+    if (n.type === 'link') return { id: n.id, kind, position, url: n.url, ...common }
+    if (n.type === 'text') return { id: n.id, kind, position, text: n.text, ...common }
+    return { id: n.id, kind, position, ...(n.label !== undefined ? { label: n.label } : {}), ...common } // group
   })
-  const edges: BriefEdge[] = doc.edges.map((e) => ({
-    id: e.id, from: e.fromNode, to: e.toNode, label: e.label, origin: e.meta?.origin ?? 'user',
-  }))
+  const edges: BriefEdge[] = doc.edges.map((e) => {
+    const origin = e.meta?.origin ?? 'user'
+    const rel: RelationshipType = e.meta?.rel ?? (origin === 'links' ? 'references' : 'related')
+    return { id: e.id, from: e.fromNode, to: e.toNode, label: e.label, rel, origin }
+  })
   const comments: BriefComment[] = doc.flowcanvas.comments.map((c) => ({
     id: c.id,
     threadId: c.parentId ?? c.id,
@@ -185,12 +222,22 @@ export function buildBrief(
 
 /** Build a `CanvasNode` from an agent node, carrying any prior meta and stamping origin:'agent'. */
 function nodeFromAgent(an: AgentNode, id: string, existing?: CanvasNode): CanvasNode {
+  const parentId = an.parentId ?? existing?.parentId   // agent may now set parentId (v2 groups); else keep existing membership
   const base = {
     id,
     x: an.x, y: an.y, width: an.width, height: an.height,
     ...(an.color ? { color: an.color } : existing?.color ? { color: existing.color } : {}),
-    ...(existing?.parentId ? { parentId: existing.parentId } : {}),   // keep group membership across an agent update (AgentNode carries no parentId)
-    meta: { ...existing?.meta, origin: 'agent' as const },
+    ...(parentId ? { parentId } : {}),
+    meta: { ...existing?.meta, origin: 'agent' as const, ...(an.source ? { source: an.source } : {}) },
+  }
+  if (an.type === 'group') {
+    return {
+      ...base,
+      type: 'group',
+      ...(an.label !== undefined ? { label: an.label }
+        : existing?.type === 'group' && existing.label !== undefined ? { label: existing.label } : {}),
+      meta: { ...base.meta, ...(an.shape ? { shape: an.shape } : {}) },
+    }
   }
   if (an.type === 'file') return { ...base, type: 'file', file: an.file ?? (existing as FileNode | undefined)?.file ?? '' }
   if (an.type === 'link') return { ...base, type: 'link', url: an.url ?? (existing as LinkNode | undefined)?.url ?? '' }
@@ -251,11 +298,14 @@ export function applyResponse(
   for (const ae of resp.upsertEdges ?? []) {
     if (ae.id && eById.has(ae.id)) {
       const existing = eById.get(ae.id)!
+      const rel: RelationshipType = ae.rel ?? existing.meta?.rel ?? 'related'
       const updated: CanvasEdge = {
         ...existing,
         fromNode: ae.fromNode, toNode: ae.toNode,
-        fromSide: ae.fromSide, toSide: ae.toSide, label: ae.label,
-        toEnd: existing.toEnd ?? 'arrow', meta: { ...existing.meta, origin: 'agent' },
+        fromSide: ae.fromSide, toSide: ae.toSide,
+        label: ae.label ?? existing.label ?? REL_LABELS[rel],
+        toEnd: existing.toEnd ?? 'arrow',
+        meta: { ...existing.meta, origin: 'agent', rel },
       }
       edges[edges.indexOf(existing)] = updated
       eById.set(ae.id, updated)
@@ -264,10 +314,12 @@ export function applyResponse(
     }
     if (pairs.has(pairOf(ae.fromNode, ae.toNode))) continue   // already covered — skip (idempotent)
     const id = ae.id ?? mintId('ag-')
+    const relNew: RelationshipType = ae.rel ?? 'related'
     const edge: CanvasEdge = {
       id, fromNode: ae.fromNode, toNode: ae.toNode,
-      fromSide: ae.fromSide, toSide: ae.toSide, label: ae.label,
-      toEnd: 'arrow', meta: { origin: 'agent' },
+      fromSide: ae.fromSide, toSide: ae.toSide,
+      label: ae.label ?? REL_LABELS[relNew],
+      toEnd: 'arrow', meta: { origin: 'agent', rel: relNew },
     }
     edges.push(edge)
     eById.set(id, edge)

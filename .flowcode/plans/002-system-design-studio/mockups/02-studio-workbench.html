@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas v2 — Studio Workbench (02)</title>
+<!--
+  002 System Design Studio — iteration 02 "studio-workbench".
+  Direction: a tri-pane model IDE — LEFT structure rail (outline/explorer + Templates tab),
+  CENTER dense Commerce Platform board (groups, typed edges, legend, minimap, controls),
+  RIGHT persistent inspector for the selected node (provenance + OUT/IN relations + refs),
+  with the agent surfaces (Submit / Change-review) rendering inside/over the right pane.
+  Ground truth: .flowcode/ui/ui-design-system.md (nyx) + mockups/04-nyx-neon.html (board/components)
+  + 002 mockups/01-studio-drawer.html (v2-surface CSS: relpick, badges, diff, lchip, mcp, tcard).
+  Self-contained, no external URLs/fonts. Desktop-only (>=1280, fluid).
+-->
+<style>
+  /* ───── nyx :root — copied verbatim from 04-nyx-neon, + documented status token --amber (§2.3) ───── */
+  :root{
+    --bg:#0b1326; --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33;
+    --c-high:#222a3d; --c-highest:#2d3449; --bright:#31394d;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --on-primary:#1000a9;
+    --secondary:#ddb7ff; --secondary-cont:#6f00be;
+    --tertiary:#ffb2b7; --tertiary-cont:#ff516a; --error:#ffb4ab;
+    --neon-cyan:#5ef2ff; --neon-lime:#b6f36a; --neon-rose:#ff8fb0; --amber:#f59f00;
+    --glass-fill:rgba(23,31,51,.55); --glass-fill-2:rgba(34,42,61,.62);
+    --glass-edge:linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
+    --glow-indigo:0 0 0 1px rgba(128,131,255,.35), 0 0 22px -6px rgba(128,131,255,.55);
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','Geist Mono',ui-monospace,'SF Mono',monospace;
+    --r-lg:16px; --r-md:8px; --r-sm:4px; --r-full:999px; --u:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);background:
+      radial-gradient(1200px 700px at 18% -10%, rgba(128,131,255,.16), transparent 60%),
+      radial-gradient(1000px 800px at 110% 120%, rgba(111,0,190,.18), transparent 55%), var(--bg);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased}
+
+  /* ───── state nav (toggles every state) ───── */
+  .statebar{position:sticky;top:0;z-index:80;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:9px 16px;background:rgba(6,14,32,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .statebar .brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--on-var);margin-right:auto}
+  .statebar .brand b{color:var(--primary);font-weight:600}
+  .statebar button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:7px 11px;min-height:34px;border-radius:var(--r-md);cursor:pointer;
+    transition:border-color .14s ease,color .14s ease,box-shadow .14s ease}
+  .statebar button:hover{color:var(--on);box-shadow:var(--glow-indigo)}
+  .statebar button[aria-current="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);box-shadow:var(--glow-indigo)}
+  .statebar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ───── app shell — tri-pane workbench ───── */
+  .app{position:relative;height:calc(100vh - 52px);overflow:hidden;display:flex;flex-direction:column}
+
+  /* toolbar (fixed 56px top strip over the void) */
+  .toolbar{flex:0 0 auto;height:56px;z-index:40;display:flex;align-items:center;gap:6px;padding:0 14px;
+    background:rgba(11,19,38,.6);backdrop-filter:blur(20px);border-bottom:1px solid var(--outline-var)}
+  .ttitle{font-family:var(--mono);font-size:12px;color:var(--on-var);margin-right:6px;letter-spacing:.05em;display:flex;gap:8px;align-items:center;white-space:nowrap}
+  .ttitle .dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--neon-cyan);box-shadow:0 0 10px var(--neon-cyan)}
+  .tdiv{width:1px;height:26px;background:var(--outline-var);margin:0 4px;flex:0 0 auto}
+  .tspring{margin-left:auto}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;height:38px;min-width:38px;justify-content:center;padding:0 10px;
+    border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);
+    font-family:var(--ui);font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}
+  .tbtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tbtn:active{transform:scale(.97)}
+  .tbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .tbtn .kbd{font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px}
+  .tbtn.primary{background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .tbtn[aria-pressed="true"]{border-color:transparent;color:#fff;background:linear-gradient(135deg,rgba(128,131,255,.9),rgba(94,242,255,.5));box-shadow:0 0 18px -2px rgba(94,242,255,.5)}
+  .save-dot{width:8px;height:8px;border-radius:var(--r-full);background:var(--tertiary-cont);box-shadow:0 0 10px var(--tertiary-cont)}
+  .seg{display:flex;border:1px solid var(--outline-var);border-radius:var(--r-md);overflow:hidden;flex:0 0 auto}
+  .seg .tbtn{border:0;border-radius:0;background:transparent;height:36px;min-width:40px;padding:0 11px}
+  .seg .tbtn + .tbtn{border-left:1px solid var(--outline-var)}
+  /* add-node menu (glass popover) */
+  .menu-wrap{position:relative}
+  .menu{position:absolute;top:46px;left:0;z-index:60;min-width:212px;padding:6px;display:none;border:1px solid transparent;border-radius:var(--r-md);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;backdrop-filter:blur(40px)}
+  .app[data-menu="open"] .menu{display:block}
+  .menu button{display:flex;width:100%;gap:10px;align-items:center;padding:9px 10px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--on);font-family:var(--ui);font-size:13px;cursor:pointer;text-align:left}
+  .menu button:hover{background:rgba(255,255,255,.06)}
+  .menu button svg{width:15px;height:15px;stroke:var(--primary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .menu button small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.04em}
+  .menu button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+  /* MCP status pill (from 01) */
+  .mcp{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 10px;color:var(--on-var)}
+  .mcp .d{width:7px;height:7px;border-radius:var(--r-full)}
+  .mcp.ok .d{background:var(--neon-lime);box-shadow:0 0 8px var(--neon-lime)}
+  .mcp.off .d{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+
+  /* tri-pane body */
+  .workbench{flex:1;display:flex;min-height:0;position:relative}
+
+  /* ════ LEFT structure rail (glass) ════ */
+  .rail{width:260px;flex:0 0 auto;position:relative;display:flex;flex-direction:column;overflow:hidden;
+    border-right:1px solid transparent;backdrop-filter:blur(20px);
+    background-image:linear-gradient(rgba(11,19,38,.74),rgba(11,19,38,.74)),linear-gradient(160deg,rgba(128,131,255,.30),rgba(255,255,255,.03) 60%,rgba(94,242,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box}
+  .rail-tabs{display:flex;gap:6px;padding:12px 12px 0}
+  .rail-tabs button{flex:1;height:34px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.4);color:var(--on-var);
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-content:center;
+    transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}
+  .rail-tabs button svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .rail-tabs button[aria-selected="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .rail-tabs button:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .rail-tabs button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .rail-pane{flex:1;overflow:auto;padding:12px}
+  /* show structure vs templates pane */
+  .app[data-rail="structure"] .rail-pane.templates,
+  .app[data-rail="templates"] .rail-pane.structure{display:none}
+  /* tree filter */
+  .tfilterbar{position:relative;margin-bottom:12px}
+  .tfilterbar svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--outline);fill:none;stroke-width:1.6}
+  .tfilterbar input{width:100%;height:34px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(6,14,32,.55);color:var(--on);
+    font-family:var(--mono);font-size:11px;padding:0 10px 0 30px;transition:border-color .14s ease,box-shadow .14s ease}
+  .tfilterbar input::placeholder{color:var(--outline)}
+  .tfilterbar input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  /* tree groups + nodes (outline/explorer) */
+  .tsec{margin-bottom:4px}
+  .tgrp{display:flex;width:100%;gap:8px;align-items:center;padding:7px 8px;border:0;background:transparent;cursor:pointer;border-radius:var(--r-sm);
+    font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);transition:background-color .14s ease}
+  .tgrp:hover{background:rgba(128,131,255,.08)}
+  .tgrp:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+  .tgrp .chev{width:12px;height:12px;stroke:var(--primary);fill:none;stroke-width:1.8;flex:0 0 auto;transition:transform .14s ease}
+  .tgrp[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+  .tgrp .gname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tgrp .gcount{margin-left:auto;font-size:9px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-full);padding:0 6px;letter-spacing:0}
+  .tkids{padding:2px 0 6px 8px;margin-left:5px;border-left:1px solid var(--outline-var)}
+  .tgrp[aria-expanded="false"] + .tkids{display:none}
+  .titem{display:flex;width:100%;gap:8px;align-items:center;padding:6px 8px;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;cursor:pointer;
+    color:var(--on-var);font-family:var(--ui);font-size:12px;transition:background-color .14s ease,border-color .14s ease,color .14s ease}
+  .titem:hover{background:rgba(255,255,255,.05);color:var(--on)}
+  .titem:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+  .titem.sel{color:#fff;border-color:transparent;background:linear-gradient(135deg,rgba(128,131,255,.28),rgba(94,242,255,.12));box-shadow:inset 0 0 0 1px rgba(128,131,255,.4)}
+  .titem .kg{width:15px;height:15px;flex:0 0 auto;stroke-width:1.6;fill:none}
+  .kg.md{stroke:var(--neon-cyan)} .kg.doc{stroke:var(--primary)} .kg.link{stroke:var(--secondary)} .kg.img{stroke:var(--neon-lime)} .kg.note{stroke:var(--neon-cyan)}
+  .titem .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .titem .rc{margin-left:auto;flex:0 0 auto;font-family:var(--mono);font-size:9px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-full);min-width:18px;text-align:center;padding:0 4px}
+  .titem.sel .rc{color:var(--neon-cyan);border-color:rgba(94,242,255,.45)}
+
+  /* ════ Templates pane (docked in the rail) ════ */
+  .tphead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .tphead b{font-size:13px}
+  .tfilter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+  .tfilter button{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:4px 9px;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease,color .14s ease}
+  .tfilter button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .tfilter button:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tfilter button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tcard{border:1px solid var(--outline-var);border-radius:var(--r-md);padding:11px;background:rgba(6,14,32,.4);cursor:grab;margin-bottom:10px;transition:box-shadow .14s ease,border-color .14s ease}
+  .tcard:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tcard:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .tcard .tkind{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--neon-cyan)}
+  .tcard h4{margin:5px 0 3px;font-size:13px}
+  .tcard p{font-size:11px;color:var(--on-var);margin:0 0 8px;line-height:1.45}
+  .tcard .mini{height:50px;border-radius:var(--r-sm);border:1px dashed var(--outline-var);background:radial-gradient(rgba(146,143,160,.16) 1px,transparent 1px);background-size:10px 10px;position:relative}
+  .tcard .mini b{position:absolute;border-radius:3px;background:rgba(192,193,255,.5);display:block}
+  .tcard .mini i.ln{position:absolute;height:0;border-top:1.4px solid var(--neon-cyan);transform-origin:left center}
+  .tadd{margin-top:8px;width:100%;height:32px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on);font-size:12px;cursor:pointer;transition:box-shadow .14s ease,border-color .14s ease}
+  .tadd:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .tadd:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ════ CENTER canvas ════ */
+  .center{flex:1;position:relative;overflow:hidden;min-width:0}
+  .boardscroll{position:absolute;inset:0;overflow:auto}
+  .board{position:relative;width:1140px;height:680px;
+    background-image:radial-gradient(rgba(146,143,160,.16) 1px, transparent 1.4px);background-size:22px 22px;background-position:11px 11px}
+  .app.dim .board{filter:saturate(.92) brightness(.9)}
+
+  /* edges — strokes routed through CSS classes so every colour resolves to a token */
+  .edges{position:absolute;inset:0;width:1140px;height:680px;pointer-events:none;z-index:5}
+  .e-user{stroke:var(--primary);stroke-width:1.6;fill:none}
+  .e-agent{stroke:url(#g-agent);stroke-width:2;fill:none;filter:drop-shadow(0 0 5px rgba(94,242,255,.7))}
+  .e-link{stroke:var(--outline);stroke-width:1.5;stroke-dasharray:5 4;fill:none}
+  .e-import{stroke:var(--secondary);stroke-width:1.6;stroke-dasharray:6 4;fill:none;filter:drop-shadow(0 0 5px rgba(221,183,255,.5))}
+  .mk-user{stroke:var(--primary);fill:none;stroke-width:1.6}
+  .mk-link{stroke:var(--outline);fill:none;stroke-width:1.4}
+  .mk-agent{stroke:var(--neon-cyan);fill:none;stroke-width:1.7}
+  .mk-import{stroke:var(--secondary);fill:none;stroke-width:1.6}
+  .gs-cyan{stop-color:var(--neon-cyan)} .gs-violet{stop-color:var(--secondary)}
+
+  /* typed edge label — rel eyebrow (mono) + display label */
+  .elabel{position:absolute;z-index:6;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--on-var);
+    padding:3px 7px;border-radius:var(--r-full);white-space:nowrap;background:rgba(13,21,40,.85);border:1px solid var(--outline-var);display:flex;gap:6px;align-items:center;cursor:pointer;
+    transition:box-shadow .14s ease,border-color .14s ease}
+  .elabel:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .elabel:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .elabel .rel{font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary)}
+  .elabel .lock{font-size:9px;opacity:.85}
+  .elabel.user{color:#e7e7ff;border-color:rgba(128,131,255,.5)}
+  .elabel.agent{color:#062a30;background:linear-gradient(135deg,var(--neon-cyan),var(--secondary));border-color:transparent;box-shadow:0 0 16px -3px rgba(94,242,255,.6)}
+  .elabel.agent .rel{color:#06222a}
+  .elabel.import{color:#fff;border-color:rgba(221,183,255,.5);background:rgba(111,0,190,.32)}
+  .elabel.import .rel{color:var(--secondary)}
+
+  /* group container */
+  .group{position:absolute;border-radius:var(--r-lg);border:1px dashed rgba(128,131,255,.4);background:linear-gradient(180deg,rgba(128,131,255,.07),rgba(94,242,255,.03));z-index:2}
+  .group > .glabel{position:absolute;top:-13px;left:18px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);
+    padding:3px 10px;border-radius:var(--r-full);background:rgba(11,19,38,.92);border:1px solid rgba(128,131,255,.45);display:flex;gap:7px;align-items:center}
+  .group > .glabel svg{width:12px;height:12px;stroke:var(--primary);fill:none;stroke-width:1.6}
+
+  /* node base (glass) */
+  .node{position:absolute;z-index:10;border-radius:var(--r-lg);overflow:hidden;border:1px solid transparent;backdrop-filter:blur(16px);
+    background-image:linear-gradient(var(--glass-fill),var(--glass-fill)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    transition:box-shadow .14s ease,border-color .14s ease;display:flex;flex-direction:column}
+  .node:hover{box-shadow:var(--glow-indigo)}
+  .node.selected{box-shadow:0 0 0 2px var(--primary),0 0 26px -4px rgba(192,193,255,.6)}
+  .node .hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--outline-var)}
+  .node .name{font-size:13px;font-weight:600;color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 5px;margin-left:auto;flex:0 0 auto}
+  .node .collapse{flex:0 0 auto;width:22px;height:22px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);cursor:pointer;font-size:13px;line-height:1;transition:color .14s ease,border-color .14s ease}
+  .node .collapse:hover{color:var(--on);border-color:var(--primary)}
+  .node .collapse:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .srcprov{display:flex;gap:6px;align-items:center;padding:6px 12px;font-family:var(--mono);font-size:9px;letter-spacing:.04em;color:var(--secondary);border-bottom:1px solid var(--outline-var);background:rgba(221,183,255,.06)}
+  .srcprov svg{width:11px;height:11px;stroke:var(--secondary);fill:none;stroke-width:1.6}
+  .fmrow{display:flex;flex-wrap:wrap;gap:5px;padding:7px 12px}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:var(--r-full);background:rgba(221,183,255,.14);color:var(--secondary);letter-spacing:.03em}
+  .chip.ok{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .chip.act{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:var(--r-sm);background:rgba(221,183,255,.12);color:var(--secondary)}
+  /* rendered markdown body */
+  .body{padding:5px 12px 10px;overflow:hidden;position:relative;flex:1}
+  .body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(transparent,var(--c))}
+  .body h1,.body h2,.body h3{margin:2px 0 4px;font-family:var(--mono);font-weight:600;color:var(--neon-cyan);letter-spacing:.01em}
+  .body h2,.body h3{font-size:11px}
+  .body p{margin:0 0 5px;font-size:11.5px;line-height:1.45;color:var(--on-var)}
+  .body p:last-child{margin-bottom:0}
+  .body strong{color:var(--on);font-weight:600}.body em{color:var(--secondary);font-style:italic}
+  .body ul{margin:0 0 5px;padding:0;list-style:none}
+  .body li{position:relative;padding-left:13px;font-size:11px;line-height:1.4;color:var(--on-var);margin-bottom:2px}
+  .body li::before{content:"";position:absolute;left:2px;top:6px;width:4px;height:4px;border-radius:1px;background:var(--neon-cyan);box-shadow:0 0 6px -1px var(--neon-cyan)}
+  .body code{font-family:var(--mono);font-size:10.5px;color:var(--neon-cyan);background:rgba(94,242,255,.1);padding:0 4px;border-radius:3px;border:1px solid rgba(94,242,255,.16)}
+  .node.collapsed .body,.node.collapsed .fmrow,.node.collapsed .srcprov{display:none}
+  /* image node */
+  .node.img .imgwrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:rgba(6,14,32,.5);overflow:hidden}
+  .node.img .imgwrap svg{width:86%;height:86%}
+  .node.img:hover .imgwrap::after{content:"drop to replace";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--neon-cyan);background:rgba(6,14,32,.55);border:1px dashed var(--neon-cyan);border-radius:var(--r-md)}
+  /* text/note node */
+  .text-node{position:absolute;z-index:10;border-radius:var(--r-lg);padding:12px 14px;backdrop-filter:blur(16px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.5),rgba(13,21,40,.5)),linear-gradient(135deg,rgba(94,242,255,.4),rgba(128,131,255,.12));background-origin:border-box;background-clip:padding-box,border-box}
+  .text-node .nt{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--neon-cyan)}
+  .text-node h3{margin:6px 0 4px;font-family:var(--mono);font-size:13px;color:var(--on)}
+  .text-node p{margin:0;font-size:11.5px;line-height:1.45;color:var(--on-var)}
+  .text-node ul{margin:6px 0 0;padding:0;list-style:none}
+  .text-node li{position:relative;padding-left:13px;font-size:11px;color:var(--on-var);margin-bottom:2px}
+  .text-node li::before{content:"";position:absolute;left:2px;top:6px;width:4px;height:4px;border-radius:1px;background:var(--neon-cyan)}
+  /* link node */
+  .link-node{position:absolute;z-index:10;display:flex;gap:10px;align-items:center;border-radius:var(--r-md);padding:0 14px;text-decoration:none;color:var(--on);
+    backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);transition:box-shadow .14s ease}
+  .link-node:hover{box-shadow:var(--glow-indigo)}
+  .link-node:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .link-node svg{width:16px;height:16px;stroke:var(--secondary);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .link-node .u{font-family:var(--mono);font-size:12px;color:var(--secondary)}
+  .link-node small{display:block;font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.08em;text-transform:uppercase}
+  .link-node .ext{margin-left:auto;color:var(--neon-cyan);font-size:13px;flex:0 0 auto}
+  /* handles */
+  .handle{position:absolute;width:9px;height:9px;border-radius:var(--r-full);background:var(--c-highest);border:1px solid var(--primary);z-index:11}
+  .handle.t{top:-4px;left:50%;margin-left:-4px}.handle.b{bottom:-4px;left:50%;margin-left:-4px}
+  .handle.l{left:-4px;top:50%;margin-top:-4px}.handle.r{right:-4px;top:50%;margin-top:-4px}
+  /* comment pin (teardrop) */
+  .pin{position:absolute;z-index:20;width:24px;height:24px;cursor:pointer;border:0;background:transparent;padding:0}
+  .pin i{position:absolute;inset:0;border-radius:var(--r-full) var(--r-full) 2px var(--r-full);background:linear-gradient(135deg,var(--tertiary-cont),#ff7a9c);
+    box-shadow:0 0 16px -2px rgba(255,81,106,.7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;font-style:normal}
+  .pin:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r-full)}
+
+  /* chrome — anchored to the center pane (overlay, not scrolled) */
+  .minimap{position:absolute;z-index:30;right:16px;bottom:16px;width:188px;height:120px;border-radius:var(--r-md);backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);overflow:hidden}
+  .minimap .mm-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(146,143,160,.18) 1px,transparent 1px);background-size:13px 13px}
+  .minimap b{position:absolute;border-radius:3px;display:block}
+  .controls{position:absolute;z-index:30;left:16px;bottom:16px;display:flex;flex-direction:column;gap:6px}
+  .controls button{width:34px;height:34px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.55);backdrop-filter:blur(16px);color:var(--on);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:box-shadow .14s ease}
+  .controls button:hover{box-shadow:var(--glow-indigo)}
+  .controls button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  /* legend — node kinds + edge origins + rel-eyebrow note */
+  .legend{position:absolute;z-index:30;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:14px;align-items:center;height:34px;padding:0 14px;border-radius:var(--r-full);
+    backdrop-filter:blur(16px);border:1px solid var(--outline-var);background:rgba(6,14,32,.62);font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:var(--on-var);white-space:nowrap}
+  .legend .lg-g{display:flex;gap:8px;align-items:center}
+  .legend .lg-g > b{color:var(--on);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:9px}
+  .legend .lg-g span{display:inline-flex;gap:5px;align-items:center}
+  .legend .nk{padding:0 5px;border-radius:var(--r-sm);font-size:8.5px;text-transform:uppercase}
+  .legend .nk.md{color:var(--neon-cyan);border:1px solid rgba(94,242,255,.4)}
+  .legend .nk.link{color:var(--secondary);border:1px solid rgba(221,183,255,.4)}
+  .legend .nk.img{color:var(--neon-lime);border:1px solid rgba(182,243,106,.4)}
+  .legend .nk.note{color:var(--on-var);border:1px solid var(--outline-var)}
+  .legend i{display:inline-block;width:18px;height:0}
+  .legend .lk{border-top:2px dashed var(--outline)}
+  .legend .us{border-top:2px solid var(--primary)}
+  .legend .ag{border-top:2px solid var(--neon-cyan);box-shadow:0 0 8px var(--neon-cyan)}
+  .legend .im{border-top:2px dashed var(--secondary)}
+  .legend .ldiv{width:1px;height:18px;background:var(--outline-var)}
+  .legend .note{color:var(--outline);font-size:8.5px;text-transform:uppercase;letter-spacing:.06em}
+
+  /* reconcile banner (amber, non-blocking) */
+  .reconcile-banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:35;display:none;gap:10px;align-items:center;max-width:700px;
+    font-size:12px;color:var(--on);padding:9px 12px;border-radius:var(--r-md);border:1px solid rgba(245,159,0,.5);background:rgba(245,159,0,.12);backdrop-filter:blur(16px);
+    box-shadow:0 20px 50px -24px rgba(0,0,0,.7)}
+  .app[data-reconcile="on"] .reconcile-banner{display:flex}
+  .reconcile-banner svg{width:16px;height:16px;stroke:var(--amber);fill:none;stroke-width:1.6;flex:0 0 auto}
+  .reconcile-banner b{color:var(--amber)}
+  .reconcile-banner .rb-actions{display:flex;gap:6px;margin-left:6px;flex:0 0 auto}
+  .reconcile-banner button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:5px 10px;border-radius:var(--r-sm);cursor:pointer;border:1px solid var(--outline-var);background:transparent;color:var(--on);transition:box-shadow .14s ease,border-color .14s ease}
+  .reconcile-banner button.resync{border-color:rgba(245,159,0,.6);color:var(--amber)}
+  .reconcile-banner button:hover{box-shadow:var(--glow-indigo)}
+  .reconcile-banner button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* rel picker (typed edge / inline relation edit) — reused from 01 */
+  .relpick{position:absolute;z-index:60;display:none;min-width:236px;padding:8px;right:336px;top:262px;border-radius:var(--r-md);
+    background-image:linear-gradient(rgba(13,21,40,.94),rgba(13,21,40,.94)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    backdrop-filter:blur(40px);box-shadow:0 24px 60px -20px rgba(0,0,0,.7),var(--glow-indigo)}
+  .app[data-rel="open"] .relpick{display:block}
+  .relpick .rp-h{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var);padding:2px 6px 8px;display:flex;align-items:center;gap:6px}
+  .relpick .rp-h .tgt{color:var(--primary);text-transform:none;letter-spacing:.02em}
+  .relpick .rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .relpick button.opt{font-family:var(--mono);font-size:11px;color:var(--on);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:6px 8px;cursor:pointer;text-align:left;transition:box-shadow .14s ease,border-color .14s ease,background-color .14s ease}
+  .relpick button.opt[aria-pressed="true"]{border-color:transparent;color:#fff;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .relpick button.opt:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .relpick button.opt:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  .relpick .rp-row{display:flex;gap:6px;margin-top:8px}
+  .relpick input{flex:1;height:32px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--ui);font-size:12px;padding:0 10px}
+  .relpick input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .relpick .rp-row .ok{width:34px;flex:0 0 auto;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--neon-lime);cursor:pointer}
+  .relpick .rp-row .ok:hover{box-shadow:var(--glow-indigo)}
+  .relpick .rp-row .ok:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ════ RIGHT inspector (glass, persistent) ════ */
+  .inspector{width:320px;flex:0 0 auto;position:relative;overflow:hidden;
+    border-left:1px solid transparent;backdrop-filter:blur(40px);
+    background-image:linear-gradient(rgba(11,19,38,.86),rgba(11,19,38,.86)),linear-gradient(200deg,rgba(94,242,255,.30),rgba(128,131,255,.12));
+    background-origin:border-box;background-clip:padding-box,border-box;box-shadow:-30px 0 80px -30px rgba(0,0,0,.55)}
+  .ipane{position:absolute;inset:0;display:none;flex-direction:column}
+  .app[data-panel="inspector"] .ipane.default,
+  .app[data-panel="submit"] .ipane.submit,
+  .app[data-panel="review"] .ipane.review{display:flex}
+  /* inspector header */
+  .ihd{flex:0 0 auto;padding:15px 16px;border-bottom:1px solid var(--outline-var)}
+  .ihd .nm{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .ihd .meta{display:flex;gap:7px;align-items:center;margin-top:7px}
+  .ihd .meta .kind{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:1px 6px}
+  .ihd .meta .selpill{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--neon-cyan);border:1px solid rgba(94,242,255,.4);border-radius:var(--r-full);padding:1px 8px}
+  .ibody{flex:1;overflow:auto;padding:14px 16px}
+  /* provenance */
+  .isrc{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--on-var);background:rgba(221,183,255,.08);border:1px solid rgba(221,183,255,.25);border-radius:var(--r-md);padding:9px 11px}
+  .isrc .lbl{color:var(--secondary);text-transform:uppercase;letter-spacing:.06em;font-size:8.5px}
+  .isrc .path{color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .isrc .foc{margin-left:auto;flex:0 0 auto;width:26px;height:26px;border-radius:var(--r-sm);border:1px solid rgba(221,183,255,.35);background:transparent;color:var(--neon-cyan);cursor:pointer;font-size:13px;transition:box-shadow .14s ease}
+  .isrc .foc:hover{box-shadow:0 0 14px -4px rgba(94,242,255,.6)}
+  .isrc .foc:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  /* relation sections */
+  .relsec{margin-top:16px}
+  .rl-h{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var);display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .rl-h svg{width:13px;height:13px;stroke:var(--primary);fill:none;stroke-width:1.6}
+  .rl-h .ct{margin-left:auto;color:var(--primary)}
+  .relrow{display:flex;gap:8px;align-items:center;padding:7px 9px;border:1px solid var(--outline-var);border-radius:var(--r-md);background:rgba(6,14,32,.4);margin-bottom:6px;transition:box-shadow .14s ease,border-color .14s ease}
+  .relrow:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .relrow .reye{font-family:var(--mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);border:1px solid rgba(128,131,255,.4);border-radius:var(--r-sm);padding:1px 5px;flex:0 0 auto}
+  .relrow.agent .reye{color:var(--neon-cyan);border-color:rgba(94,242,255,.45)}
+  .relrow.links .reye{color:var(--outline);border-color:var(--outline-var)}
+  .relrow .rtgt{font-size:12px;color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .relrow .edit{margin-left:auto;flex:0 0 auto;width:26px;height:26px;border-radius:var(--r-sm);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:color .14s ease,border-color .14s ease}
+  .relrow .edit svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .relrow .edit:hover{color:var(--on);border-color:var(--primary)}
+  .relrow .edit:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+  /* refs sub-section */
+  .refbox{display:flex;flex-wrap:wrap;gap:6px}
+  .lchip{display:inline-flex;gap:6px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--secondary);
+    border:1px solid rgba(221,183,255,.3);border-radius:var(--r-full);padding:3px 9px;cursor:pointer;background:transparent;
+    transition:box-shadow .14s ease,border-color .14s ease,background-color .14s ease}
+  .lchip .arr{color:var(--neon-cyan)}
+  .lchip:hover{box-shadow:0 0 14px -4px rgba(94,242,255,.6);border-color:rgba(94,242,255,.5)}
+  .lchip:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .lchip .st{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var)}
+  .lchip[data-on="true"]{border-color:var(--neon-lime);color:var(--neon-lime)}
+  .lchip[data-on="true"] .arr,.lchip[data-on="true"] .st{color:var(--neon-lime)}
+  /* inspector footer — agent affordances */
+  .iactions{flex:0 0 auto;display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--outline-var)}
+  .ibtn{flex:1;height:40px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(34,42,61,.5);color:var(--on);font-size:13px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;justify-content:center;transition:box-shadow .14s ease,border-color .14s ease}
+  .ibtn:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .ibtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ibtn.primary{background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;border-color:transparent}
+  .ibtn .ndot{font-family:var(--mono);font-size:10px;background:rgba(94,242,255,.18);color:var(--neon-cyan);border-radius:var(--r-full);padding:0 6px}
+
+  /* submit pane (inside the inspector) */
+  .pane-hd{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid var(--outline-var)}
+  .pane-hd b{font-size:14px}
+  .pane-hd .sub{font-family:var(--mono);font-size:9px;color:var(--on-var);letter-spacing:.06em;text-transform:uppercase}
+  .x{margin-left:auto;width:32px;height:32px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer;font-size:15px;flex:0 0 auto}
+  .x:hover{box-shadow:var(--glow-indigo)} .x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .pane-body{flex:1;overflow:auto;padding:14px 16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var);margin-bottom:6px}
+  textarea.intent{width:100%;min-height:120px;resize:vertical;border-radius:var(--r-md);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on);font-family:var(--ui);font-size:13px;line-height:1.5;padding:11px}
+  textarea.intent:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .scope{display:flex;gap:5px;flex-wrap:wrap}
+  .scope button{font-family:var(--mono);font-size:10px;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:6px 10px;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease,color .14s ease}
+  .scope button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .scope button:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .scope button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .snote{font-family:var(--mono);font-size:10px;color:var(--on-var);background:rgba(94,242,255,.06);border:1px solid rgba(94,242,255,.2);border-radius:var(--r-md);padding:9px 11px;line-height:1.5;margin-top:6px}
+  .snote code{color:var(--neon-cyan)}
+  .pane-foot{flex:0 0 auto;display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--outline-var)}
+  .btn-send{flex:1;height:40px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--primary-cont),#6f5bff);color:#fff;font-size:13px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;justify-content:center}
+  .btn-send:hover{box-shadow:var(--glow-indigo)} .btn-send:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .btn-send svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+  /* review pane (inside the inspector) — from 01 */
+  .filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+  .filters button{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-full);padding:5px 9px;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease,color .14s ease}
+  .filters button[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--primary-cont),#6f5bff)}
+  .filters button:hover{box-shadow:var(--glow-indigo);border-color:transparent}
+  .filters button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .stepper{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--on-var);margin-bottom:12px}
+  .stepper .pos{margin-left:auto;color:var(--on)}
+  .ghost{height:32px;min-width:32px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:transparent;color:var(--on);cursor:pointer;transition:box-shadow .14s ease}
+  .ghost:hover{box-shadow:var(--glow-indigo)} .ghost:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ritem{border:1px solid var(--outline-var);border-radius:var(--r-md);padding:10px 12px;margin-bottom:9px;background:rgba(6,14,32,.4);transition:box-shadow .14s ease,border-color .14s ease}
+  .ritem.active{border-color:transparent;box-shadow:var(--glow-indigo)}
+  .ritem .rt{display:flex;gap:7px;align-items:center;margin-bottom:5px}
+  .badge{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:var(--r-sm);flex:0 0 auto}
+  .badge.add{background:rgba(182,243,106,.14);color:var(--neon-lime)}
+  .badge.upd{background:rgba(94,242,255,.14);color:var(--neon-cyan)}
+  .badge.rem{background:rgba(255,81,106,.14);color:var(--tertiary-cont)}
+  .ritem .rn{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ritem .rk{font-family:var(--mono);font-size:9px;color:var(--on-var);margin-left:auto;flex:0 0 auto}
+  .ritem .rd{font-size:11.5px;color:var(--on-var);line-height:1.45}
+  .ritem .rd code{font-family:var(--mono);font-size:10.5px;color:var(--neon-cyan)}
+  .ritem .diff{font-family:var(--mono);font-size:10.5px;margin-top:7px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--outline-var)}
+  .diff .o{background:rgba(255,81,106,.08);color:var(--tertiary);padding:3px 9px}
+  .diff .n{background:rgba(182,243,106,.08);color:var(--neon-lime);padding:3px 9px}
+  .btn-rem{flex:0 0 auto;height:40px;padding:0 14px;border-radius:var(--r-md);border:1px solid rgba(255,81,106,.5);background:transparent;color:var(--tertiary-cont);font-size:12px;cursor:pointer;transition:box-shadow .14s ease}
+  .btn-rem:hover{box-shadow:0 0 16px -4px rgba(255,81,106,.55)}
+  .btn-rem:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .btn-ok{flex:1;height:40px;border-radius:var(--r-md);border:0;background:linear-gradient(135deg,var(--neon-lime),#8fd84a);color:#06220a;font-weight:600;font-size:12px;cursor:pointer}
+  .btn-ok:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* state frames (empty / loading / error) cover the whole workbench */
+  .frame{position:absolute;inset:0;z-index:55;display:none;align-items:center;justify-content:center;
+    background:rgba(6,14,32,.55);backdrop-filter:blur(6px)}
+  .app[data-state="empty"] .frame.empty,
+  .app[data-state="loading"] .frame.loading,
+  .app[data-state="error"] .frame.error{display:flex}
+  .frame .card{width:440px;text-align:center;padding:38px 32px;border-radius:var(--r-lg);backdrop-filter:blur(24px);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,21,40,.7),rgba(13,21,40,.7)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .frame .orb{width:60px;height:60px;margin:0 auto 18px;border-radius:var(--r-full);background:radial-gradient(circle at 35% 30%,var(--neon-cyan),var(--primary-cont) 55%,#3a0d8c);box-shadow:0 0 40px -6px rgba(128,131,255,.7)}
+  .frame h2{margin:0 0 8px;font-size:21px;letter-spacing:-.01em}
+  .frame p{margin:0 0 20px;color:var(--on-var);font-size:13px;line-height:1.5}
+  .frame code{font-family:var(--mono);font-size:12px;color:var(--neon-cyan)}
+  .frame .actions{display:flex;gap:10px;justify-content:center}
+  .spinner{width:34px;height:34px;border-radius:var(--r-full);border:3px solid var(--outline-var);border-top-color:var(--neon-cyan);margin:0 auto 16px;animation:spin 1s linear infinite}
+  .frame.error .card{border-color:rgba(255,81,106,.4)}
+  .frame.error h2{color:var(--tertiary-cont)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (prefers-reduced-motion: reduce){
+    .spinner{animation:none}.tbtn:active{transform:none}
+    .tgrp .chev{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ───── state nav: every state reachable + distinct ───── -->
+<nav class="statebar" aria-label="Mockup states">
+  <span class="brand"><b>02</b> · studio-workbench · tri-pane model IDE</span>
+  <button data-go="loaded" aria-current="true">Loaded</button>
+  <button data-go="submit">Submit</button>
+  <button data-go="review">Change-review</button>
+  <button data-go="typededge">Typed edge</button>
+  <button data-go="templates">Templates</button>
+  <button data-go="refnav">Ref-nav</button>
+  <button data-go="reconcile">Reconcile</button>
+  <button data-go="empty">Empty</button>
+  <button data-go="loading">Loading</button>
+  <button data-go="error">Error</button>
+</nav>
+
+<div class="app" data-state="loaded" data-rail="structure" data-panel="inspector" data-rel="closed" data-reconcile="off" data-menu="closed">
+
+  <!-- ════════ TOOLBAR ════════ -->
+  <header class="toolbar">
+    <span class="ttitle"><span class="dot"></span>commerce-platform.canvas</span>
+
+    <!-- mode segmented: select / connect / comment -->
+    <div class="seg" role="group" aria-label="Canvas modes">
+      <button class="tbtn" data-testid="toolbar-select" data-mode="select" aria-pressed="true" aria-label="Select and move">
+        <svg viewBox="0 0 24 24"><path d="M5 3l6 16 2-7 7-2z"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-connect" data-mode="connect" aria-pressed="false" aria-label="Connect nodes (draw edge)">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+      <button class="tbtn" data-testid="toolbar-comment" data-mode="comment" aria-pressed="false" aria-label="Comment mode">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg></button>
+    </div>
+
+    <span class="tdiv"></span>
+
+    <!-- add node / shape -->
+    <div class="menu-wrap">
+      <button class="tbtn" id="addBtn" data-testid="toolbar-add-node" aria-haspopup="true" aria-expanded="false" aria-label="Add node or shape">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add</span><svg viewBox="0 0 24 24" style="width:12px"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="menu" role="menu" aria-label="Add node or shape">
+        <button role="menuitem" data-testid="add-node-md"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg>Markdown file…<small>repo</small></button>
+        <button role="menuitem" data-testid="add-node-note"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Note (text)</button>
+        <button role="menuitem" data-testid="add-node-rect"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Rectangle / group</button>
+        <button role="menuitem" data-testid="add-node-image"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg>Image…<small>upload</small></button>
+        <button role="menuitem" data-testid="add-node-link"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>Link…</button>
+      </div>
+    </div>
+
+    <!-- templates dock opens in the LEFT rail -->
+    <button class="tbtn" data-go="templates" data-testid="toolbar-templates" aria-label="Template library">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg><span>Templates</span></button>
+    <button class="tbtn" data-testid="toolbar-bundle" aria-label="Export portable bundle">
+      <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span>Bundle</span></button>
+
+    <span class="tspring"></span>
+
+    <span class="mcp ok" data-testid="submit-mcp-status" title="MCP sidecar connected"><span class="d"></span>MCP ready</span>
+    <button class="tbtn" data-testid="toolbar-fit-view" aria-label="Fit view">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="tbtn" data-testid="toolbar-save" aria-label="Save board (unsaved changes)">
+      <span class="save-dot" title="unsaved changes"></span><span>Save</span><span class="kbd">⌘S</span></button>
+    <button class="tbtn primary" data-go="submit" data-testid="toolbar-submit" aria-label="Submit round to agent">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Submit</span><span class="kbd">⌘↵</span></button>
+  </header>
+
+  <!-- ════════ TRI-PANE BODY ════════ -->
+  <div class="workbench">
+
+    <!-- ════ LEFT structure rail ════ -->
+    <aside class="rail" aria-label="Design graph structure">
+      <div class="rail-tabs" role="tablist" aria-label="Rail view">
+        <button role="tab" data-rail-tab="structure" aria-selected="true">
+          <svg viewBox="0 0 24 24"><path d="M4 6h7M4 12h12M4 18h9"/></svg>Structure</button>
+        <button role="tab" data-rail-tab="templates" aria-selected="false">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg>Templates</button>
+      </div>
+
+      <!-- STRUCTURE pane: the design graph as an outline/explorer -->
+      <div class="rail-pane structure">
+        <div class="tfilterbar">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="search" data-testid="tree-filter" placeholder="Filter nodes…" aria-label="Filter structure tree">
+        </div>
+
+        <div class="tsec">
+          <button class="tgrp" data-testid="tree-group" aria-expanded="true"><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="gname">EDGE</span><span class="gcount">2</span></button>
+          <div class="tkids">
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">api-gateway</span><span class="rc">2</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">web-bff</span><span class="rc">1</span></button>
+          </div>
+        </div>
+
+        <div class="tsec">
+          <button class="tgrp" data-testid="tree-group" aria-expanded="true"><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="gname">CORE SERVICES</span><span class="gcount">4</span></button>
+          <div class="tkids">
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">auth-service</span><span class="rc">2</span></button>
+            <button class="titem sel" data-testid="tree-node" aria-current="true"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">order-service</span><span class="rc">6</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">payment-service</span><span class="rc">2</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">inventory-service</span><span class="rc">1</span></button>
+          </div>
+        </div>
+
+        <div class="tsec">
+          <button class="tgrp" data-testid="tree-group" aria-expanded="true"><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="gname">DATA &amp; EVENTS</span><span class="gcount">3</span></button>
+          <div class="tkids">
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">orders-db</span><span class="rc">3</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">event-bus</span><span class="rc">1</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg md" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg><span class="tn">cache</span><span class="rc">1</span></button>
+          </div>
+        </div>
+
+        <div class="tsec">
+          <button class="tgrp" data-testid="tree-group" aria-expanded="true"><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="gname">EXTERNAL</span><span class="gcount">2</span></button>
+          <div class="tkids">
+            <button class="titem" data-testid="tree-node"><svg class="kg link" viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg><span class="tn">stripe ↗</span><span class="rc">1</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg link" viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg><span class="tn">sendgrid ↗</span><span class="rc">0</span></button>
+          </div>
+        </div>
+
+        <div class="tsec">
+          <button class="tgrp" data-testid="tree-group" aria-expanded="true"><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="gname">LOOSE</span><span class="gcount">4</span></button>
+          <div class="tkids">
+            <button class="titem" data-testid="tree-node"><svg class="kg doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg><span class="tn">commerce-design.md</span><span class="rc">1</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg><span class="tn">order-schema.md</span><span class="rc">1</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg img" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.4"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg><span class="tn">sequence.png</span><span class="rc">0</span></button>
+            <button class="titem" data-testid="tree-node"><svg class="kg note" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg><span class="tn">SLOs</span><span class="rc">0</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEMPLATES pane: docked in the rail (opened by toolbar-templates) -->
+      <div class="rail-pane templates" data-testid="template-tray">
+        <div class="tphead">
+          <b>Templates</b>
+          <button class="x" data-go="loaded" data-testid="template-close" aria-label="Close templates" style="margin-left:auto">✕</button>
+        </div>
+        <div class="tfilter" role="group" aria-label="Template kind">
+          <button data-testid="template-kind-filter" aria-pressed="true">all</button>
+          <button data-testid="template-kind-filter" aria-pressed="false">node</button>
+          <button data-testid="template-kind-filter" aria-pressed="false">diagram</button>
+          <button data-testid="template-kind-filter" aria-pressed="false">document</button>
+        </div>
+
+        <div class="tcard" draggable="true" tabindex="0" data-testid="template-card">
+          <span class="tkind">diagram</span><h4>Service + DB + Cache</h4><p>3 nodes, typed depends-on edges.</p>
+          <div class="mini">
+            <b style="left:10px;top:8px;width:30px;height:14px"></b><b style="left:120px;top:8px;width:30px;height:14px"></b><b style="left:64px;top:30px;width:30px;height:14px"></b>
+            <i class="ln" style="left:40px;top:15px;width:80px"></i><i class="ln" style="left:79px;top:22px;width:0;height:8px;border-top:0;border-left:1.4px solid #5ef2ff"></i>
+          </div>
+          <button class="tadd" data-testid="template-instantiate">+ Instantiate</button>
+        </div>
+        <div class="tcard" draggable="true" tabindex="0" data-testid="template-card">
+          <span class="tkind">diagram</span><h4>Group: subsystem</h4><p>Group container + 4 member slots.</p>
+          <div class="mini"><b style="left:8px;top:6px;width:150px;height:38px;background:rgba(128,131,255,.18)"></b>
+            <b style="left:16px;top:14px;width:26px;height:10px"></b><b style="left:50px;top:14px;width:26px;height:10px"></b><b style="left:84px;top:14px;width:26px;height:10px"></b><b style="left:118px;top:14px;width:26px;height:10px"></b></div>
+          <button class="tadd" data-testid="template-instantiate">+ Instantiate</button>
+        </div>
+        <div class="tcard" draggable="true" tabindex="0" data-testid="template-card">
+          <span class="tkind">document</span><h4>ADR scaffold</h4><p>md node + frontmatter source provenance.</p>
+          <div class="mini"><b style="left:48px;top:12px;width:70px;height:24px"></b></div>
+          <button class="tadd" data-testid="template-instantiate">+ Instantiate</button>
+        </div>
+        <div class="tcard" draggable="true" tabindex="0" data-testid="template-card">
+          <span class="tkind">node</span><h4>External system</h4><p>Link node + informs edge back to a service.</p>
+          <div class="mini"><b style="left:40px;top:16px;width:80px;height:18px;background:rgba(221,183,255,.55)"></b></div>
+          <button class="tadd" data-testid="template-instantiate">+ Instantiate</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ════ CENTER canvas ════ -->
+    <section class="center" aria-label="Design canvas">
+      <div class="boardscroll">
+      <div class="board">
+
+        <!-- typed edges (origin styles: links dashed+lock, user solid indigo, agent neon gradient+glow, import violet dashed) -->
+        <svg class="edges" viewBox="0 0 1140 680" aria-hidden="true">
+          <defs>
+            <marker id="ar-user" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="mk-user" d="M1 1L8 4.5L1 8"/></marker>
+            <marker id="ar-link" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="mk-link" d="M1 1L8 4.5L1 8"/></marker>
+            <marker id="ar-agent" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path class="mk-agent" d="M1 1L8 5L1 9"/></marker>
+            <marker id="ar-import" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="mk-import" d="M1 1L8 4.5L1 8"/></marker>
+            <linearGradient id="g-agent" x1="0" y1="0" x2="1" y2="1"><stop class="gs-cyan" offset="0"/><stop class="gs-violet" offset="1"/></linearGradient>
+          </defs>
+          <!-- 1 api-gateway depends-on auth-service (user) -->
+          <path class="e-user" d="M240,135 C284,135 284,133 324,133" marker-end="url(#ar-user)"/>
+          <!-- 2 api-gateway calls POST /orders order-service (agent) -->
+          <path class="e-agent" d="M240,158 C292,158 292,248 324,248" marker-end="url(#ar-agent)"/>
+          <!-- 3 order-service calls charge payment-service (agent) -->
+          <path class="e-agent" d="M450,300 L450,326" marker-end="url(#ar-agent)"/>
+          <!-- 4 order-service produces order.created event-bus (agent) -->
+          <path class="e-agent" d="M576,240 C622,240 622,233 664,233" marker-end="url(#ar-agent)"/>
+          <!-- 5 order-service depends-on orders-db (user) -->
+          <path class="e-user" d="M576,214 C622,214 622,133 664,133" marker-end="url(#ar-user)"/>
+          <!-- 6 order-service implements contract order-schema.md (user) -->
+          <path class="e-user" d="M470,300 C470,420 450,470 450,540" marker-end="url(#ar-user)"/>
+          <!-- 7 payment-service calls stripe (agent) -->
+          <path class="e-agent" d="M576,363 C624,363 624,495 664,495" marker-end="url(#ar-agent)"/>
+          <!-- 8 inventory-service informs order-service (links, dashed) -->
+          <path class="e-link" d="M400,420 L400,300" marker-end="url(#ar-link)"/>
+          <!-- 9 auth-service derives-from commerce-design.md (import, dashed violet) -->
+          <path class="e-import" d="M540,96 C700,24 870,40 944,140" marker-end="url(#ar-import)"/>
+          <!-- 10 cache depends-on orders-db (user) -->
+          <path class="e-user" d="M770,300 L770,170" marker-end="url(#ar-user)"/>
+        </svg>
+
+        <!-- typed-edge labels: rel eyebrow (mono) + display label -->
+        <button class="elabel user" data-go="typededge" style="left:283px;top:131px"><span class="rel">depends-on</span></button>
+        <button class="elabel agent" data-go="typededge" data-testid="edge-rel-pill" style="left:300px;top:205px"><span class="rel">calls</span>POST /orders</button>
+        <button class="elabel agent" data-go="typededge" style="left:512px;top:313px"><span class="rel">calls</span>charge</button>
+        <button class="elabel agent" data-go="typededge" style="left:620px;top:230px"><span class="rel">produces</span>order.created</button>
+        <button class="elabel user" data-go="typededge" style="left:626px;top:172px"><span class="rel">depends-on</span></button>
+        <button class="elabel user" data-go="typededge" style="left:474px;top:430px"><span class="rel">implements</span>contract</button>
+        <button class="elabel agent" data-go="typededge" style="left:624px;top:430px"><span class="rel">calls</span></button>
+        <button class="elabel" data-go="typededge" style="left:400px;top:360px"><span class="lock">&#128274;</span><span class="rel">informs</span></button>
+        <button class="elabel import" data-go="typededge" style="left:742px;top:40px"><span class="rel">derives-from</span></button>
+        <button class="elabel user" data-go="typededge" style="left:770px;top:236px"><span class="rel">depends-on</span></button>
+
+        <!-- groups -->
+        <div class="group" style="left:24px;top:60px;width:240px;height:232px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>EDGE</span></div>
+        <div class="group" style="left:300px;top:60px;width:300px;height:452px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>CORE SERVICES</span></div>
+        <div class="group" style="left:640px;top:60px;width:260px;height:330px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>DATA &amp; EVENTS</span></div>
+        <div class="group" style="left:640px;top:430px;width:260px;height:182px"><span class="glabel"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>EXTERNAL</span></div>
+
+        <!-- EDGE group nodes -->
+        <article class="node md" style="left:48px;top:96px;width:192px;height:78px">
+          <div class="hd"><span class="name">api-gateway</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <article class="node md" style="left:48px;top:196px;width:192px;height:78px">
+          <div class="hd"><span class="name">web-bff</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+
+        <!-- CORE SERVICES group nodes -->
+        <article class="node md" style="left:324px;top:96px;width:252px;height:74px">
+          <div class="hd"><span class="name">auth-service</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+
+        <!-- order-service — SELECTED (described by the right inspector); rendered markdown body -->
+        <article class="node md selected" style="left:324px;top:196px;width:252px;height:104px">
+          <div class="hd"><span class="name">order-service</span><span class="kind">md</span>
+            <button class="collapse" data-testid="node-collapse-toggle" aria-label="Collapse node">–</button></div>
+          <div class="srcprov"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>source · commerce-design.md#order-lifecycle</div>
+          <div class="body"><h2>Order Lifecycle</h2>
+            <p>Coordinates <strong>checkout</strong> → payment → fulfilment.</p>
+            <ul><li>validates cart + auth</li><li>charges via <code>payment-service</code></li></ul></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <!-- comment pin anchored to the selected node -->
+        <button class="pin" data-testid="comment-pin" style="left:556px;top:184px" aria-label="Comment thread on order-service"><i>1</i></button>
+
+        <article class="node md" style="left:324px;top:326px;width:252px;height:74px">
+          <div class="hd"><span class="name">payment-service</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <article class="node md" style="left:324px;top:420px;width:252px;height:74px">
+          <div class="hd"><span class="name">inventory-service</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">service</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+
+        <!-- DATA & EVENTS group nodes -->
+        <article class="node md" style="left:664px;top:96px;width:212px;height:74px">
+          <div class="hd"><span class="name">orders-db</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="chip act">active</span><span class="tag">data</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <article class="node md" style="left:664px;top:196px;width:212px;height:74px">
+          <div class="hd"><span class="name">event-bus</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="tag">infra</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <article class="node md" style="left:664px;top:300px;width:212px;height:74px">
+          <div class="hd"><span class="name">cache</span><span class="kind">md</span></div>
+          <div class="fmrow"><span class="tag">infra</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+
+        <!-- EXTERNAL group: link nodes (dashed/lock origin handled by their edges) -->
+        <a class="link-node" style="left:664px;top:470px;width:212px;height:50px" href="#" aria-label="Open stripe.com (external)">
+          <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>
+          <span><span class="u">stripe.com</span><small>link · payments</small></span><span class="ext">↗</span></a>
+        <a class="link-node" style="left:664px;top:536px;width:212px;height:50px" href="#" aria-label="Open sendgrid.com (external)">
+          <svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>
+          <span><span class="u">sendgrid.com</span><small>link · email</small></span><span class="ext">↗</span></a>
+
+        <!-- LOOSE: source design doc (provenance), document node, image, note -->
+        <article class="node md" style="left:944px;top:96px;width:172px;height:150px">
+          <div class="hd"><span class="name">commerce-design.md</span><span class="kind">md</span></div>
+          <div class="srcprov"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>source doc · provenance</div>
+          <div class="body"><h2>Commerce Platform</h2><p>Design doc this board was <em>extracted</em> from.</p></div>
+        </article>
+        <article class="node md" style="left:324px;top:540px;width:252px;height:96px">
+          <div class="hd"><span class="name">order-schema.md</span><span class="kind">doc</span></div>
+          <div class="fmrow"><span class="chip ok">contract</span><span class="tag">schema</span><span class="tag">openapi</span></div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </article>
+        <figure class="node img" style="left:48px;top:300px;width:236px;height:150px;margin:0">
+          <div class="hd"><span class="name">sequence.png</span><span class="kind">img</span></div>
+          <div class="imgwrap">
+            <svg viewBox="0 0 140 80" aria-label="checkout sequence diagram">
+              <line x1="22" y1="12" x2="22" y2="70" stroke="#5ef2ff" stroke-width="1.2"/>
+              <line x1="70" y1="12" x2="70" y2="70" stroke="#c0c1ff" stroke-width="1.2"/>
+              <line x1="118" y1="12" x2="118" y2="70" stroke="#ddb7ff" stroke-width="1.2"/>
+              <rect x="14" y="6" width="16" height="8" rx="2" fill="none" stroke="#5ef2ff" stroke-width="1.2"/>
+              <rect x="62" y="6" width="16" height="8" rx="2" fill="none" stroke="#c0c1ff" stroke-width="1.2"/>
+              <rect x="110" y="6" width="16" height="8" rx="2" fill="none" stroke="#ddb7ff" stroke-width="1.2"/>
+              <path d="M22 28h48" stroke="#908fa0" stroke-width="1.1"/><path d="M70 44h48" stroke="#908fa0" stroke-width="1.1"/><path d="M118 58H22" stroke="#908fa0" stroke-width="1.1" stroke-dasharray="3 3"/>
+            </svg>
+          </div>
+          <span class="handle t"></span><span class="handle r"></span><span class="handle b"></span><span class="handle l"></span>
+        </figure>
+        <div class="text-node" style="left:48px;top:476px;width:236px;height:120px">
+          <span class="nt">text · note</span>
+          <h3>SLOs</h3>
+          <ul><li>order p99 &lt; 300ms</li><li>payment success &gt; 99.5%</li><li>checkout availability 99.95%</li></ul>
+        </div>
+
+      </div><!-- /board -->
+      </div><!-- /boardscroll -->
+
+      <!-- reconcile banner (amber, non-blocking) -->
+      <div class="reconcile-banner" data-testid="reconcile-banner" role="status">
+        <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>
+        <span><b>Disk diverged</b> — <code style="font-family:var(--mono);color:var(--secondary)">commerce-design.md</code> frontmatter changed on disk since import.</span>
+        <span class="rb-actions">
+          <button class="resync" data-go="loaded" data-testid="resync-file">Re-sync from disk</button>
+          <button data-go="loaded" data-testid="keep-canvas">Keep canvas</button>
+        </span>
+      </div>
+
+      <!-- rel picker — inline relationship edit (canvas pill + inspector rows share it) -->
+      <div class="relpick" role="dialog" aria-label="Edge relationship" data-testid="edge-rel-picker">
+        <div class="rp-h">Relationship · <span class="tgt">order-service → payment-service</span></div>
+        <div class="rp-grid">
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">references</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">depends-on</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">implements</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">derives-from</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="true">calls</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">produces</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">informs</button>
+          <button class="opt" data-testid="edge-rel-option" aria-pressed="false">related</button>
+        </div>
+        <div class="rp-row"><input data-testid="edge-label-input" value="charge" aria-label="Edge label" placeholder="label (defaults to type)"><button class="ok" data-go="loaded" aria-label="Apply relationship">✓</button></div>
+      </div>
+
+      <!-- canvas chrome -->
+      <div class="controls">
+        <button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button>
+        <button aria-label="Fit view"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <div class="minimap" aria-hidden="true">
+        <span class="mm-grid"></span>
+        <b style="left:8px;top:14px;width:30px;height:40px;background:rgba(192,193,255,.55)"></b>
+        <b style="left:54px;top:14px;width:36px;height:64px;background:rgba(94,242,255,.55)"></b>
+        <b style="left:104px;top:14px;width:34px;height:48px;background:rgba(146,143,160,.5)"></b>
+        <b style="left:104px;top:76px;width:34px;height:24px;background:rgba(221,183,255,.55)"></b>
+        <b style="left:152px;top:14px;width:28px;height:22px;background:rgba(182,243,106,.5)"></b>
+      </div>
+      <div class="legend">
+        <span class="lg-g"><b>nodes</b><span class="nk md">md</span><span class="nk link">link</span><span class="nk img">img</span><span class="nk note">note</span></span>
+        <span class="ldiv"></span>
+        <span class="lg-g"><b>edges</b><span><i class="lk"></i>links</span><span><i class="us"></i>user</span><span><i class="ag"></i>agent</span><span><i class="im"></i>import</span></span>
+        <span class="ldiv"></span>
+        <span class="note">rel type = mono eyebrow</span>
+      </div>
+
+      <!-- empty / loading / error frames (cover the workbench) -->
+      <div class="frame empty">
+        <div class="card"><div class="orb"></div><h2>No board open</h2>
+          <p>Submit a flowcode design doc to the agent to extract an initial board, or open an existing <code>.canvas</code>.</p>
+          <div class="actions"><button class="tbtn primary" data-testid="empty-open" data-go="loaded">Open .canvas…</button><button class="tbtn" data-go="submit">Extract via agent</button></div></div>
+      </div>
+      <div class="frame loading">
+        <div class="card"><div class="spinner" aria-hidden="true"></div><h2>Agent working…</h2>
+          <p>The MCP sidecar is reading the board and applying the response. Change-review opens when the round lands.</p></div>
+      </div>
+      <div class="frame error">
+        <div class="card"><h2>Round failed</h2>
+          <p><code>briefId</code> mismatch — the board changed since Submit. Re-submit to capture a fresh snapshot.</p>
+          <button class="tbtn primary" data-testid="error-retry" data-go="submit">Re-submit</button></div>
+      </div>
+    </section>
+
+    <!-- ════ RIGHT inspector (persistent) ════ -->
+    <aside class="inspector" data-testid="inspector" aria-label="Node inspector">
+
+      <!-- DEFAULT pane: the selected node -->
+      <div class="ipane default">
+        <div class="ihd">
+          <div class="nm"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#5ef2ff" stroke-width="1.6"><path d="M4 5h16v14H4z"/><path d="M7 15V9l3 3 3-3v6"/></svg>order-service</div>
+          <div class="meta"><span class="kind">md</span><span class="selpill">selected</span></div>
+        </div>
+        <div class="ibody">
+
+          <!-- source provenance (Decision 2 meta.source) -->
+          <div class="isrc" data-testid="inspector-source">
+            <div><div class="lbl">source</div><div class="path">commerce-design.md#order-lifecycle</div></div>
+            <button class="foc" aria-label="Focus source doc on board">↗</button>
+          </div>
+
+          <!-- OUT relations -->
+          <div class="relsec" data-testid="inspector-relations-out">
+            <div class="rl-h"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Out relations<span class="ct">4</span></div>
+            <div class="relrow agent"><span class="reye">calls</span><span class="rtgt">→ payment-service</span><button class="edit" data-go="typededge" aria-label="Edit calls→payment-service relationship"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+            <div class="relrow agent"><span class="reye">produces</span><span class="rtgt">→ event-bus · order.created</span><button class="edit" data-go="typededge" aria-label="Edit produces→event-bus relationship"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+            <div class="relrow"><span class="reye">depends-on</span><span class="rtgt">→ orders-db</span><button class="edit" data-go="typededge" aria-label="Edit depends-on→orders-db relationship"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+            <div class="relrow"><span class="reye">implements</span><span class="rtgt">→ order-schema.md · contract</span><button class="edit" data-go="typededge" aria-label="Edit implements→order-schema relationship"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+          </div>
+
+          <!-- IN relations -->
+          <div class="relsec" data-testid="inspector-relations-in">
+            <div class="rl-h"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6L5 12l6 6"/></svg>In relations<span class="ct">2</span></div>
+            <div class="relrow agent"><span class="reye">calls</span><span class="rtgt">api-gateway → · POST /orders</span><button class="edit" data-go="typededge" aria-label="Edit incoming calls from api-gateway"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+            <div class="relrow links"><span class="reye">informs</span><span class="rtgt">inventory-service →</span><button class="edit" data-go="typededge" aria-label="Edit incoming informs from inventory-service"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16z"/></svg></button></div>
+          </div>
+
+          <!-- refs (focus-or-add navigation, Decision 9) -->
+          <div class="relsec">
+            <div class="rl-h"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 12l-2 2a3 3 0 104 4l2-2M16 12l2-2a3 3 0 10-4-4l-2 2"/></svg>References</div>
+            <div class="refbox">
+              <button class="lchip" data-testid="link-chip" data-on="true"><span class="arr">↗</span>order-schema.md<span class="st" data-testid="refnav-focus">focus</span></button>
+              <button class="lchip" data-testid="link-chip" data-on="true"><span class="arr">↗</span>commerce-design.md<span class="st">focus</span></button>
+              <button class="lchip" data-testid="link-chip" data-on="false"><span class="arr">↗</span>runbook.md<span class="st" data-testid="refnav-add">add</span></button>
+            </div>
+          </div>
+
+        </div>
+        <!-- agent affordances render inside/over the right pane -->
+        <div class="iactions">
+          <button class="ibtn primary" data-go="submit" data-testid="inspector-submit">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Submit round</button>
+          <button class="ibtn" data-go="review" data-testid="inspector-review">Review<span class="ndot">7</span></button>
+        </div>
+      </div>
+
+      <!-- SUBMIT pane (overlays the inspector) -->
+      <div class="ipane submit" data-testid="submit-panel" aria-label="Submit to agent">
+        <div class="pane-hd"><div><b>Submit round</b><div class="sub">MCP · harness-relay</div></div>
+          <button class="x" data-go="loaded" aria-label="Close submit">✕</button></div>
+        <div class="pane-body">
+          <div class="mcp ok" style="margin-bottom:12px"><span class="d"></span>MCP sidecar connected · board saved at rev 7</div>
+          <div class="field"><label for="intent">Intent for this round</label>
+            <textarea id="intent" class="intent" data-testid="submit-intent" placeholder="e.g. Decompose checkout into services and draw the call edges…">Add a refunds-service off payment-service, draw its calls/produces edges, and write one node md per new component with source provenance.</textarea></div>
+          <div class="field"><label>Scope</label>
+            <div class="scope" role="group" aria-label="Round scope" data-testid="submit-scope">
+              <button aria-pressed="true">Whole board</button>
+              <button aria-pressed="false">order-service +subtree</button>
+              <button aria-pressed="false">Selection</button>
+            </div></div>
+          <div class="snote">On send the board saves (rev 7), a submit-time snapshot is captured, and the active-board pointer is handed to your harness. The agent calls <code>get_board</code> then <code>apply_response</code>. Review opens automatically.</div>
+        </div>
+        <div class="pane-foot">
+          <button class="btn-send" data-go="loading" data-testid="submit-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Send round</button>
+        </div>
+      </div>
+
+      <!-- CHANGE-REVIEW pane (overlays the inspector) -->
+      <div class="ipane review" data-testid="review-panel" aria-label="Agent change-review">
+        <div class="pane-hd"><div><b>Change-review</b><div class="sub">rev 7 → rev 8</div></div>
+          <button class="x" data-go="loaded" data-testid="review-close" aria-label="Close review">✕</button></div>
+        <div class="pane-body">
+          <div class="filters" role="group" aria-label="Filter changes">
+            <button data-testid="review-filter-all" aria-pressed="true">all · 7</button>
+            <button data-testid="review-filter-nodes" aria-pressed="false">nodes · 3</button>
+            <button data-testid="review-filter-edges" aria-pressed="false">edges · 2</button>
+            <button data-testid="review-filter-comments" aria-pressed="false">comments · 1</button>
+            <button data-testid="review-filter-files" aria-pressed="false">files · 1</button>
+          </div>
+          <div class="stepper">
+            <button class="ghost" data-testid="review-prev" aria-label="Previous change">‹</button>
+            <button class="ghost" data-testid="review-next" aria-label="Next change">›</button>
+            <span class="pos">change 1 / 7</span></div>
+
+          <div class="ritem active" data-testid="review-item">
+            <div class="rt"><span class="badge add">added</span><span class="rn">refunds-service</span><span class="rk">node · md</span></div>
+            <div class="rd">New service in <em>CORE SERVICES</em>. Source: <code>commerce-design.md#refunds</code>.</div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge add">added</span><span class="rn">payment-service → refunds-service</span><span class="rk">edge</span></div>
+            <div class="rd">Typed <code>calls</code> · label "refund".</div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge upd">updated</span><span class="rn">order-service</span><span class="rk">node · md</span></div>
+            <div class="rd">Frontmatter status changed.</div>
+            <div class="diff"><div class="o">- status: active</div><div class="n">+ status: review</div></div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge upd">updated</span><span class="rn">payment-service → stripe</span><span class="rk">edge · rel</span></div>
+            <div class="rd">Relationship type retyped.</div>
+            <div class="diff"><div class="o">- rel: related</div><div class="n">+ rel: calls</div></div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge add">added</span><span class="rn">refunds.created</span><span class="rk">comment</span></div>
+            <div class="rd">Agent note on <code>refunds-service</code>: emits to event-bus.</div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge add">added</span><span class="rn">commerce-platform.nodes/refunds-service.md</span><span class="rk">file</span></div>
+            <div class="rd">Generated node md with <code>source:</code> provenance. Discard deletes it from disk.</div></div>
+          <div class="ritem" data-testid="review-item">
+            <div class="rt"><span class="badge rem">removed</span><span class="rn">legacy-checkout</span><span class="rk">node</span></div>
+            <div class="rd">Superseded by order-service. Discard keeps it; Accept removes it.</div></div>
+        </div>
+        <div class="pane-foot">
+          <button class="btn-rem" data-go="loaded" data-testid="review-discard">Discard</button>
+          <button class="btn-ok" data-go="loaded" data-testid="review-accept">Accept all 7</button>
+        </div>
+      </div>
+
+    </aside>
+  </div><!-- /workbench -->
+</div><!-- /app -->
+
+<script>
+  // ── state machine: every statebar button + in-pane data-go routes through show() ──
+  var app = document.querySelector('.app');
+  var FRAMES = { empty:1, loading:1, error:1 };
+  function setCurrent(go){
+    document.querySelectorAll('.statebar [data-go]').forEach(function(b){
+      b.setAttribute('aria-current', String(b.dataset.go === go));
+    });
+  }
+  function reset(){ // back to the default tri-pane loaded view
+    app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','inspector');
+    app.setAttribute('data-rail','structure'); app.setAttribute('data-rel','closed');
+    app.setAttribute('data-reconcile','off'); app.setAttribute('data-menu','closed');
+    app.classList.remove('dim');
+  }
+  function show(go){
+    // typed-edge just toggles the inline rel picker; leave the rest intact
+    if(go === 'typededge'){
+      var open = app.getAttribute('data-rel') === 'open';
+      app.setAttribute('data-rel', open ? 'closed' : 'open');
+      setCurrent('typededge'); return;
+    }
+    app.setAttribute('data-rel','closed'); app.setAttribute('data-menu','closed');
+    if(FRAMES[go]){ app.setAttribute('data-state', go); app.setAttribute('data-reconcile','off'); app.classList.remove('dim'); setCurrent(go); return; }
+    if(go === 'submit'){  app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','submit'); app.setAttribute('data-reconcile','off'); app.classList.add('dim'); setCurrent('submit'); return; }
+    if(go === 'review'){  app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','review'); app.setAttribute('data-reconcile','off'); app.classList.add('dim'); setCurrent('review'); return; }
+    if(go === 'templates'){ app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','inspector'); app.setAttribute('data-rail','templates'); app.setAttribute('data-reconcile','off'); app.classList.remove('dim'); setCurrent('templates'); setRailTab('templates'); return; }
+    if(go === 'refnav'){  app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','inspector'); app.setAttribute('data-rail','structure'); app.setAttribute('data-reconcile','off'); app.classList.remove('dim'); toggleChips(); setCurrent('refnav'); return; }
+    if(go === 'reconcile'){ app.setAttribute('data-state','loaded'); app.setAttribute('data-panel','inspector'); app.setAttribute('data-reconcile','on'); app.classList.remove('dim'); setCurrent('reconcile'); return; }
+    // loaded (default)
+    reset(); setRailTab('structure'); setCurrent('loaded');
+  }
+  // bind every [data-go]
+  document.querySelectorAll('[data-go]').forEach(function(b){
+    b.addEventListener('click', function(e){ e.stopPropagation(); show(b.dataset.go); });
+  });
+
+  // ── left-rail tabs (Structure / Templates) ──
+  function setRailTab(which){
+    app.setAttribute('data-rail', which);
+    document.querySelectorAll('[data-rail-tab]').forEach(function(t){ t.setAttribute('aria-selected', String(t.dataset.railTab === which)); });
+  }
+  document.querySelectorAll('[data-rail-tab]').forEach(function(t){
+    t.addEventListener('click', function(){ setRailTab(t.dataset.railTab); });
+  });
+
+  // ── add-node menu ──
+  var addBtn = document.getElementById('addBtn');
+  addBtn.addEventListener('click', function(e){ e.stopPropagation();
+    var open = app.getAttribute('data-menu') === 'open';
+    app.setAttribute('data-menu', open ? 'closed' : 'open'); addBtn.setAttribute('aria-expanded', String(!open)); });
+  document.addEventListener('click', function(){ app.setAttribute('data-menu','closed'); addBtn.setAttribute('aria-expanded','false'); });
+
+  // ── mode segmented (exclusive aria-pressed) ──
+  var modeBtns = document.querySelectorAll('.seg .tbtn[data-mode]');
+  modeBtns.forEach(function(b){ b.addEventListener('click', function(){
+    modeBtns.forEach(function(o){ o.setAttribute('aria-pressed', String(o === b)); }); }); });
+
+  // ── tree groups collapse/expand ──
+  document.querySelectorAll('.tgrp').forEach(function(g){
+    g.addEventListener('click', function(){ g.setAttribute('aria-expanded', String(g.getAttribute('aria-expanded') !== 'true')); }); });
+  // ── tree node selection mirrors canvas selection ──
+  document.querySelectorAll('.titem').forEach(function(n){
+    n.addEventListener('click', function(){
+      document.querySelectorAll('.titem').forEach(function(o){ o.classList.remove('sel'); o.removeAttribute('aria-current'); });
+      n.classList.add('sel'); n.setAttribute('aria-current','true'); }); });
+
+  // ── node collapse toggle ──
+  document.querySelectorAll('[data-testid="node-collapse-toggle"]').forEach(function(t){
+    t.addEventListener('click', function(e){ e.stopPropagation();
+      var n = t.closest('.node'); n.classList.toggle('collapsed');
+      t.textContent = n.classList.contains('collapsed') ? '+' : '–'; }); });
+
+  // ── rel-picker options (exclusive) + label echo ──
+  var relInput = document.querySelector('[data-testid="edge-label-input"]');
+  document.querySelectorAll('[data-testid="edge-rel-option"]').forEach(function(o){
+    o.addEventListener('click', function(e){ e.stopPropagation();
+      document.querySelectorAll('[data-testid="edge-rel-option"]').forEach(function(x){ x.setAttribute('aria-pressed', String(x === o)); });
+      if(relInput && !relInput.value) relInput.value = o.textContent; }); });
+
+  // ── review: filters (exclusive) ──
+  document.querySelectorAll('[data-testid^="review-filter"]').forEach(function(f){
+    f.addEventListener('click', function(){
+      document.querySelectorAll('[data-testid^="review-filter"]').forEach(function(x){ x.setAttribute('aria-pressed', String(x === f)); }); }); });
+  // ── review: stepper moves the active item ──
+  var rItems = Array.prototype.slice.call(document.querySelectorAll('[data-testid="review-item"]'));
+  var rPos = document.querySelector('.ipane.review .pos');
+  var rIdx = 0;
+  function stepReview(d){ rItems[rIdx].classList.remove('active');
+    rIdx = (rIdx + d + rItems.length) % rItems.length;
+    rItems[rIdx].classList.add('active'); if(rPos) rPos.textContent = 'change ' + (rIdx+1) + ' / ' + rItems.length;
+    rItems[rIdx].scrollIntoView({block:'nearest'}); }
+  var rp = document.querySelector('[data-testid="review-prev"]'); if(rp) rp.addEventListener('click', function(){ stepReview(-1); });
+  var rn = document.querySelector('[data-testid="review-next"]'); if(rn) rn.addEventListener('click', function(){ stepReview(1); });
+  rItems.forEach(function(it,i){ it.addEventListener('click', function(){ rItems[rIdx].classList.remove('active'); rIdx=i; it.classList.add('active'); if(rPos) rPos.textContent='change '+(i+1)+' / '+rItems.length; }); });
+
+  // ── ref-nav link chips: focus (on-board) ⇄ add (off-board) ──
+  function setChip(c, on){ c.setAttribute('data-on', String(on));
+    var st = c.querySelector('.st'); if(!st) return;
+    var off = c.textContent.indexOf('runbook') > -1;
+    st.textContent = on ? (off ? 'added' : 'focused') : (off ? 'add' : 'focus'); }
+  function toggleChips(){ document.querySelectorAll('[data-testid="link-chip"]').forEach(function(c){ setChip(c, c.getAttribute('data-on') !== 'true'); }); }
+  document.querySelectorAll('[data-testid="link-chip"]').forEach(function(c){
+    c.addEventListener('click', function(e){ e.stopPropagation(); setChip(c, c.getAttribute('data-on') !== 'true'); }); });
+
+  // ── Escape returns to the default tri-pane view ──
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ reset(); setRailTab('structure'); setCurrent('loaded'); } });
+</script>
+</body>
+</html>

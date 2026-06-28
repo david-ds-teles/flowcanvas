@@ -53,7 +53,7 @@ describe('buildBrief', () => {
     expect(brief.nodes.find((n) => n.id === 'n-note')).toMatchObject({ kind: 'note', text: '## Open question' })
     expect(brief.nodes.find((n) => n.id === 'n-img')).toMatchObject({ kind: 'image', path: 'examples/arch.png' })
 
-    expect(brief.edges).toEqual([{ id: 'lk:n-design->n-plan', from: 'n-design', to: 'n-plan', label: 'links', origin: 'links' }])
+    expect(brief.edges).toEqual([{ id: 'lk:n-design->n-plan', from: 'n-design', to: 'n-plan', label: 'links', rel: 'references', origin: 'links' }])
     expect(brief.comments).toEqual([{ id: 'c-1', threadId: 'c-1', anchorNodeId: 'n-plan', author: 'human:david', text: 'reuse the file API?', createdAt: '2026-06-25T10:20:00Z', resolved: false }])
   })
 
@@ -136,5 +136,85 @@ describe('applyResponse', () => {
     expect(next.nodes.filter((n) => n.id === 'n-plan')).toHaveLength(1)
     expect(next.nodes.find((n) => n.id === 'n-plan')).toMatchObject({ x: 999, y: 888, meta: { origin: 'agent' } })
     expect(report.updated.nodes).toBe(1)
+  })
+})
+
+// ─────────────────────────── v2 — groups, typed edges, refs, provenance (Decisions 1/2/7/9) ───────────────────────────
+
+describe('v2 extraction surfaces', () => {
+  const counter = () => {
+    let i = 0
+    return (prefix: string) => `${prefix}${(++i).toString(16).padStart(4, '0')}`
+  }
+
+  it('applyResponse creates a group node (label, meta.shape, parentId on children) and stamps meta.source on all', () => {
+    const v2: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'extract commerce',
+      upsertNodes: [
+        { id: 'ag-grp', type: 'group', x: 0, y: 0, width: 520, height: 360, label: 'Checkout', shape: 'rectangle',
+          source: { path: 'examples/commerce.md', anchor: 'checkout' } },
+        { id: 'ag-cart', type: 'file', file: 'examples/commerce.nodes/cart.md', x: 40, y: 60, width: 220, height: 120,
+          parentId: 'ag-grp', source: { path: 'examples/commerce.md', anchor: 'cart' } },
+      ],
+    }
+    const { next, report } = applyResponse(seed(), v2, counter(), 'now')
+
+    const grp = next.nodes.find((n) => n.id === 'ag-grp')!
+    expect(grp).toMatchObject({
+      type: 'group', label: 'Checkout',
+      meta: { origin: 'agent', shape: 'rectangle', source: { path: 'examples/commerce.md', anchor: 'checkout' } },
+    })
+    const cart = next.nodes.find((n) => n.id === 'ag-cart')!
+    expect(cart).toMatchObject({
+      type: 'file', parentId: 'ag-grp',
+      meta: { origin: 'agent', source: { path: 'examples/commerce.md', anchor: 'cart' } },
+    })
+    expect(report.created.nodes).toBe(2)
+  })
+
+  it('applyResponse carries meta.rel on edges and defaults label from REL_LABELS when the agent omits it', () => {
+    const typed: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: '',
+      upsertEdges: [
+        { id: 'ag-rel1', fromNode: 'n-design', toNode: 'n-note', rel: 'depends-on' },   // no label → default
+        { id: 'ag-rel2', fromNode: 'n-design', toNode: 'n-img' },                        // no rel → 'related'
+      ],
+    }
+    const { next } = applyResponse(seed(), typed, counter(), 'now')
+    expect(next.edges.find((e) => e.id === 'ag-rel1')).toMatchObject({ label: 'depends on', meta: { origin: 'agent', rel: 'depends-on' } })
+    expect(next.edges.find((e) => e.id === 'ag-rel2')).toMatchObject({ label: 'related', meta: { origin: 'agent', rel: 'related' } })
+  })
+
+  it('preserves an existing group label when the agent updates the group without a label', () => {
+    const doc = seed()
+    doc.nodes.push({ id: 'g1', type: 'group', label: 'Original', x: 0, y: 600, width: 400, height: 200, meta: { origin: 'user' } })
+    const upd: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: '',
+      upsertNodes: [{ id: 'g1', type: 'group', x: 10, y: 610, width: 420, height: 220 }],   // no label sent
+    }
+    const { next } = applyResponse(doc, upd, counter(), 'now')
+    expect(next.nodes.find((n) => n.id === 'g1')).toMatchObject({ type: 'group', label: 'Original', x: 10, meta: { origin: 'agent' } })
+  })
+
+  it('buildBrief emits refs for file nodes, rel for edges, and source/parentId/label for groups', () => {
+    const doc = seed()
+    doc.nodes.push({ id: 'g1', type: 'group', label: 'Sub', x: 0, y: 600, width: 400, height: 200,
+      meta: { origin: 'agent', source: { path: 'examples/design.md', anchor: 'sub' } } })
+    doc.nodes.push({ id: 'n-child', type: 'file', file: 'examples/child.md', x: 20, y: 640, width: 200, height: 120,
+      parentId: 'g1', meta: { origin: 'agent' } })
+    const resolved = new Map([
+      ['examples/design.md', { frontmatter: { links: ['examples/plan.md#phase-1'] }, body: 'see [plan](./plan.md)', truncated: false }],
+      ['examples/child.md', { frontmatter: {}, body: '', truncated: false }],
+    ])
+    const brief = buildBrief(doc, 'b.canvas', resolved, 'brief-z', 'now')
+
+    const design = brief.nodes.find((n) => n.id === 'n-design')!
+    expect(design.refs).toEqual([
+      { kind: 'frontmatter', target: 'examples/plan.md', anchor: 'phase-1', isExternal: false },
+      { kind: 'link', target: 'examples/plan.md', anchor: undefined, isExternal: false },
+    ])
+    expect(brief.nodes.find((n) => n.id === 'g1')).toMatchObject({ kind: 'group', label: 'Sub', source: { path: 'examples/design.md', anchor: 'sub' } })
+    expect(brief.nodes.find((n) => n.id === 'n-child')).toMatchObject({ parentId: 'g1' })
+    expect(brief.edges.find((e) => e.id === 'lk:n-design->n-plan')!.rel).toBe('references')
   })
 })

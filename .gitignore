@@ -42,3 +42,7 @@ next-env.d.ts
 
 # flowcode visual-parity captures — regenerable verification screenshots, not tracked
 .flowcode/plans/**/mockups/captures/
+
+# v2 runtime state — active-board pointer + per-board change-review snapshots (regenerable, not tracked)
+/.flowcanvas/
+*.review.json

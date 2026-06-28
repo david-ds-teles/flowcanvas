@@ -6,9 +6,44 @@ export type EdgeEnd = 'none' | 'arrow'
 export type CanvasColor = string
 
 export type NodeOrigin = 'user' | 'agent' | 'import'
-export type EdgeOrigin = 'links' | 'user' | 'agent'
 /** Drawn outline of a `group` node. Absent → rectangle (the JSONCanvas default). */
 export type NodeShape = 'rectangle' | 'ellipse' | 'diamond'
+
+// ── Decision 7 — curated relationship catalog ──────────────────────────────
+// `contains` is NOT here: containment is group membership (parentId).
+// Free-form display still lives in CanvasEdge.label.
+export type RelationshipType =
+  | 'references' | 'depends-on' | 'implements' | 'derives-from'
+  | 'calls' | 'produces' | 'informs' | 'related'
+
+/** Ordered allowed set — drives the rel picker UI and the agent contract. */
+export const RELATIONSHIP_TYPES: readonly RelationshipType[] = [
+  'references', 'depends-on', 'implements', 'derives-from',
+  'calls', 'produces', 'informs', 'related',
+]
+
+/** Default human display label for a type (Decision 7 — label defaults from rel). */
+export const REL_LABELS: Record<RelationshipType, string> = {
+  references: 'references',
+  'depends-on': 'depends on',
+  implements: 'implements',
+  'derives-from': 'derives from',
+  calls: 'calls',
+  produces: 'produces',
+  informs: 'informs',
+  related: 'related',
+}
+
+// Decision 4 — 'import' marks extraction-seeded edges; 'links' stays for legacy/migrated.
+export type EdgeOrigin = 'links' | 'user' | 'agent' | 'import'
+export const EDGE_ORIGINS: readonly EdgeOrigin[] = ['links', 'user', 'agent', 'import']
+export const SCHEMA_VERSIONS = ['0.1', '0.2'] as const
+
+// Decision 2 — provenance back to the source design/plan doc a node was extracted from.
+export interface NodeSource {
+  path: string            // root-relative source doc
+  anchor?: string         // heading slug within the source, e.g. 'module-boundaries'
+}
 
 /** Flowcanvas extension — always safe to drop; re-derivable or UI-only. */
 export interface NodeMeta {
@@ -22,6 +57,8 @@ export interface NodeMeta {
    * the source of truth; repopulated on every load via /api/canvas/resolve.
    */
   frontmatter?: Record<string, unknown>
+  source?: NodeSource                      // v2 (Decision 2)
+  template?: string                        // v2 — template id this node came from (Decision 8)
 }
 
 interface NodeBase {
@@ -45,8 +82,8 @@ export interface CanvasEdge {
   fromSide?: Side; toSide?: Side
   fromEnd?: EdgeEnd; toEnd?: EdgeEnd          // default toEnd:"arrow"
   color?: CanvasColor
-  label?: string
-  meta?: { origin?: EdgeOrigin }              // Flowcanvas extension
+  label?: string                                          // free-form display (unchanged)
+  meta?: { origin?: EdgeOrigin; rel?: RelationshipType }  // v2 — + rel (Decision 1)
 }
 
 // ─────────────────────────── Comments (Flowcanvas extension) ───────────────────────────
@@ -75,10 +112,12 @@ export interface SessionMeta {
   updatedAt: string
   revision: number             // bumps on every save; optimistic-concurrency token
   lastBriefId?: string         // id of the most recently exported brief
+  baseRevision?: number        // v2 — session.revision captured at Submit (review window start)
+  pendingReview?: boolean      // v2 — an agent round landed; open change-review on next load
 }
 
 export interface FlowcanvasExt {
-  schemaVersion: '0.1'
+  schemaVersion: '0.1' | '0.2'   // v2 boards persist '0.2'
   session: SessionMeta
   comments: Comment[]
 }

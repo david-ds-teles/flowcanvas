@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { isFileNode } from '@/lib/canvas/jsoncanvas'
+import { extractRefs } from '@/lib/canvas/refs'
 import { cn } from '@/lib/utils'
 import { FrontmatterView } from './frontmatter-view'
 
@@ -23,6 +24,7 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
   const doc = useCanvasStore((s) => s.doc)
   const size = useCanvasStore((s) => s.readerSize)
   const setSize = useCanvasStore((s) => s.setReaderSize)
+  const navigateRef = useCanvasStore((s) => s.navigateRef)
   const node = doc?.nodes.find((n) => n.id === nodeId) ?? null
   const file = node && isFileNode(node) ? node.file : null
   const title = node && isFileNode(node) ? String(node.meta?.frontmatter?.name ?? file?.split('/').pop()) : 'Reader'
@@ -55,6 +57,18 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
     return () => { live = false }
   }, [file])
 
+  // Delegated reader-prose click → navigateRef for relative .md/asset links (Decision 9). External
+  // (http) and pure in-doc (#) anchors keep their default behavior.
+  const onProseClick = useCallback((e: MouseEvent) => {
+    const a = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null
+    if (!a || !file) return
+    const href = a.getAttribute('href') ?? ''
+    if (!href || href.startsWith('#') || /^[a-z]+:/i.test(href)) return  // external scheme / anchor → default
+    e.preventDefault()
+    const ref = extractRefs(file, undefined, `[l](${href})`)[0]
+    if (ref) void navigateRef(nodeId, ref)
+  }, [file, nodeId, navigateRef])
+
   const thread = doc?.flowcanvas.comments.filter((c) => c.anchor.kind === 'node' && c.anchor.nodeId === nodeId) ?? []
 
   return (
@@ -81,11 +95,11 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
       </header>
 
       <div className="fc-reader__scroll">
-        <FrontmatterView frontmatter={frontmatter} variant="reader" />
+        <FrontmatterView frontmatter={frontmatter} variant="reader" sourceNodeId={nodeId} />
         {!file && <p className="fc-reader__msg">This node has no readable markdown.</p>}
         {file && !ready && <p className="fc-reader__msg">Rendering…</p>}
         {ready && result.error && <p className="fc-reader__msg fc-reader__msg--err">Could not render — {result.error}</p>}
-        {ready && result.html !== null && <div className="fc-reader__prose" dangerouslySetInnerHTML={{ __html: result.html }} />}
+        {ready && result.html !== null && <div className="fc-reader__prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: result.html }} />}
 
         {thread.length > 0 && (
           <section className="fc-reader__thread">

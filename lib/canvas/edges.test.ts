@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import type { CanvasNode, CanvasEdge } from './jsoncanvas'
-import { deriveLinkEdges, reconcileEdges } from './edges'
+import type { CanvasNode, CanvasEdge, FlowcanvasDoc } from './jsoncanvas'
+import { deriveLinkEdges, reconcileEdges, projectLinksForExport } from './edges'
 
 // Three file nodes wired by frontmatter `links`, plus a non-file node that can never be a target.
 const fileNode = (id: string, file: string, links?: unknown): CanvasNode => ({
@@ -90,5 +90,86 @@ describe('reconcileEdges', () => {
     const existing: CanvasEdge[] = [{ id: 'e-bare', fromNode: 'n-img', toNode: 'n-note' }]
     const out = reconcileEdges(existing, derived)
     expect(out.some((e) => e.id === 'e-bare')).toBe(true)
+  })
+})
+
+// ─── projectLinksForExport ────────────────────────────────────────────────────
+
+/** Minimal FlowcanvasDoc fixture — only nodes/edges matter for projectLinksForExport. */
+const minFlowcanvas: FlowcanvasDoc['flowcanvas'] = {
+  schemaVersion: '0.1',
+  session: { createdAt: '', updatedAt: '', revision: 0 },
+  comments: [],
+}
+const doc = (docNodes: CanvasNode[], docEdges: CanvasEdge[]): FlowcanvasDoc => ({
+  nodes: docNodes,
+  edges: docEdges,
+  flowcanvas: minFlowcanvas,
+})
+
+const fn = (id: string, file: string): CanvasNode =>
+  ({ id, type: 'file', file, x: 0, y: 0, width: 100, height: 100 })
+
+const edge = (id: string, from: string, to: string): CanvasEdge =>
+  ({ id, fromNode: from, toNode: to })
+
+describe('projectLinksForExport', () => {
+  it('maps a single file→file edge to the source path entry', () => {
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), fn('n2', 'b.md')],
+      [edge('e1', 'n1', 'n2')],
+    ))
+    expect(result).toEqual({ 'a.md': ['b.md'] })
+  })
+
+  it('dedups multiple edges between the same pair into a single target entry', () => {
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), fn('n2', 'b.md')],
+      [edge('e1', 'n1', 'n2'), edge('e2', 'n1', 'n2')],
+    ))
+    expect(result).toEqual({ 'a.md': ['b.md'] })
+  })
+
+  it('skips edges whose fromNode is a non-file node (text)', () => {
+    const textNode: CanvasNode = { id: 'nt', type: 'text', text: 'note', x: 0, y: 0, width: 100, height: 100 }
+    const result = projectLinksForExport(doc(
+      [textNode, fn('n2', 'b.md')],
+      [edge('e1', 'nt', 'n2')],
+    ))
+    expect(result).toEqual({})
+  })
+
+  it('skips edges whose toNode is a non-file node (link)', () => {
+    const linkNode: CanvasNode = { id: 'nl', type: 'link', url: 'https://x.com', x: 0, y: 0, width: 100, height: 100 }
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), linkNode],
+      [edge('e1', 'n1', 'nl')],
+    ))
+    expect(result).toEqual({})
+  })
+
+  it('skips edges involving group nodes', () => {
+    const groupNode: CanvasNode = { id: 'ng', type: 'group', x: 0, y: 0, width: 300, height: 300 }
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), groupNode],
+      [edge('e1', 'n1', 'ng'), edge('e2', 'ng', 'n1')],
+    ))
+    expect(result).toEqual({})
+  })
+
+  it('collects multiple distinct targets from one source', () => {
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), fn('n2', 'b.md'), fn('n3', 'c.md')],
+      [edge('e1', 'n1', 'n2'), edge('e2', 'n1', 'n3')],
+    ))
+    expect(result).toEqual({ 'a.md': ['b.md', 'c.md'] })
+  })
+
+  it('returns an empty object when there are no edges', () => {
+    const result = projectLinksForExport(doc(
+      [fn('n1', 'a.md'), fn('n2', 'b.md')],
+      [],
+    ))
+    expect(result).toEqual({})
   })
 })

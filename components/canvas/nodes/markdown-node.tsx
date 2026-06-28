@@ -45,7 +45,7 @@ function Inner({ id, data }: NodeProps) {
         </button>
       </header>
 
-      <FrontmatterView frontmatter={fm} variant="card" />
+      <FrontmatterView frontmatter={fm} variant="card" sourceNodeId={node.id} />
 
       <div className="fc-node__body">
         <CanvasMarkdown basePath={node.file}>{body ?? '_resolving…_'}</CanvasMarkdown>

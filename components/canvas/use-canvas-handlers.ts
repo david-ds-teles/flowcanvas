@@ -8,6 +8,7 @@ import {
   type Node as RFNode,
   type Edge as RFEdge,
   type EdgeChange,
+  type NodeChange,
 } from '@xyflow/react'
 import { toReactFlow } from '@/lib/canvas/adapter'
 import { useCanvasStore } from '@/lib/canvas/store'
@@ -23,8 +24,10 @@ export function useCanvasHandlers() {
   const doc = useCanvasStore((s) => s.doc)
   const onConnect = useCanvasStore((s) => s.onConnect)
   const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
+  const removeNode = useCanvasStore((s) => s.removeNode)
   const applyLayout = useCanvasStore((s) => s.applyLayout)
   const setSelection = useCanvasStore((s) => s.setSelection)
+  const selectedIds = useCanvasStore((s) => s.selectedIds)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const openReader = useCanvasStore((s) => s.openReader)
   const { getInternalNode } = useReactFlow()
@@ -42,19 +45,48 @@ export function useCanvasHandlers() {
     return m
   }, [doc])
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState(rfNodes)
   const [edges, setEdges, onEdgesChangeBase] = useEdgesState(rfEdges)
 
-  // Sync controlled state when the store doc changes (toggleCollapsed, onConnect, setNodeShape, load…),
-  // preserving each node's transient RF selection so a store edit (e.g. switching a shape) doesn't
-  // deselect the node out from under the user and make its switcher/resize handles vanish.
+  // A 'remove' node change (Delete/Backspace on a selected node, or the toolbar/inspector delete) writes
+  // the deletion back to the doc — dropping the node, its edges, anchored comments, and orphaning group
+  // children — so it is durable and never resurrects on the next controlled-state sync. RF skips the key
+  // when an input/textarea is focused, so inline label/note editing is safe.
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      for (const c of changes) if (c.type === 'remove') removeNode(c.id)
+      onNodesChangeBase(changes)
+    },
+    [removeNode, onNodesChangeBase],
+  )
+
+  // Rebuild controlled RF nodes when the store doc changes (toggleCollapsed, onConnect, setNodeShape,
+  // load…). `selected` is seeded from the store's selectedIds — the single source of truth for
+  // selection — so a store edit (e.g. switching a shape) keeps the node selected (its switcher/resize
+  // handles don't vanish) and a programmatic selection survives the rebuild.
   useEffect(() => {
-    setNodes((prev) => {
-      const sel = new Map(prev.map((n) => [n.id, n.selected]))
-      return rfNodes.map((n) => ({ ...n, selected: sel.get(n.id) ?? false }))
-    })
+    const sel = new Set(useCanvasStore.getState().selectedIds)
+    setNodes(rfNodes.map((n) => ({ ...n, selected: sel.has(n.id) })))
   }, [rfNodes, setNodes])
   useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
+
+  // Push the store's selectedIds onto RF node.selected so a PROGRAMMATIC selection — a structure-rail
+  // click (focusNode) or a navigateRef focus-or-add — highlights the node on the canvas, not just in
+  // the inspector. RF's own click selection already round-trips through onSelectionChange → setSelection
+  // (equality-guarded), so re-applying the same set here is a no-op and never loops.
+  useEffect(() => {
+    const sel = new Set(selectedIds)
+    setNodes((prev) => {
+      let changed = false
+      const next = prev.map((n) => {
+        const want = sel.has(n.id)
+        if (!!n.selected === want) return n
+        changed = true
+        return { ...n, selected: want }
+      })
+      return changed ? next : prev
+    })
+  }, [selectedIds, setNodes])
 
   // A 'remove' edge change (Delete/Backspace on a selected edge) writes the deletion back to the doc
   // and, for a file↔file edge, strips the link from the source `.md` (Fix 5) before the base handler

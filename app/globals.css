@@ -11,6 +11,11 @@
 @import "./styles/reader.css";
 @import "./styles/comments.css";
 @import "./styles/toolbar.css";
+@import "./styles/studio-shell.css";
+@import "./styles/studio-structure.css";
+@import "./styles/studio-inspector.css";
+@import "./styles/studio-review.css";
+@import "./styles/studio-template.css";
 @source "../app";
 @source "../components";
 @source "../lib";

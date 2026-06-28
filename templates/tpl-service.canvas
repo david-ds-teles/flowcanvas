@@ -1,0 +1,25 @@
+{
+  "id": "tpl-service",
+  "kind": "document",
+  "name": "Service",
+  "description": "A service node backed by a fresh markdown doc scaffold (written on instantiate).",
+  "nodes": [
+    {
+      "id": "t-svc",
+      "type": "file",
+      "file": "examples/commerce-platform/new-service.md",
+      "x": 0,
+      "y": 0,
+      "width": 280,
+      "height": 160,
+      "meta": { "origin": "user" }
+    }
+  ],
+  "edges": [],
+  "files": [
+    {
+      "path": "examples/commerce-platform/new-service.md",
+      "content": "---\nname: New Service\nstatus: draft\ntags:\n  - service\ndescription: Scaffolded from the Service template.\n---\n\n## Responsibilities\n\nDescribe what this service owns.\n\n## Interfaces\n\nList the endpoints / events it exposes.\n"
+    }
+  ]
+}
