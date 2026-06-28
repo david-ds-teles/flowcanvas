@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas 003 — Canvas Foundation · V1 nyx-refined</title>
+<!--
+  003 Canvas Foundation & Visual Integrity — MOCK VARIANT 1 "nyx-refined".
+  Built as a faithful SNAPSHOT of the real running studio (see mockups/captures/01-current-commerce-default.png)
+  with ALL plan-003 changes applied at once, in the CURRENT nyx glass-neon language (the design fixed, not replaced).
+  Real board rendered: "Commerce Platform" — groups EDGE / CORE SERVICES / DATA & EVENTS · service cards · note ·
+  design card · image node · link node · typed rel-eyebrow edges · one anchored comment.
+  Ground truth: app/globals.css @theme tokens (verbatim) + app/styles/* component CSS + the captured real screen.
+  003 changes shown (toggle via the MOCKUP CONTROLS bar): universal resize handles on a selected card ·
+  on-edge action bar (rel · relabel · ✕) · ON-CARD comment badge + tethered thread (replaces the floating pin) ·
+  killed faded-violet rings (inspector SOURCE + inline editors now flat, focus-only) · recalibrated --secondary
+  #ddb7ff -> #e4c6ff with role reduction · redesigned reader (compact collapsible frontmatter, calmer type).
+  Self-contained: inline <style> + inline SVG, zero external assets. Desktop, >=1366.
+-->
+<style>
+  /* ───────── nyx tokens — verbatim from app/globals.css @theme, + 003 recalibration ───────── */
+  :root{
+    --bg:#0b1326; --grid:rgba(146,143,160,.16);
+    --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33; --c-high:#222a3d; --c-highest:#2d3449;
+    --primary:#c0c1ff; --primary-cont:#8083ff;
+    --secondary:#e4c6ff;            /* 003: was #ddb7ff — lifted for calmer hue + clearer hierarchy */
+    --secondary-deep:#c9a4f0;       /* 003: de-saturated violet for body-prose roles (role reduction) */
+    --tertiary-cont:#ff516a;
+    --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --cyan:#5ef2ff; --lime:#b6f36a; --rose:#ff8fb0; --amber:#f59f00;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+    --ui:'Geist','Geist Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --r-card:16px; --r-ctl:8px; --r-sm:5px; --r-full:999px;
+    --glass:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg,rgba(192,193,255,.45),rgba(255,255,255,.04) 45%,rgba(128,131,255,.30));
+    --glow:0 0 0 1px rgba(128,131,255,.32),0 0 22px -6px rgba(128,131,255,.5);
+    --ring:0 0 0 2px var(--primary),0 0 0 4px rgba(128,131,255,.28),0 0 22px -4px rgba(192,193,255,.6);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);overflow:hidden;
+    background:
+      radial-gradient(1200px 760px at 22% -12%,rgba(128,131,255,.18),transparent 60%),
+      radial-gradient(900px 620px at 108% 116%,rgba(201,164,240,.12),transparent 55%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+  /* ───────── MOCKUP CONTROLS bar (not part of the product) ───────── */
+  .mockbar{position:fixed;inset:0 0 auto 0;z-index:200;display:flex;gap:7px;align-items:center;flex-wrap:wrap;
+    padding:7px 14px;background:rgba(4,9,20,.86);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .mockbar .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--on-var);margin-right:auto;display:flex;gap:9px;align-items:center}
+  .mockbar .lab b{color:var(--secondary);font-weight:600}
+  .mockbar .lab .v{color:var(--cyan)}
+  .mockbar button{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:6px 10px;border-radius:var(--r-ctl);transition:.14s}
+  .mockbar button:hover{color:var(--on);box-shadow:var(--glow)}
+  .mockbar button[aria-current="true"]{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--primary),var(--secondary))}
+
+  /* ───────── app shell — toolbar + tri-pane ───────── */
+  .app{position:fixed;inset:42px 0 0 0;display:grid;grid-template-rows:auto 1fr;}
+  .glass{background-image:linear-gradient(var(--glass),var(--glass)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;border:1px solid transparent;backdrop-filter:blur(16px)}
+
+  /* toolbar */
+  .toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--outline-var);
+    background:rgba(6,14,32,.66);backdrop-filter:blur(16px);z-index:30}
+  .tbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--r-ctl);border:1px solid var(--outline-var);
+    background:rgba(23,31,51,.4);color:var(--on-var);transition:.14s}
+  .tbtn:hover{color:var(--on);border-color:var(--primary-cont);box-shadow:var(--glow)}
+  .tbtn.on{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--cyan),var(--secondary))}
+  .tbtn.sel{color:var(--on);border-color:var(--primary);background:rgba(128,131,255,.16)}
+  .brand{display:flex;align-items:center;gap:9px;margin-right:6px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--on)}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--cyan),var(--primary-cont));box-shadow:0 0 10px -1px var(--cyan)}
+  .sep{width:1px;height:24px;background:var(--outline-var);margin:0 3px}
+  .tbtn--wide{width:auto;padding:0 13px;gap:7px;font-size:12.5px;font-family:var(--ui)}
+  .grow{margin-left:auto}
+  .tbtn--cta{width:auto;padding:0 15px;gap:8px;font-size:12.5px;font-family:var(--ui);color:#0a0f20;border-color:transparent;
+    background:linear-gradient(135deg,var(--primary),var(--primary-cont));font-weight:600}
+  .ico{width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  .panes{display:grid;grid-template-columns:262px 1fr 348px;min-height:0}
+
+  /* ───────── left structure rail ───────── */
+  .rail{border-right:1px solid var(--outline-var);background:rgba(6,14,32,.5);display:flex;flex-direction:column;min-height:0}
+  .rail__tabs{display:flex;gap:6px;padding:12px 12px 10px}
+  .tab{flex:1;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:9px 0;border-radius:var(--r-ctl);
+    border:1px solid var(--outline-var);background:transparent;color:var(--on-var);text-align:center}
+  .tab.on{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--primary),var(--secondary));font-weight:600}
+  .filter{margin:2px 12px 8px;display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--r-ctl);
+    border:1px solid var(--outline-var);background:rgba(6,14,32,.6);color:var(--on-var);font-size:13px}
+  .filter svg{width:15px;height:15px;opacity:.7}
+  .tree{overflow:auto;padding:4px 8px 14px;flex:1}
+  .grp{margin:8px 4px 2px;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--on-var)}
+  .grp .cnt{margin-left:auto;min-width:20px;height:18px;padding:0 6px;display:grid;place-items:center;border-radius:var(--r-full);
+    background:rgba(128,131,255,.14);color:var(--primary);font-size:10.5px}
+  .grp .car{width:11px;height:11px;opacity:.6}
+  .leaf{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:2px 2px;border-radius:var(--r-ctl);color:var(--on-var);font-size:13px}
+  .leaf:hover{background:rgba(128,131,255,.07);color:var(--on)}
+  .leaf.sel{background:rgba(128,131,255,.13);color:var(--on);box-shadow:inset 0 0 0 1px rgba(192,193,255,.4)}
+  .leaf .gl{width:15px;height:15px;color:var(--cyan);opacity:.85;flex:none}
+  .leaf .gl.img{color:var(--lime)} .leaf .gl.lk{color:var(--secondary)} .leaf .gl.tx{color:var(--on-var)}
+
+  /* ───────── center stage / board ───────── */
+  .stage{position:relative;overflow:hidden;
+    background-color:var(--bg);
+    background-image:
+      radial-gradient(1000px 700px at 50% -10%,rgba(128,131,255,.14),transparent 60%),
+      radial-gradient(var(--grid) 1.4px,transparent 1.4px);
+    background-size:auto,22px 22px}
+  .board{position:absolute;inset:0;transform:translate(24px,10px) scale(.76);transform-origin:0 0}
+  .edges{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .relpill{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase}
+
+  /* group container */
+  .group{position:absolute;border:1.5px dashed rgba(192,193,255,.5);border-radius:var(--r-card);background:rgba(128,131,255,.045)}
+  .group>.glab{position:absolute;top:-10px;left:14px;padding:1px 9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--on-var);background:var(--bg)}
+
+  /* node card */
+  .node{position:absolute;border-radius:var(--r-card);background-image:linear-gradient(var(--glass),var(--glass)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;border:1px solid transparent;backdrop-filter:blur(16px);
+    box-shadow:0 18px 40px -22px rgba(0,0,0,.8)}
+  .node.sel{box-shadow:var(--ring),0 18px 40px -22px rgba(0,0,0,.8)}
+  .nhead{display:flex;align-items:center;gap:8px;padding:11px 12px 8px}
+  .ntitle{font-size:13.5px;font-weight:600;color:var(--on)}
+  .badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:2px 5px;border-radius:var(--r-sm);
+    border:1px solid var(--outline-var);color:var(--on-var)}
+  .nicons{margin-left:auto;display:flex;gap:5px;color:var(--on-var)}
+  .nicons svg{width:13px;height:13px}
+  .nbody{padding:0 12px 12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+    padding:3px 8px;border-radius:var(--r-full);border:1px solid rgba(94,242,255,.32);background:rgba(94,242,255,.1);color:var(--cyan)}
+  .pill .d{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px -1px var(--cyan)}
+  .pill.stable{border-color:rgba(182,243,106,.32);background:rgba(182,243,106,.1);color:var(--lime)} .pill.stable .d{background:var(--lime);box-shadow:0 0 8px -1px var(--lime)}
+  .pill.appr{border-color:rgba(182,243,106,.3);background:rgba(182,243,106,.09);color:var(--lime)} .pill.appr .d{background:var(--lime)}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}
+  .tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:var(--r-sm);
+    border:1px solid rgba(206,178,255,.42);background:rgba(206,178,255,.15);color:#ece2ff}
+  .desc{display:flex;gap:9px;font-size:12.5px;color:var(--on);line-height:1.55}
+  .desc .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);opacity:.72;flex:none;padding-top:1px}
+  .code{font-family:var(--mono);font-size:.84em;color:var(--cyan);background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.18);border-radius:5px;padding:0 4px}
+  .reflink{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--secondary);border:1px solid rgba(228,198,255,.22);background:rgba(228,198,255,.06);border-radius:var(--r-full);padding:2px 9px}
+  .note{background:rgba(19,27,46,.7);border:1px solid var(--outline-var);border-radius:var(--r-card)}
+  .note .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);padding:11px 12px 0}
+  .imgnode{border-radius:var(--r-card);border:1px solid var(--outline-var);background:rgba(6,14,32,.6);overflow:hidden;display:flex;flex-direction:column}
+  .imgnode .cap{font-family:var(--mono);font-size:10px;color:var(--on-var);padding:7px 10px;border-top:1px solid var(--outline-var)}
+  .linknode{display:flex;align-items:center;gap:11px;border-radius:var(--r-card);border:1px solid var(--outline-var);background:rgba(19,27,46,.66);padding:13px 15px}
+  .linknode .lk{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--secondary)} .linknode .u{font-size:13px;color:var(--on)}
+
+  /* === 003 #1 — universal resize handles (the headline fix) === */
+  .rz{position:absolute;inset:-1px;pointer-events:none}
+  .rz i{position:absolute;width:11px;height:11px;border-radius:3px;background:var(--c-lowest);border:1.6px solid var(--primary);box-shadow:0 0 10px -2px var(--primary)}
+  .rz i.nw{left:-6px;top:-6px;cursor:nwse-resize} .rz i.n{left:50%;top:-6px;margin-left:-5px;cursor:ns-resize}
+  .rz i.ne{right:-6px;top:-6px;cursor:nesw-resize} .rz i.e{right:-6px;top:50%;margin-top:-5px;cursor:ew-resize}
+  .rz i.se{right:-6px;bottom:-6px;cursor:nwse-resize} .rz i.s{left:50%;bottom:-6px;margin-left:-5px;cursor:ns-resize}
+  .rz i.sw{left:-6px;bottom:-6px;cursor:nesw-resize} .rz i.w{left:-6px;top:50%;margin-top:-5px;cursor:ew-resize}
+  .rz b{position:absolute;inset:-1px;border:1.4px solid rgba(192,193,255,.5);border-radius:var(--r-card)}
+  .rzsize{position:absolute;right:0;bottom:-26px;font-family:var(--mono);font-size:10px;color:var(--primary);background:rgba(6,14,32,.85);
+    border:1px solid var(--outline-var);border-radius:var(--r-sm);padding:2px 7px}
+
+  /* === 003 #3 — ON-CARD comment badge + tethered thread (replaces the disconnected floating pin) === */
+  .cmtbadge{position:absolute;top:-9px;right:-9px;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 7px;
+    border-radius:var(--r-full);background:linear-gradient(135deg,#ff5f86,var(--tertiary-cont));color:#fff;font-family:var(--mono);
+    font-size:11px;font-weight:600;box-shadow:0 6px 16px -6px rgba(255,81,106,.8),0 0 0 3px rgba(11,19,38,.9)}
+  .cmtbadge svg{width:12px;height:12px;fill:none;stroke:#fff;stroke-width:1.8}
+  .cmtpop{position:absolute;width:260px;border-radius:var(--r-card);border:1px solid var(--outline-var);background:rgba(9,15,30,.94);
+    backdrop-filter:blur(14px);box-shadow:0 26px 60px -24px rgba(0,0,0,.85);padding:12px 13px}
+  .cmtpop::before{content:"";position:absolute;width:13px;height:13px;background:inherit;border-left:1px solid var(--outline-var);
+    border-top:1px solid var(--outline-var);transform:rotate(45deg)}
+  .cmtpop .who{font-family:var(--mono);font-size:11px;color:var(--secondary);display:flex;align-items:center;gap:7px}
+  .cmtpop .who .n{margin-left:auto;color:var(--on-var);font-size:10px}
+  .cmtpop .tx{font-size:12.5px;color:var(--on-var);line-height:1.5;margin:7px 0 2px}
+  .cmtpop .meta{font-family:var(--mono);font-size:10px;color:var(--outline);border-top:1px solid var(--outline-var);margin-top:9px;padding-top:8px}
+
+  /* === 003 #2 — on-edge action bar (rel · relabel · ✕) === */
+  .edgebar{position:absolute;display:flex;align-items:center;gap:3px;padding:4px;border-radius:var(--r-full);
+    background:rgba(9,15,30,.92);backdrop-filter:blur(12px);border:1px solid rgba(192,193,255,.34);box-shadow:0 10px 26px -12px rgba(0,0,0,.8),var(--glow)}
+  .edgebar button{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:var(--r-full);border:0;
+    background:transparent;color:var(--on-var);font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase}
+  .edgebar button:hover{color:var(--on);background:rgba(128,131,255,.16)}
+  .edgebar button.rel{color:var(--cyan)} .edgebar button.del:hover{color:#fff;background:rgba(255,81,106,.85)}
+  .edgebar .div{width:1px;height:18px;background:var(--outline-var)}
+  .edgebar svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .relmenu{position:absolute;top:38px;right:2px;left:auto;width:188px;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:7px;
+    border-radius:var(--r-ctl);background:rgba(9,15,30,.96);border:1px solid var(--outline-var);box-shadow:0 22px 50px -20px rgba(0,0,0,.85)}
+  .relmenu b{grid-column:1/3;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--outline);padding:1px 4px 3px}
+  .relmenu button{font-family:var(--mono);font-size:10px;text-transform:none;letter-spacing:0;justify-content:flex-start;height:26px;color:var(--on-var)}
+  .relmenu button.cur{color:var(--cyan);background:rgba(94,242,255,.12)}
+
+  /* ───────── right inspector ───────── */
+  .insp{border-left:1px solid var(--outline-var);background:rgba(6,14,32,.5);display:flex;flex-direction:column;min-height:0}
+  .insp__h{display:flex;align-items:center;gap:9px;padding:15px 16px;border-bottom:1px solid var(--outline-var)}
+  .insp__h .ic{width:18px;height:18px;color:var(--cyan)}
+  .insp__h .t{font-size:14px;font-weight:600;color:var(--on)}
+  .insp__h .bdg{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:2px 6px;border-radius:var(--r-sm);border:1px solid var(--outline-var);color:var(--on-var)}
+  .insp__h .bdg.sel{color:var(--primary);border-color:rgba(192,193,255,.4);background:rgba(128,131,255,.12)}
+  .insp__b{overflow:auto;padding:15px 16px;flex:1;display:flex;flex-direction:column;gap:16px}
+  .sech{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--on-var);display:flex;align-items:center;gap:8px}
+  .sech .c{margin-left:auto;color:var(--primary)}
+  .delbtn{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:8px 13px;border-radius:var(--r-ctl);
+    border:1px solid var(--outline-var);background:transparent;color:var(--on-var);font-size:12.5px}
+  .delbtn:hover{color:#fff;border-color:var(--tertiary-cont);background:rgba(255,81,106,.14)}
+  .delbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+  /* 003 #4 — SOURCE row: flat, NO faded-violet box (was .fc-insp__src rgba(221,183,255,.08)+.25 border) */
+  .srcrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--outline-var);border-bottom:1px solid var(--outline-var)}
+  .srcrow .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--outline);flex:none}
+  .srcrow .p{font-family:var(--mono);font-size:11.5px;color:var(--on);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srcrow a{margin-left:auto;width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-ctl);border:1px solid var(--outline-var);color:var(--primary)}
+  .relrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:rgba(19,27,46,.5);font-size:12.5px;color:var(--on)}
+  .relrow .rl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:var(--r-sm)}
+  .relrow .rl.calls{color:var(--cyan);background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.22)}
+  .relrow .rl.informs{color:var(--secondary);background:rgba(228,198,255,.08);border:1px solid rgba(228,198,255,.22)}
+  .relrow .ar{color:var(--on-var)} .relrow .mut{color:var(--on-var);font-family:var(--mono);font-size:11px}
+  /* 003 #3 — inspector "Comments on this node" (new) */
+  .cmtitem{display:flex;gap:10px;padding:10px 11px;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:rgba(19,27,46,.5)}
+  .cmtitem:hover{border-color:var(--primary-cont);box-shadow:var(--glow)}
+  .cmtitem .dot{width:8px;height:8px;border-radius:50%;background:var(--rose);margin-top:5px;flex:none;box-shadow:0 0 8px -1px var(--rose)}
+  .cmtitem .body{font-size:12px;color:var(--on-var);line-height:1.45}
+  .cmtitem .body b{color:var(--secondary);font-family:var(--mono);font-size:10.5px;font-weight:500;display:block;margin-bottom:2px}
+  .insp__foot{padding:13px 16px;border-top:1px solid var(--outline-var);display:flex;gap:9px}
+  .fbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:var(--r-ctl);font-size:13px;font-weight:600}
+  .fbtn.primary{color:#0a0f20;border:0;background:linear-gradient(135deg,var(--primary),var(--primary-cont))}
+  .fbtn.ghost{color:var(--on-var);background:transparent;border:1px solid var(--outline-var)}
+  .insp__empty{padding:34px 18px;color:var(--on-var);font-style:italic;text-align:center;font-size:13px}
+
+  /* ───────── reader (003 #4 redesign) — toggled overlay ───────── */
+  .reader{position:absolute;top:0;right:0;bottom:0;width:min(52vw,720px);z-index:60;display:none;flex-direction:column;
+    background:var(--c-lowest);border-left:1px solid var(--outline-var);box-shadow:-30px 0 80px -40px rgba(0,0,0,.9)}
+  body[data-reader="on"] .reader{display:flex}
+  .rd__h{display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid var(--outline-var)}
+  .rd__h .t{font-size:15px;font-weight:600;color:var(--on)}
+  .rd__h .pth{font-family:var(--mono);font-size:10.5px;color:var(--outline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rd__sizes{margin-left:auto;display:flex;gap:4px}
+  .rd__sz{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;border:1px solid var(--outline-var);background:transparent;color:var(--on-var)}
+  .rd__sz.on{color:#06222a;border-color:transparent;background:linear-gradient(135deg,var(--cyan),var(--secondary))}
+  .rd__sz svg{width:15px;height:15px}
+  /* compact COLLAPSIBLE frontmatter strip — the 003 fix for "frontmatter takes too much space" */
+  .fm{display:flex;align-items:center;gap:9px;padding:10px 22px;border-bottom:1px solid var(--outline-var);background:rgba(19,27,46,.4)}
+  .fm .st{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;text-transform:uppercase;color:var(--cyan)}
+  .fm .st .d{width:6px;height:6px;border-radius:50%;background:var(--cyan)}
+  .fm .ftag{font-family:var(--mono);font-size:10px;color:var(--secondary);border:1px solid rgba(228,198,255,.22);background:rgba(228,198,255,.06);border-radius:var(--r-sm);padding:1px 6px}
+  .fm .more{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--on-var);border:1px solid var(--outline-var);border-radius:var(--r-full);padding:3px 10px;background:transparent}
+  .rd__scroll{flex:1;overflow:auto;background:var(--c-lowest)}
+  .prose{max-width:68ch;margin-inline:auto;padding:30px 26px 48px;font-size:16.5px;line-height:1.74;color:var(--on)}
+  .prose h1{font-size:27px;font-weight:600;letter-spacing:-.015em;margin:0 0 .5em;color:var(--on)}
+  .prose h2{font-size:20px;font-weight:600;margin:1.7em 0 .5em;color:var(--on)}
+  .prose h3{font-size:16.5px;font-weight:600;margin:1.4em 0 .4em;color:var(--secondary-deep)}  /* role-reduced violet */
+  .prose p{margin:0 0 1.05em} .prose strong{color:var(--on);font-weight:600} .prose em{color:var(--secondary-deep);font-style:italic}
+  .prose a{color:var(--secondary);text-decoration:underline;text-underline-offset:2px}
+  .prose code{font-family:var(--mono);font-size:.82em;color:var(--cyan);background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.18);border-radius:6px;padding:1px 6px}
+  .prose blockquote{margin:0 0 1.05em;padding:10px 18px;border-left:2px solid var(--primary);background:rgba(128,131,255,.08);border-radius:0 8px 8px 0;color:var(--on-var)}
+  .prose ul{margin:0 0 1.05em;padding-left:1.4em} .prose li{margin-bottom:.4em}
+
+  /* before/after contrast chip used in the "violet" state */
+  .swatchrow{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:120;display:none;gap:10px;align-items:center;
+    padding:11px 16px;border-radius:var(--r-card);background:rgba(9,15,30,.95);border:1px solid var(--outline-var);box-shadow:0 24px 60px -24px #000}
+  body[data-state="violet"] .swatchrow{display:flex}
+  .swatch{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .swatch i{width:30px;height:18px;border-radius:5px;display:block}
+  .swatch .old{background:#ddb7ff} .swatch .new{background:#e4c6ff} .swatch .body{background:#c9a4f0}
+
+  /* emphasis halos driven by the mockup state */
+  .spot{transition:.2s}
+  body[data-state="resize"] .stage .spot:not(.s-resize){opacity:.4}
+  body[data-state="edge"] .stage .spot:not(.s-edge){opacity:.42}
+  body[data-state="comment"] .stage .spot:not(.s-comment){opacity:.42}
+  .hide{display:none!important}
+  /* minimap + controls */
+  .controls{position:absolute;left:18px;bottom:18px;display:flex;flex-direction:column;gap:2px;border-radius:var(--r-ctl);overflow:hidden;border:1px solid var(--outline-var);background:rgba(6,14,32,.7)}
+  .controls button{width:34px;height:34px;display:grid;place-items:center;background:transparent;border:0;color:var(--on-var)}
+  .controls button:hover{color:var(--on);background:rgba(128,131,255,.12)}
+  .minimap{position:absolute;right:18px;bottom:18px;width:190px;height:128px;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:rgba(6,14,32,.7);overflow:hidden}
+  .minimap i{position:absolute;border-radius:3px;background:rgba(128,131,255,.5)}
+</style>
+</head>
+<body data-state="overview" data-reader="off">
+
+  <!-- ░░░ MOCKUP CONTROLS (not the product) ░░░ -->
+  <div class="mockbar">
+    <span class="lab"><b>FLOWCANVAS 003</b> · Canvas Foundation — <span class="v">V1 nyx-refined</span> · real board + all fixes applied</span>
+    <button data-go="overview" aria-current="true">Overview</button>
+    <button data-go="resize">① Resize</button>
+    <button data-go="edge">② Edge tools</button>
+    <button data-go="comment">③ Comments</button>
+    <button data-go="violet">④ Violet</button>
+    <button data-go="reader">⑤ Reader</button>
+  </div>
+
+  <div class="app">
+    <!-- ░░░ TOOLBAR ░░░ -->
+    <div class="toolbar">
+      <button class="tbtn on" title="Collapse structure rail"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg></button>
+      <span class="brand"><span class="dot"></span>FLOWCANVAS</span>
+      <span class="sep"></span>
+      <button class="tbtn sel" title="Select"><svg class="ico" viewBox="0 0 24 24"><path d="M5 3l6 18 2-7 7-2z"/></svg></button>
+      <button class="tbtn" title="Connect"><svg class="ico" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+      <button class="tbtn" title="Comment"><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4z"/></svg></button>
+      <span class="sep"></span>
+      <button class="tbtn" title="Add note"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg></button>
+      <button class="tbtn" title="Add markdown"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 15V9l3 3 3-3v6M17 9v6M14.5 13l2.5 2.5 2.5-2.5"/></svg></button>
+      <button class="tbtn" title="Add image"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg></button>
+      <button class="tbtn" title="Add link"><svg class="ico" viewBox="0 0 24 24"><path d="M9 15l6-6M10 7l1-1a4 4 0 016 6l-1 1M14 17l-1 1a4 4 0 01-6-6l1-1"/></svg></button>
+      <button class="tbtn" title="Add shape"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></button>
+      <span class="sep"></span>
+      <button class="tbtn tbtn--wide"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> File</button>
+      <span class="sep"></span>
+      <button class="tbtn" title="Fit"><svg class="ico" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></button>
+      <button class="tbtn" title="Re-organize"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button>
+      <button class="tbtn" title="Delete"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>
+      <span class="grow"></span>
+      <button class="tbtn--cta tbtn"><svg class="ico" viewBox="0 0 24 24"><path d="M4 12l16-7-7 16-2-7z"/></svg> Submit</button>
+      <button class="tbtn" title="Templates"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg></button>
+      <button class="tbtn" title="Bundle"><svg class="ico" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg></button>
+      <span class="sep"></span>
+      <button class="tbtn--wide tbtn" style="border-color:rgba(192,193,255,.4);color:var(--on)"><svg class="ico" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM8 3v6h7"/></svg> Save</button>
+      <button class="tbtn on" title="Collapse inspector"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="15" y1="4" x2="15" y2="20"/></svg></button>
+    </div>
+
+    <div class="panes">
+      <!-- ░░░ LEFT STRUCTURE RAIL ░░░ -->
+      <aside class="rail">
+        <div class="rail__tabs"><button class="tab on">Structure</button><button class="tab">Templates</button></div>
+        <div class="filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg> Filter nodes…</div>
+        <div class="tree">
+          <div class="grp"><svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> Edge <span class="cnt">1</span></div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> api-gateway.md</div>
+          <div class="grp"><svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> Core Services <span class="cnt">3</span></div>
+          <div class="leaf sel"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> auth-service.md</div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> order-service.md</div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> payment-service.md</div>
+          <div class="grp"><svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> Data &amp; Events <span class="cnt">2</span></div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> orders-db.md</div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> event-bus.md</div>
+          <div class="grp"><svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> Ungrouped <span class="cnt">4</span></div>
+          <div class="leaf"><svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg> commerce-design.md</div>
+          <div class="leaf"><svg class="gl img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.4"/><path d="M5 17l4-4 3 3 2-2 5 5"/></svg> sequence.svg</div>
+          <div class="leaf"><svg class="gl tx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 6h14M5 10h14M5 14h9"/></svg> ## SLOs p99 &lt; 250ms…</div>
+          <div class="leaf"><svg class="gl lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l6-6M10 7l1-1a4 4 0 016 6l-1 1"/></svg> stripe.com/docs/api</div>
+        </div>
+      </aside>
+
+      <!-- ░░░ CENTER STAGE ░░░ -->
+      <div class="stage">
+        <div class="board">
+          <!-- edges (behind) -->
+          <svg class="edges" viewBox="0 0 1200 900" preserveAspectRatio="none">
+            <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="var(--outline)" stroke-width="1.5"/></marker>
+            <marker id="arc" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="var(--cyan)" stroke-width="1.6"/></marker></defs>
+            <path d="M250 150 C250 110 540 110 540 150" fill="none" stroke="var(--outline)" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#ar)"/>
+            <path d="M470 250 C540 250 560 250 600 250" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path d="M760 250 C840 250 840 250 900 240" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path class="eorders" d="M760 360 C840 360 840 360 900 360" fill="none" stroke="var(--cyan)" stroke-width="1.7" marker-end="url(#arc)"/>
+            <path d="M680 470 C680 540 680 540 680 600" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+          </svg>
+
+          <!-- rel eyebrows -->
+          <div class="relpill spot" style="position:absolute;left:355px;top:96px;color:var(--outline)">informs · verifies</div>
+          <div class="relpill spot" style="position:absolute;left:506px;top:232px;color:var(--outline)">depends-on</div>
+          <div class="relpill spot s-edge" style="position:absolute;left:800px;top:336px;color:var(--cyan)">produces · order.created</div>
+
+          <!-- GROUP: EDGE -->
+          <div class="group" style="left:114px;top:118px;width:288px;height:264px"><span class="glab">Edge</span></div>
+          <!-- API Gateway -->
+          <div class="node spot" style="left:140px;top:150px;width:230px">
+            <div class="nhead"><span class="ntitle">API Gateway</span><span class="badge">MD</span>
+              <span class="nicons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l-5 5M4 16v4h4M15 9l5-5M20 8V4h-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+            <div class="nbody"><span class="pill"><span class="d"></span>active</span>
+              <div class="tags"><span class="tag">service</span><span class="tag">edge</span></div>
+              <div class="desc"><span class="k">description</span><span>Public entry point — TLS termination, auth, request fan-out.</span></div></div>
+          </div>
+
+          <!-- GROUP: CORE SERVICES -->
+          <div class="group" style="left:556px;top:150px;width:280px;height:534px"><span class="glab">Core Services</span></div>
+          <!-- Auth Service (SELECTED + RESIZE in resize state) -->
+          <div class="node spot s-resize sel" id="authcard" style="left:585px;top:185px;width:215px">
+            <div class="nhead"><span class="ntitle">Auth Service</span><span class="badge">MD</span>
+              <span class="nicons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l-5 5M4 16v4h4M15 9l5-5M20 8V4h-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+            <div class="nbody"><span class="pill"><span class="d"></span>active</span>
+              <div class="tags"><span class="tag">service</span><span class="tag">core</span><span class="tag">security</span></div>
+              <div class="desc"><span class="k">description</span><span>Issues and verifies session tokens.</span></div></div>
+            <!-- 003 #1: universal resize handles -->
+            <div class="rz" id="authrz"><b></b><i class="nw"></i><i class="n"></i><i class="ne"></i><i class="e"></i><i class="se"></i><i class="s"></i><i class="sw"></i><i class="w"></i></div>
+            <div class="rzsize" id="authsize">215 × 168</div>
+          </div>
+          <!-- Order Service (has the comment) -->
+          <div class="node spot s-comment" id="ordercard" style="left:585px;top:360px;width:215px">
+            <div class="nhead"><span class="ntitle">Order Service</span><span class="badge">MD</span>
+              <span class="nicons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l-5 5M4 16v4h4M15 9l5-5M20 8V4h-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+            <div class="nbody"><span class="pill"><span class="d"></span>active</span>
+              <div class="tags"><span class="tag">service</span><span class="tag">core</span></div>
+              <div class="desc"><span class="k">description</span><span>Owns the order lifecycle; calls payment.</span></div></div>
+            <!-- 003 #3: ON-CARD comment badge (anchored to the widget, not floating) -->
+            <div class="cmtbadge"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4z"/></svg>1</div>
+          </div>
+          <!-- Payment Service -->
+          <div class="node spot" style="left:585px;top:520px;width:215px">
+            <div class="nhead"><span class="ntitle">Payment Service</span><span class="badge">MD</span>
+              <span class="nicons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l-5 5M4 16v4h4M15 9l5-5M20 8V4h-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+            <div class="nbody"><span class="pill"><span class="d"></span>active</span>
+              <div class="tags"><span class="tag">service</span><span class="tag">pci</span></div>
+              <div class="desc"><span class="k">description</span><span>Wraps Stripe; isolates PCI scope.</span></div></div>
+          </div>
+
+          <!-- GROUP: DATA & EVENTS -->
+          <div class="group" style="left:898px;top:198px;width:234px;height:290px"><span class="glab">Data &amp; Events</span></div>
+          <!-- Orders DB (edge action bar target on the cyan produces edge) -->
+          <div class="node spot s-edge" id="dbcard" style="left:912px;top:225px;width:192px">
+            <div class="nhead"><span class="ntitle">Orders DB</span><span class="badge">MD</span></div>
+            <div class="nbody"><span class="pill stable"><span class="d"></span>stable</span>
+              <div class="tags"><span class="tag">datastore</span></div></div>
+          </div>
+          <!-- Event Bus -->
+          <div class="node spot s-edge" style="left:912px;top:345px;width:192px">
+            <div class="nhead"><span class="ntitle">Event Bus</span><span class="badge">MD</span></div>
+            <div class="nbody"><span class="pill"><span class="d"></span>active</span>
+              <div class="tags"><span class="tag">events</span><span class="tag">kafka</span></div></div>
+          </div>
+
+          <!-- NOTE -->
+          <div class="note spot" style="position:absolute;left:140px;top:430px;width:210px">
+            <div class="lab">Note</div>
+            <div style="padding:4px 12px 13px"><div style="font-weight:600;font-size:13px;margin-bottom:5px">SLOs</div>
+            <div style="font-size:12.5px;color:var(--on);line-height:1.55">p99 &lt; 250ms · 99.95% availability · payment success &gt; 99.5%</div></div>
+          </div>
+
+          <!-- DESIGN card (the core source doc — note: Plan 004 promotes this to the spine) -->
+          <div class="node spot" style="left:556px;top:716px;width:316px">
+            <div class="nhead"><span class="ntitle">Commerce Platform — Design</span><span class="badge">MD</span></div>
+            <div class="nbody"><span class="pill appr"><span class="d"></span>approved</span>
+              <div class="tags"><span class="tag">design</span><span class="tag">commerce</span><span class="tag">architecture</span></div>
+              <div style="display:flex;gap:6px;margin:8px 0 6px"><span class="reflink">↗ order-service.md</span><span class="reflink">↗ payment-service.md</span></div>
+              <div class="desc"><span class="k">description</span><span>Source design doc the board was extracted from — services <span class="code">derive-from</span> this.</span></div></div>
+          </div>
+
+          <!-- IMAGE node -->
+          <div class="imgnode spot" style="position:absolute;left:912px;top:520px;width:200px">
+            <div style="height:104px;background:repeating-linear-gradient(135deg,rgba(94,242,255,.06) 0 10px,transparent 10px 20px);display:grid;place-items:center;color:var(--on-var);font-family:var(--mono);font-size:11px">sequence ▸ diagram</div>
+            <div class="cap">sequence.svg</div>
+          </div>
+          <!-- LINK node -->
+          <div class="linknode spot" style="position:absolute;left:912px;top:660px;width:230px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" stroke-width="1.7"><path d="M9 15l6-6M10 7l1-1a4 4 0 016 6l-1 1M14 17l-1 1a4 4 0 01-6-6l1-1"/></svg>
+            <div><div class="lk">LINK</div><div class="u">stripe.com/docs/api</div></div>
+          </div>
+
+          <!-- 003 #2: ON-EDGE ACTION BAR (shown in edge state) on the produces/order.created edge -->
+          <div class="edgebar hide" id="edgebar" style="left:790px;top:300px">
+            <button class="rel" id="relbtn"><span style="width:8px;height:8px;border-radius:2px;background:var(--cyan);display:inline-block"></span> produces <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+            <span class="div"></span>
+            <button><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg> Label</button>
+            <span class="div"></span>
+            <button class="del"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg> Delete</button>
+            <div class="relmenu hide" id="relmenu">
+              <b>Relationship</b>
+              <button>references</button><button>depends-on</button><button>implements</button><button>derives-from</button>
+              <button>calls</button><button class="cur">produces ✓</button><button>informs</button><button>related</button>
+            </div>
+          </div>
+
+          <!-- 003 #3: tethered thread popover (shown in comment state) -->
+          <div class="cmtpop hide" id="cmtpop" style="left:812px;top:352px">
+            <div class="who">human:david <span class="n">on Order Service</span></div>
+            <div class="tx">Should the order lifecycle own retries, or push that to the bus consumer?</div>
+            <div class="meta">1 comment · open · ⤷ reply</div>
+          </div>
+        </div>
+
+        <!-- controls + minimap -->
+        <div class="controls"><button>+</button><button>−</button><button title="fit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></button><button title="lock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></button></div>
+        <div class="minimap"><i style="left:14px;top:20px;width:34px;height:30px"></i><i style="left:78px;top:24px;width:30px;height:60px;background:rgba(94,242,255,.5)"></i><i style="left:130px;top:30px;width:26px;height:40px"></i><i style="left:24px;top:64px;width:30px;height:22px"></i><i style="left:74px;top:96px;width:44px;height:18px"></i></div>
+      </div>
+
+      <!-- ░░░ RIGHT INSPECTOR ░░░ -->
+      <aside class="insp">
+        <div class="insp__h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6"/></svg><span class="t">auth-service.md</span><span class="bdg">MARKDOWN</span><span class="bdg sel">SELECTED</span></div>
+        <div class="insp__b">
+          <button class="delbtn"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg> Delete node</button>
+          <!-- 003 #4: SOURCE row is now FLAT — the faded-violet box is gone -->
+          <div>
+            <div class="sech">Source</div>
+            <div class="srcrow"><span class="k">path</span><span class="p">…/commerce-platform/commerce-design.md ▸ auth-service</span><a>↗</a></div>
+          </div>
+          <div>
+            <div class="sech">Out relations <span class="c">1</span></div>
+            <div class="relrow" style="margin-top:8px"><span class="rl calls">calls</span><span class="ar">→</span><span>order-service.md</span><span class="mut">· verify</span></div>
+          </div>
+          <div>
+            <div class="sech">In relations <span class="c">1</span></div>
+            <div class="relrow" style="margin-top:8px"><span class="rl informs">informs</span><span class="ar">←</span><span>api-gateway.md</span><span class="mut">· verifies</span></div>
+          </div>
+          <!-- 003 #3: NEW inspector "Comments on this node" -->
+          <div>
+            <div class="sech">Comments on this node <span class="c">0</span></div>
+            <div style="font-size:12px;color:var(--on-var);font-style:italic;margin-top:8px">No comments anchored here. Select Order Service to see one →</div>
+          </div>
+        </div>
+        <div class="insp__foot"><button class="fbtn primary"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M4 12l16-7-7 16-2-7z"/></svg> Submit round</button><button class="fbtn ghost">Review</button></div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ░░░ READER (003 #4 redesign) ░░░ -->
+  <div class="reader">
+    <div class="rd__h"><span class="t">Auth Service</span><span class="pth">examples/commerce-platform/auth-service.md</span>
+      <span class="rd__sizes"><button class="rd__sz" title="Drawer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="13" y="4" width="7" height="16" rx="1.5"/></svg></button><button class="rd__sz on" title="Half"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="1.5"/><line x1="12" y1="4" x2="12" y2="20"/></svg></button><button class="rd__sz" title="Full"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg></button><button class="rd__sz" title="Close" onclick="document.body.dataset.reader='off'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6L6 18M6 6l12 12"/></svg></button></span>
+    </div>
+    <!-- compact, collapsible frontmatter strip (was a tall dominating block) -->
+    <div class="fm"><span class="st"><span class="d"></span>active</span><span class="ftag">service</span><span class="ftag">core</span><span class="ftag">security</span><button class="more">frontmatter ▾</button></div>
+    <div class="rd__scroll"><div class="prose">
+      <h1>Auth Service</h1>
+      <p>Issues and verifies <strong>session tokens</strong> for every request entering the platform. The <em>only</em> node permitted to mint a token; everything else calls <code>verify(token)</code> and trusts the boolean.</p>
+      <h2>Responsibilities</h2>
+      <ul><li>Mint short-lived JWTs on successful login</li><li>Verify + refresh tokens on the hot path (p99 &lt; 8ms)</li><li>Revoke on logout / password change</li></ul>
+      <blockquote>The API Gateway <strong>informs</strong> this service on every request; it never writes to the Orders DB directly.</blockquote>
+      <h2>Interface</h2>
+      <p>Exposes <code>POST /token</code> and <code>POST /verify</code>. Session state lives in Redis, not the request path.</p>
+    </div></div>
+  </div>
+
+  <!-- ④ violet recalibration callout -->
+  <div class="swatchrow">
+    <span class="swatch">old <i class="old"></i> #ddb7ff</span>
+    <span class="swatch">tags / chrome <i class="new"></i> #e4c6ff</span>
+    <span class="swatch">body prose <i class="body"></i> #c9a4f0</span>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--on-var);max-width:300px">Same family, calmer hue + reduced to fewer roles — headings/em step down so violet stops over-serving prose.</span>
+  </div>
+
+<script>
+  const body = document.body;
+  const bar = document.querySelector('.mockbar');
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('button[data-go]'); if (!b) return;
+    [...bar.querySelectorAll('button')].forEach(x => x.setAttribute('aria-current', x === b));
+    const go = b.dataset.go;
+    body.dataset.reader = go === 'reader' ? 'on' : 'off';
+    body.dataset.state = go;
+    // state-specific element visibility
+    document.getElementById('edgebar').classList.toggle('hide', go !== 'edge');
+    document.getElementById('relmenu').classList.toggle('hide', go !== 'edge');
+    document.getElementById('cmtpop').classList.toggle('hide', go !== 'comment');
+    // resize size chip + handles only emphasised in resize state (always present on the selected card)
+    document.getElementById('authsize').style.opacity = go === 'resize' ? '1' : '.0';
+    document.getElementById('authrz').style.opacity = go === 'resize' ? '1' : '.55';
+  });
+  // init
+  document.getElementById('edgebar').classList.add('hide');
+  document.getElementById('cmtpop').classList.add('hide');
+  document.getElementById('authsize').style.opacity = '0';
+  document.getElementById('authrz').style.opacity = '.55';
+</script>
+</body>
+</html>

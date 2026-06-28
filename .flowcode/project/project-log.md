@@ -14,6 +14,17 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [FEEDBACK] 003 + 004 board-generation redesign (design + mockups) — 2026-06-28
+
+**Dev:** david-ds-teles <davidarius2@gmail.com>
+**Captured:** 2 rules, 2 conventions, 4 decisions/definitions, 1 UC.
+**Applied:** `ui/ui-design-system.md` — §11 content-readability rule (body/description uses `--color-text-primary`, never muted grey) + legible-metadata-chip rule + the `--color-secondary` `#ddb7ff → #e4c6ff` role-reduction note; §8 group spec now requires a container to fully enclose all its child nodes (no ~80%-width clip).
+**Logged (not applied):** (1) **Two-plan split** — `003` Canvas Foundation → `004` Generation Loop, foundation first to avoid v2's plumbing-heavy / experience-light repeat. (2) **System-design-centric reframe** — the canvas is a system-design diagram generated FROM a core markdown doc (the living, linked core), not an arrangement of md-file cards (`004-generation-loop-design.md`). (3) Semantic component enum is **`ComponentKind` on `meta.kind`**, NOT `NodeKind` (already the render-kind discriminator) (`004` design Decision 1). (4) Selected design language for the redesign: **nyx-refined** (`003-canvas-foundation-ui-design.md`).
+**Routed upstream:** **UC-004** — mockup low-fidelity recurrence (4th); the framework-level fix (the "Fidelity — snapshot the real system" discipline = rows 1–2) routes here because `ui/ui-mockup-discipline.md` + `ui/ui-workflow.md` are framework-owned symlinks the host cannot bind.
+**Rejected/deferred:** none.
+
+---
+
 ## [PLAN COMPLETE] 002-system-design-studio — Flowcanvas System Design Studio v2 (re-close after Phase 7) — 2026-06-29
 
 **Dev:** david-ds-teles <davidarius2@gmail.com>

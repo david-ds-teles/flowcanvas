@@ -251,7 +251,7 @@ Glass card, base for markdown/image/link/text:
 - **Text/note:** glass card, cyan `text · note` eyebrow, rendered markdown.
 
 ### Rectangle / group
-Translucent indigo-tinted container with a dashed indigo border and a header-tab label (mono uppercase). Visually contains its children with padding.
+Translucent indigo-tinted container with a dashed indigo border and a header-tab label (mono uppercase). **Must fully enclose all its child nodes on every side with padding** — a fence that clips a member (e.g. a right or bottom edge ending mid-card, at ~80% width) is non-conformant; size the container to its members' bounding box plus padding.
 
 ### Edge label (`fc-edge-label`)
 Mono pill, `rgba(13,21,40,.85)` + 1px `--color-outline-variant`, `radius full`, midpoint of a 1.5–2px bezier.
@@ -310,6 +310,9 @@ Full-canvas dashed `--color-neon-cyan` border, faint cyan fill + inner glow, upl
 - Color never the only signal: edge origin = dashed/solid/neon stroke style + lock glyph in addition to color; status = glyph + text.
 - Reduced motion & dynamic text scaling must not break node layout (`min-height`, not fixed `height`, on node bodies).
 - Glass legibility: keep a sufficiently opaque fill behind body text; do not let blur drop contrast below the floor.
+- **Content readability (readability-first).** Body / description / node-role text uses `--color-text-primary` — the muted `--color-text-secondary` / `--color-outline` greys are reserved for labels, eyebrows, and metadata keys, never for content a user must read. A description rendered in a muted grey is a readability defect.
+- **Metadata chips stay legible.** Frontmatter tag chips must read as cleanly as the status pills — give the chip text + border enough contrast; never wash a tag to a near-invisible faded violet.
+- `--color-secondary` is recalibrated `#ddb7ff → #e4c6ff` with **role reduction** (prose `em` / headings step down to a deeper violet) in plan `003` — a hierarchy fix for one over-saturated violet serving too many roles, **not** a contrast fix (`#ddb7ff` already clears WCAG on every surface, ~9–12:1).
 
 ---
 

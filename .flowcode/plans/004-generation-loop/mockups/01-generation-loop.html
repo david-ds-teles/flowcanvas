@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcanvas 004 — Markdown-Core Generation Loop · nyx</title>
+<!--
+  004 Markdown-Core Generation Loop — MOCK (nyx language, per the 003 selection).
+  Renders the REFRAME: the canvas is a SYSTEM-DESIGN diagram of kind-typed component widgets
+  (service · datastore · queue · actor · external · decision) generated FROM a core markdown doc,
+  with that markdown docked on the right as the LIVING CORE spine — editable, dirty-flaggable,
+  re-submittable over MCP — and every component linked back to its section.
+  MOCKUP CONTROLS step through: Overview · Kinds · Linking · Edit core · Generation Kit · Import.
+  Ground truth: app/globals.css @theme tokens + the nyx language from plan-003 01-nyx-refined.html.
+  Self-contained: inline <style> + inline SVG. Desktop, >=1366.
+-->
+<style>
+  :root{
+    --bg:#0b1326; --grid:rgba(146,143,160,.16);
+    --c-lowest:#060e20; --c-low:#131b2e; --c:#171f33; --c-high:#222a3d;
+    --primary:#c0c1ff; --primary-cont:#8083ff; --secondary:#e4c6ff; --secondary-deep:#c9a4f0;
+    --tertiary-cont:#ff516a; --on:#dae2fd; --on-var:#c7c4d7; --outline:#908fa0; --outline-var:#464554;
+    --cyan:#5ef2ff; --lime:#b6f36a; --rose:#ff8fb0; --amber:#f59f00; --violet:#c9a4f0;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace; --ui:'Geist','Geist Sans',system-ui,sans-serif;
+    --r-card:16px; --r-ctl:8px; --r-sm:5px; --r-full:999px;
+    --glass:rgba(23,31,51,.55);
+    --glass-edge:linear-gradient(135deg,rgba(192,193,255,.45),rgba(255,255,255,.04) 45%,rgba(128,131,255,.30));
+    --glow:0 0 0 1px rgba(128,131,255,.32),0 0 22px -6px rgba(128,131,255,.5);
+    --ring:0 0 0 2px var(--primary),0 0 0 4px rgba(128,131,255,.28),0 0 22px -4px rgba(192,193,255,.6);
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{font-family:var(--ui);color:var(--on);overflow:hidden;
+    background:radial-gradient(1200px 760px at 22% -12%,rgba(128,131,255,.18),transparent 60%),
+      radial-gradient(900px 620px at 108% 116%,rgba(201,164,240,.12),transparent 55%),var(--bg);-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .ico{width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  /* mockup controls */
+  .mockbar{position:fixed;inset:0 0 auto 0;z-index:200;display:flex;gap:7px;align-items:center;flex-wrap:wrap;
+    padding:7px 14px;background:rgba(4,9,20,.86);backdrop-filter:blur(14px);border-bottom:1px solid var(--outline-var)}
+  .mockbar .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--on-var);margin-right:auto}
+  .mockbar .lab b{color:var(--secondary)} .mockbar .lab .v{color:var(--cyan)}
+  .mockbar button{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);
+    background:transparent;border:1px solid var(--outline-var);padding:6px 10px;border-radius:var(--r-ctl)}
+  .mockbar button:hover{color:var(--on);box-shadow:var(--glow)}
+  .mockbar button[aria-current="true"]{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--primary),var(--secondary))}
+
+  .app{position:fixed;inset:42px 0 0 0;display:grid;grid-template-rows:auto 1fr}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--outline-var);background:rgba(6,14,32,.66);backdrop-filter:blur(16px);z-index:30}
+  .tbtn{height:38px;min-width:38px;padding:0 11px;display:inline-flex;align-items:center;gap:7px;justify-content:center;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:rgba(23,31,51,.4);color:var(--on-var);font-size:12.5px}
+  .tbtn:hover{color:var(--on);border-color:var(--primary-cont);box-shadow:var(--glow)}
+  .tbtn.on{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--cyan),var(--secondary))}
+  .brand{display:flex;align-items:center;gap:9px;margin-right:6px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--on)}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--cyan),var(--primary-cont));box-shadow:0 0 10px -1px var(--cyan)}
+  .sep{width:1px;height:24px;background:var(--outline-var);margin:0 3px} .grow{margin-left:auto}
+  .tbtn--kit{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--lime),var(--cyan));font-weight:600}
+  .tbtn--imp{border-color:rgba(192,193,255,.4);color:var(--on)}
+
+  .panes{display:grid;grid-template-columns:236px 1fr 410px;min-height:0}
+
+  /* left rail — components by subsystem */
+  .rail{border-right:1px solid var(--outline-var);background:rgba(6,14,32,.5);display:flex;flex-direction:column;min-height:0}
+  .rail__h{padding:13px 14px 9px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-var)}
+  .tree{overflow:auto;padding:2px 8px 14px;flex:1}
+  .grp{margin:9px 4px 3px;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--on-var)}
+  .grp .cnt{margin-left:auto;min-width:20px;height:18px;padding:0 6px;display:grid;place-items:center;border-radius:var(--r-full);background:rgba(128,131,255,.14);color:var(--primary);font-size:10px}
+  .leaf{display:flex;align-items:center;gap:9px;padding:7px 9px;margin:2px;border-radius:var(--r-ctl);color:var(--on-var);font-size:12.5px}
+  .leaf:hover{background:rgba(128,131,255,.07);color:var(--on)}
+  .leaf.sel{background:rgba(128,131,255,.13);color:var(--on);box-shadow:inset 0 0 0 1px rgba(192,193,255,.4)}
+  .kdot{width:9px;height:9px;border-radius:3px;flex:none}
+
+  /* kind palette */
+  .k-service{--kc:var(--cyan)} .k-datastore{--kc:var(--lime)} .k-queue{--kc:var(--amber)}
+  .k-actor{--kc:var(--secondary)} .k-external{--kc:var(--rose)} .k-decision{--kc:var(--primary)}
+
+  /* center stage */
+  .stage{position:relative;overflow:hidden;background-color:var(--bg);
+    background-image:radial-gradient(1000px 700px at 50% -10%,rgba(128,131,255,.14),transparent 60%),radial-gradient(var(--grid) 1.4px,transparent 1.4px);background-size:auto,22px 22px}
+  .board{position:absolute;inset:0;transform:translate(16px,14px) scale(.72);transform-origin:0 0}
+  .edges{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .relpill{position:absolute;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--outline)}
+  .relpill.cy{color:var(--cyan)}
+  .group{position:absolute;border:1.5px dashed rgba(192,193,255,.5);border-radius:var(--r-card);background:rgba(128,131,255,.045)}
+  .group>.glab{position:absolute;top:-10px;left:14px;padding:1px 9px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-var);background:var(--bg)}
+
+  /* === SYSTEM-DESIGN COMPONENT WIDGET (the reframe) === */
+  .cmp{position:absolute;width:196px;border-radius:14px;background-image:linear-gradient(var(--glass),var(--glass)),var(--glass-edge);
+    background-origin:border-box;background-clip:padding-box,border-box;border:1px solid transparent;backdrop-filter:blur(16px);
+    box-shadow:0 18px 40px -22px rgba(0,0,0,.8);padding:11px 12px 12px;border-left:3px solid var(--kc)}
+  .cmp.sel{box-shadow:var(--ring),0 18px 40px -22px rgba(0,0,0,.8)}
+  .cmp__h{display:flex;align-items:center;gap:9px}
+  .cmp__ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:none;color:var(--kc);background:color-mix(in srgb,var(--kc) 16%,transparent);border:1px solid color-mix(in srgb,var(--kc) 36%,transparent)}
+  .cmp__ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .cmp__nm{font-size:13.5px;font-weight:600;color:var(--on);line-height:1.1}
+  .cmp__kind{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--kc);margin-top:2px}
+  .cmp__role{font-size:11.5px;color:var(--on);line-height:1.45;margin:9px 0 9px}
+  .cmp__src{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;color:var(--secondary);
+    border:1px solid rgba(228,198,255,.3);background:rgba(228,198,255,.08);border-radius:var(--r-full);padding:2px 8px}
+  .cmp__src svg{width:10px;height:10px}
+  /* datastore: cylinder cap */
+  .cmp--datastore{border-top:none;border-radius:0 0 14px 14px;margin-top:9px}
+  .cmp--datastore::before{content:"";position:absolute;left:-1px;right:-1px;top:-9px;height:16px;border:1px solid color-mix(in srgb,var(--kc) 40%,var(--outline-var));border-radius:50%;background:var(--c-low)}
+  /* external: dashed */
+  .cmp--external{border:1px dashed color-mix(in srgb,var(--kc) 55%,transparent);background:rgba(255,143,176,.05);border-left:3px solid var(--kc)}
+  /* decision: tag */
+  .cmp--decision{border-left:3px solid var(--kc)}
+  .linktag{position:absolute;top:-11px;right:10px;display:none;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:var(--r-full);
+    background:linear-gradient(135deg,var(--secondary),var(--primary));color:#160a22;font-family:var(--mono);font-size:9.5px;font-weight:600;box-shadow:0 6px 16px -6px rgba(192,193,255,.7)}
+  body[data-state="linking"] .cmp.sel .linktag{display:inline-flex}
+
+  /* === RIGHT: LIVING CORE-DOC SPINE === */
+  .spine{border-left:1px solid var(--outline-var);background:var(--c-lowest);display:flex;flex-direction:column;min-height:0}
+  .spine__h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--outline-var);background:rgba(6,14,32,.6)}
+  .spine__ic{width:18px;height:18px;color:var(--secondary)}
+  .spine__t{font-size:13.5px;font-weight:600;color:var(--on)} .spine__t .ext{font-family:var(--mono);font-size:10px;color:var(--outline);font-weight:400}
+  .spine__dirty{display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--amber)}
+  .spine__dirty .d{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px -1px var(--amber)}
+  body[data-state="edit"] .spine__dirty{display:inline-flex}
+  .spine__tools{margin-left:auto;display:flex;gap:6px}
+  .stool{height:30px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);font-size:11.5px}
+  .stool:hover{color:var(--on);border-color:var(--primary-cont)}
+  .stool.on{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--cyan),var(--secondary))}
+  .stool svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7}
+  .spine__submit{height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:var(--r-ctl);border:0;color:#0a0f20;
+    background:linear-gradient(135deg,var(--primary),var(--primary-cont));font-size:11.5px;font-weight:600;opacity:.5;pointer-events:none}
+  body[data-state="edit"] .spine__submit{opacity:1;pointer-events:auto}
+  .spine__scroll{flex:1;overflow:auto;padding:8px 0 40px}
+  .prose{max-width:64ch;margin-inline:auto;padding:14px 24px;font-size:15.5px;line-height:1.72;color:var(--on)}
+  .prose h1{font-size:23px;font-weight:600;margin:.2em 0 .5em} .prose h2{font-size:17px;margin:1.2em 0 .4em;color:var(--on);scroll-margin-top:20px}
+  .prose p{margin:0 0 .9em} .prose strong{color:var(--on)} .prose em{color:var(--secondary-deep)}
+  .prose code{font-family:var(--mono);font-size:.82em;color:var(--cyan);background:rgba(94,242,255,.1);border:1px solid rgba(94,242,255,.18);border-radius:6px;padding:1px 6px}
+  /* a linked section block */
+  .sec{border-radius:10px;padding:2px 12px;margin:0 12px;transition:.18s;border-left:2px solid transparent}
+  .sec.is-linked{background:rgba(228,198,255,.09);border-left:2px solid var(--secondary);box-shadow:0 0 0 1px rgba(228,198,255,.18)}
+  .sec__tag{display:none;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--secondary);padding:4px 0 0}
+  .sec.is-linked .sec__tag{display:block}
+  /* edit mode editor */
+  .editor{display:none;margin:8px 22px;border:1px solid rgba(192,193,255,.4);border-radius:10px;background:rgba(6,14,32,.7);
+    font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--on);padding:14px 16px;white-space:pre-wrap}
+  body[data-state="edit"] .editor{display:block} body[data-state="edit"] .spine__scroll .prose{display:none}
+  .editor .add{background:rgba(182,243,106,.14);border-radius:3px}
+
+  /* controls + minimap */
+  .controls{position:absolute;left:16px;bottom:16px;display:flex;flex-direction:column;border-radius:var(--r-ctl);overflow:hidden;border:1px solid var(--outline-var);background:rgba(6,14,32,.7)}
+  .controls button{width:32px;height:32px;display:grid;place-items:center;background:transparent;border:0;color:var(--on-var)}
+
+  /* === GENERATION KIT modal === */
+  .scrim{position:fixed;inset:0;z-index:150;background:rgba(4,8,18,.66);backdrop-filter:blur(4px);display:none;place-items:center}
+  body[data-state="kit"] .scrim.kit{display:grid} body[data-state="import"] .scrim.imp{display:grid}
+  .modal{width:min(880px,92vw);max-height:84vh;display:flex;flex-direction:column;border-radius:var(--r-card);border:1px solid transparent;
+    background-image:linear-gradient(rgba(13,19,34,.97),rgba(13,19,34,.97)),var(--glass-edge);background-origin:border-box;background-clip:padding-box,border-box;
+    box-shadow:0 40px 100px -30px rgba(0,0,0,.85)}
+  .modal__h{display:flex;align-items:center;gap:11px;padding:16px 20px;border-bottom:1px solid var(--outline-var)}
+  .modal__h .t{font-size:16px;font-weight:600} .modal__h .t b{color:var(--lime)}
+  .modal__h .sub{font-family:var(--mono);font-size:10.5px;color:var(--on-var);margin-left:4px}
+  .modal__x{margin-left:auto;width:32px;height:32px;display:grid;place-items:center;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:transparent;color:var(--on-var)}
+  .modal__b{overflow:auto;padding:18px 20px;display:grid;grid-template-columns:200px 1fr;gap:18px}
+  .kitnav{display:flex;flex-direction:column;gap:4px}
+  .kitnav button{text-align:left;font-family:var(--mono);font-size:11.5px;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-ctl);padding:9px 11px}
+  .kitnav button.on{color:var(--on);border-color:var(--primary-cont);background:rgba(128,131,255,.12)}
+  .kitnav .mcp{margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--cyan);border:1px dashed rgba(94,242,255,.35);background:rgba(94,242,255,.06);border-radius:var(--r-ctl);padding:9px 10px;line-height:1.5}
+  .kitbody{border:1px solid var(--outline-var);border-radius:10px;background:rgba(6,14,32,.7);overflow:hidden;display:flex;flex-direction:column}
+  .kitbody__h{display:flex;align-items:center;gap:9px;padding:10px 13px;border-bottom:1px solid var(--outline-var);font-family:var(--mono);font-size:11px;color:var(--on-var)}
+  .kitbody__h .copy{margin-left:auto;height:26px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-ctl);border:0;color:#0a0f20;background:linear-gradient(135deg,var(--lime),var(--cyan));font-size:11px;font-weight:600}
+  .kitbody pre{margin:0;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.65;color:var(--on-var);max-height:46vh}
+  .kitbody pre .kw{color:var(--cyan)} .kitbody pre .st{color:var(--lime)} .kitbody pre .cm{color:var(--outline)}
+
+  /* === IMPORT modal === */
+  .imptabs{display:flex;gap:7px;margin-bottom:14px}
+  .imptab{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-var);background:transparent;border:1px solid var(--outline-var);border-radius:var(--r-ctl);padding:8px 13px}
+  .imptab.on{color:#0a0f20;border-color:transparent;background:linear-gradient(135deg,var(--primary),var(--secondary));font-weight:600}
+  .imppaste{width:100%;height:150px;border:1px solid var(--outline-var);border-radius:10px;background:rgba(6,14,32,.7);font-family:var(--mono);font-size:11.5px;color:var(--on-var);padding:13px 15px;white-space:pre;overflow:auto}
+  .impdrop{margin-top:14px;height:120px;border:1.5px dashed rgba(192,193,255,.5);border-radius:12px;display:grid;place-items:center;color:var(--on-var);background:rgba(128,131,255,.05);text-align:center}
+  .impdrop b{color:var(--secondary)}
+  .improw{display:flex;gap:10px;margin-top:14px;align-items:center}
+  .impbtn{height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;border-radius:var(--r-ctl);border:0;color:#0a0f20;background:linear-gradient(135deg,var(--primary),var(--primary-cont));font-size:13px;font-weight:600}
+  .impghost{height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;border-radius:var(--r-ctl);border:1px solid var(--outline-var);background:transparent;color:var(--on-var);font-size:13px}
+  .impnote{font-size:11.5px;color:var(--on-var);margin-top:10px;line-height:1.5}
+  .impnote b{color:var(--lime)}
+  .hide{display:none!important}
+</style>
+</head>
+<body data-state="overview">
+
+  <div class="mockbar">
+    <span class="lab"><b>FLOWCANVAS 004</b> · Markdown-Core Generation Loop — <span class="v">nyx</span> · system-design canvas generated from a living core doc</span>
+    <button data-go="overview" aria-current="true">Overview</button>
+    <button data-go="kinds">Kinds</button>
+    <button data-go="linking">Linking</button>
+    <button data-go="edit">Edit core</button>
+    <button data-go="kit">Generation Kit</button>
+    <button data-go="import">Import</button>
+  </div>
+
+  <div class="app">
+    <div class="toolbar">
+      <span class="brand"><span class="dot"></span>FLOWCANVAS</span>
+      <span class="sep"></span>
+      <button class="tbtn" title="Select"><svg class="ico" viewBox="0 0 24 24"><path d="M5 3l6 18 2-7 7-2z"/></svg></button>
+      <button class="tbtn" title="Connect"><svg class="ico" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8 8l8 8"/></svg></button>
+      <button class="tbtn" title="Comment"><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4z"/></svg></button>
+      <span class="sep"></span>
+      <button class="tbtn" title="Add component"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h5"/></svg> Component</button>
+      <button class="tbtn" title="Re-organize"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button>
+      <span class="grow"></span>
+      <button class="tbtn tbtn--kit" data-go="kit"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 3v18M4 7.5l8 4.5 8-4.5"/></svg> Generation Kit</button>
+      <button class="tbtn tbtn--imp" data-go="import"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Import</button>
+      <button class="tbtn" title="Submit round"><svg class="ico" viewBox="0 0 24 24"><path d="M4 12l16-7-7 16-2-7z"/></svg> Submit</button>
+      <button class="tbtn" title="Save"><svg class="ico" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM8 3v6h7"/></svg></button>
+    </div>
+
+    <div class="panes">
+      <!-- left rail -->
+      <aside class="rail">
+        <div class="rail__h">Components</div>
+        <div class="tree">
+          <div class="grp">Edge <span class="cnt">1</span></div>
+          <div class="leaf k-service"><span class="kdot" style="background:var(--kc)"></span> API Gateway</div>
+          <div class="grp">Core Services <span class="cnt">3</span></div>
+          <div class="leaf k-service sel"><span class="kdot" style="background:var(--kc)"></span> Auth Service</div>
+          <div class="leaf k-service"><span class="kdot" style="background:var(--kc)"></span> Order Service</div>
+          <div class="leaf k-service"><span class="kdot" style="background:var(--kc)"></span> Payment Service</div>
+          <div class="grp">Data &amp; Events <span class="cnt">2</span></div>
+          <div class="leaf k-datastore"><span class="kdot" style="background:var(--kc)"></span> Orders DB</div>
+          <div class="leaf k-queue"><span class="kdot" style="background:var(--kc)"></span> Event Bus</div>
+          <div class="grp">Actors &amp; External <span class="cnt">2</span></div>
+          <div class="leaf k-actor"><span class="kdot" style="background:var(--kc)"></span> Customer</div>
+          <div class="leaf k-external"><span class="kdot" style="background:var(--kc)"></span> Stripe API</div>
+        </div>
+      </aside>
+
+      <!-- center: system-design canvas -->
+      <div class="stage">
+        <div class="board">
+          <svg class="edges" viewBox="0 0 1100 820" preserveAspectRatio="none">
+            <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="var(--outline)" stroke-width="1.5"/></marker>
+            <marker id="arc" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1L8 4.5L1 8" fill="none" stroke="var(--cyan)" stroke-width="1.6"/></marker></defs>
+            <path d="M120 150 C120 110 250 110 250 150" fill="none" stroke="var(--outline)" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#ar)"/>
+            <path d="M316 198 C420 210 470 220 530 235" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path d="M726 250 C800 250 800 250 850 250" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path d="M726 372 C800 372 800 372 850 372" fill="none" stroke="var(--cyan)" stroke-width="1.7" marker-end="url(#arc)"/>
+            <path d="M628 300 L628 350" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path d="M628 470 L628 510" fill="none" stroke="var(--outline)" stroke-width="1.5" marker-end="url(#ar)"/>
+            <path d="M120 470 C120 540 400 560 530 470" fill="none" stroke="var(--rose)" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+          </svg>
+          <div class="relpill" style="left:150px;top:96px">informs · verifies</div>
+          <div class="relpill" style="left:740px;top:232px">depends-on</div>
+          <div class="relpill cy" style="left:735px;top:354px">produces · order.created</div>
+
+          <!-- groups -->
+          <div class="group" style="left:60px;top:120px;width:230px;height:430px"><span class="glab">Edge / Actors</span></div>
+          <div class="group" style="left:524px;top:120px;width:216px;height:470px"><span class="glab">Core Services</span></div>
+          <div class="group" style="left:846px;top:170px;width:210px;height:300px"><span class="glab">Data &amp; Events</span></div>
+
+          <!-- API Gateway (service) -->
+          <div class="cmp k-service" style="left:84px;top:150px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M9 4v16"/></svg></span><div><div class="cmp__nm">API Gateway</div><div class="cmp__kind">service · edge</div></div></div>
+            <div class="cmp__role">TLS termination, auth, request fan-out.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §api-gateway</span>
+          </div>
+          <!-- Customer (actor) -->
+          <div class="cmp k-actor" style="left:84px;top:380px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/></svg></span><div><div class="cmp__nm">Customer</div><div class="cmp__kind">actor</div></div></div>
+            <div class="cmp__role">Places orders via the storefront.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §actors</span>
+          </div>
+
+          <!-- Auth Service (service, SELECTED) -->
+          <div class="cmp k-service sel" style="left:548px;top:150px">
+            <div class="linktag">↔ linked to §auth-service</div>
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></span><div><div class="cmp__nm">Auth Service</div><div class="cmp__kind">service · security</div></div></div>
+            <div class="cmp__role">Issues + verifies session tokens.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §auth-service</span>
+          </div>
+          <!-- Order Service -->
+          <div class="cmp k-service" style="left:548px;top:330px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h5"/></svg></span><div><div class="cmp__nm">Order Service</div><div class="cmp__kind">service · core</div></div></div>
+            <div class="cmp__role">Owns the order lifecycle.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §order-service</span>
+          </div>
+          <!-- Payment Service -->
+          <div class="cmp k-service" style="left:548px;top:480px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg></span><div><div class="cmp__nm">Payment Service</div><div class="cmp__kind">service · pci</div></div></div>
+            <div class="cmp__role">Wraps Stripe; isolates PCI.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §payment-service</span>
+          </div>
+
+          <!-- Orders DB (datastore — cylinder) -->
+          <div class="cmp cmp--datastore k-datastore" style="left:866px;top:210px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.6 3.1 3 7 3s7-1.4 7-3V6"/></svg></span><div><div class="cmp__nm">Orders DB</div><div class="cmp__kind">datastore</div></div></div>
+            <div class="cmp__role">Postgres — order + line items.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §orders-db</span>
+          </div>
+          <!-- Event Bus (queue) -->
+          <div class="cmp k-queue" style="left:866px;top:360px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><path d="M5 5v14M9 5v14M13 7l6 5-6 5"/></svg></span><div><div class="cmp__nm">Event Bus</div><div class="cmp__kind">queue · kafka</div></div></div>
+            <div class="cmp__role">Domain events between services.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5zM8 9h8M8 13h6"/></svg> §event-bus</span>
+          </div>
+
+          <!-- Stripe (external) -->
+          <div class="cmp cmp--external k-external" style="left:300px;top:470px">
+            <div class="cmp__h"><span class="cmp__ic"><svg viewBox="0 0 24 24"><path d="M6 16a4 4 0 010-8 5 5 0 019.6-1.5A3.5 3.5 0 0118 16z"/></svg></span><div><div class="cmp__nm">Stripe API</div><div class="cmp__kind">external</div></div></div>
+            <div class="cmp__role">Third-party card processor.</div>
+            <span class="cmp__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 15l6-6M10 7l1-1a4 4 0 016 6l-1 1"/></svg> §payment-service</span>
+          </div>
+        </div>
+        <div class="controls"><button>+</button><button>−</button><button title="fit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></button></div>
+      </div>
+
+      <!-- right: LIVING CORE-DOC SPINE -->
+      <aside class="spine">
+        <div class="spine__h">
+          <svg class="spine__ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5"/></svg>
+          <div><div class="spine__t">Core Doc <span class="ext">commerce-design.md</span></div></div>
+          <span class="spine__dirty"><span class="d"></span>edited</span>
+          <div class="spine__tools">
+            <button class="stool" id="editToggle"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg> Edit</button>
+            <button class="spine__submit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12l16-7-7 16-2-7z"/></svg> Submit changes</button>
+          </div>
+        </div>
+        <div class="spine__scroll">
+          <!-- read mode -->
+          <div class="prose" id="proseTop" style="padding-bottom:4px">
+            <h1>Commerce Platform — Design</h1>
+            <p>The board is a decomposed view of <strong>this document</strong>. Every component traces back to a heading here via <code>meta.source</code>; the typed <em>derives-from</em> edges trace the extraction.</p>
+          </div>
+          <div class="sec is-linked" id="secAuth">
+            <div class="sec__tag">↔ linked to “Auth Service” on canvas</div>
+            <div class="prose" style="padding-top:6px">
+              <h2 id="auth-service">Auth Service</h2>
+              <p>Issues and verifies <strong>session tokens</strong> for every request. The only node permitted to mint a token; everything else calls <code>verify(token)</code>. The API Gateway <em>informs</em> it on each request.</p>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="prose" style="padding-top:6px">
+              <h2 id="order-service">Order Service</h2>
+              <p>Owns the order lifecycle and <code>POST /orders</code>; <strong>produces</strong> <code>order.created</code> onto the Event Bus and calls Payment.</p>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="prose" style="padding-top:6px">
+              <h2 id="orders-db">Orders DB</h2>
+              <p>Postgres datastore for orders + line items. Written only by the Order Service.</p>
+            </div>
+          </div>
+          <!-- edit mode editor -->
+          <div class="editor"># Commerce Platform — Design
+
+## Auth Service
+Issues and verifies **session tokens** for every request.
+<span class="add">Tokens are short-lived (8 min) and refreshed on the hot path; revoked on logout.</span>
+
+## Order Service
+Owns the order lifecycle and `POST /orders`; **produces** `order.created`…</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- GENERATION KIT modal -->
+  <div class="scrim kit">
+    <div class="modal">
+      <div class="modal__h"><svg class="ico" style="color:var(--lime)" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 3v18M4 7.5l8 4.5 8-4.5"/></svg>
+        <span class="t"><b>Agent Generation Kit</b></span><span class="sub">one manual · any LLM turns a markdown doc into a flowcanvas board</span>
+        <button class="modal__x" data-go="overview"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal__b">
+        <div class="kitnav">
+          <button class="on">System prompt</button>
+          <button>Schema contracts</button>
+          <button>MCP loop how-to</button>
+          <button>Worked example</button>
+          <button>+ your markdown</button>
+          <div class="mcp">MCP · also fetchable by a connected harness:<br><b style="color:var(--cyan)">get_generation_kit()</b><br>flowcanvas://generation-kit</div>
+        </div>
+        <div class="kitbody">
+          <div class="kitbody__h">system-prompt.md
+            <button class="copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a0f20" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg> Copy full kit</button>
+          </div>
+          <pre><span class="cm"># You are designing a Flowcanvas system-design board.</span>
+
+Turn the attached markdown design doc into ONE <span class="kw">AgentResponse</span> JSON object.
+
+<span class="st">RULES</span>
+- Map each component / service / store / actor to a node with
+  <span class="kw">meta.kind</span> ∈ { service, datastore, queue, actor, external,
+  decision, process, boundary } — render-typed, not a doc card.
+- Stamp every node with <span class="kw">meta.source</span> { path, anchor }
+  pointing back at the heading it came from.
+- Express each documented relationship as a typed edge
+  (<span class="kw">rel</span> ∈ references, depends-on, calls, produces, …).
+- Cluster a subsystem into a <span class="kw">type:"group"</span> node.
+- Mint new ids "ag-*"; echo <span class="kw">briefId</span>; return JSON only.
+
+<span class="st">SCHEMA</span>  → see “Schema contracts” tab (zod-exact)
+<span class="st">LOOP</span>    → get_board → reason → apply_response  (“MCP loop” tab)
+<span class="st">EXAMPLE</span> → a 6-node board from a 1-page doc (“Worked example”)
+
+<span class="cm"># ── attached: commerce-design.md ──────────────</span>
+<span class="cm"># &lt;your markdown doc is appended here automatically&gt;</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT modal -->
+  <div class="scrim imp">
+    <div class="modal" style="width:min(620px,92vw)">
+      <div class="modal__h"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        <span class="t">Import a board</span><span class="sub">paste · upload · drop — the agent’s generated .canvas</span>
+        <button class="modal__x" data-go="overview"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal__b" style="display:block">
+        <div class="imptabs"><button class="imptab on">Paste JSON</button><button class="imptab">Upload .canvas</button><button class="imptab">Drag &amp; drop</button></div>
+        <div class="imppaste">{
+  "nodes": [ { "id": "ag-auth", "type": "text",
+      "meta": { "kind": "service", "source": { "path": "commerce-design.md", "anchor": "auth-service" } } } ],
+  "edges": [ … ],
+  "flowcanvas": { "schemaVersion": "0.3", … }
+}</div>
+        <div class="impdrop"><div>⤓ &nbsp;Drop a <b>.canvas</b> file to load it as a board<br><span style="font-size:10.5px;color:var(--outline)">md / images still drop as nodes — dispatched by extension, nothing breaks</span></div></div>
+        <div class="improw"><button class="impbtn"><svg class="ico" style="width:15px;height:15px;color:#0a0f20" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg> Validate &amp; load</button><button class="impghost">Choose .canvas file…</button></div>
+        <div class="impnote">Validated against the <b>FlowcanvasDoc</b> schema (zod); a `0.1`/`0.2` board is migrated to `0.3` on load — the same ladder as opening one.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const body=document.body, bar=document.querySelector('.mockbar');
+  function go(s){[...bar.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-current', x.dataset.go===s)); body.dataset.state=s;}
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){go(b.dataset.go);}});
+  // edit toggle also flips to edit state
+  document.getElementById('editToggle').addEventListener('click',()=>go('edit'));
+</script>
+</body>
+</html>
