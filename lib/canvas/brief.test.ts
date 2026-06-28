@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { FlowcanvasDoc } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode } from './jsoncanvas'
 import { buildBrief, applyResponse, AGENT_CONTRACT, type AgentResponse } from './brief'
 
 // A small board mirroring the design's worked example: a markdown node (frontmatter + body), a note,
@@ -61,6 +61,32 @@ describe('buildBrief', () => {
     const doc = seed()
     doc.flowcanvas.session.intent = undefined
     expect(buildBrief(doc, 'b.canvas', new Map(), 'brief-x', 'now').intent).toBe('')
+  })
+
+  it('scope-aware submit: a non-empty briefScope narrows nodes and drops out-of-scope edges + comments', () => {
+    const doc = seed()
+    doc.flowcanvas.session.briefScope = ['n-design']            // select only the design node
+    const brief = buildBrief(doc, 'b.canvas', new Map(), 'brief-s', 'now')
+    expect(brief.nodes.map((n) => n.id)).toEqual(['n-design'])  // only the selection survives
+    expect(brief.edges).toEqual([])                             // edge → out-of-scope n-plan is dropped
+    expect(brief.comments).toEqual([])                          // comment anchored to out-of-scope n-plan is dropped
+  })
+
+  it('scope-aware submit: a selected group pulls in its members, keeps internal edges + anchored comments', () => {
+    const doc = seed()
+    const group: CanvasNode = { id: 'g-1', type: 'group', label: 'Subsystem', x: -520, y: -260, width: 640, height: 360, meta: { origin: 'user' } }
+    doc.nodes = [group, ...doc.nodes.map((n) => (n.id === 'n-design' || n.id === 'n-plan' ? { ...n, parentId: 'g-1' } : n))]
+    doc.flowcanvas.session.briefScope = ['g-1']                 // select the container only
+    const brief = buildBrief(doc, 'b.canvas', new Map(), 'brief-g', 'now')
+    expect([...brief.nodes.map((n) => n.id)].sort()).toEqual(['g-1', 'n-design', 'n-plan'])  // group + its members
+    expect(brief.edges.map((e) => e.id)).toEqual(['lk:n-design->n-plan'])  // both endpoints in scope
+    expect(brief.comments.map((c) => c.id)).toEqual(['c-1'])               // anchored to n-plan (in scope)
+  })
+
+  it('scope-aware submit: an empty briefScope is treated as the whole board', () => {
+    const doc = seed()
+    doc.flowcanvas.session.briefScope = []
+    expect(buildBrief(doc, 'b.canvas', new Map(), 'brief-e', 'now').nodes).toHaveLength(5)
   })
 })
 

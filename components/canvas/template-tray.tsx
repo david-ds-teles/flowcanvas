@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { listTemplates } from '@/lib/api'
 import { useCanvasStore } from '@/lib/canvas/store'
 import type { CanvasTemplate, TemplateKind } from '@/lib/canvas/templates'
+import { TEMPLATE_MIME } from './template-drop'
 
 // TemplateTray — docked inside the left rail's "Templates" pane (Phase 6, system-design-studio).
 // Fetches all CanvasTemplate fragments from /api/templates on mount, provides kind filtering
@@ -80,19 +81,26 @@ export function TemplateTray({ onClose }: { onClose?: () => void } = {}) {
         <p className="fc-tpl__empty">No templates yet.</p>
       )}
 
-      {/* template cards */}
+      {/* template cards — draggable onto the canvas (drops where released), or click + Instantiate */}
       {visible.map((t) => (
         <div
           key={t.id}
           className="fc-tpl__card"
           data-testid="template-card"
           tabIndex={0}
+          draggable
+          title="Drag onto the canvas to place it, or click + Instantiate"
+          onDragStart={(e) => {
+            e.dataTransfer.setData(TEMPLATE_MIME, JSON.stringify(t))
+            e.dataTransfer.effectAllowed = 'copy'
+          }}
         >
           <span className="fc-tpl__kind">{t.kind}</span>
           <h4 className="fc-tpl__name">{t.name}</h4>
           {t.description && <p className="fc-tpl__desc">{t.description}</p>}
           {/* schematic preview — a simple dot-grid placeholder; the real preview could be SVG-based later */}
           <div className="fc-tpl__preview" aria-hidden="true" />
+          <span className="fc-tpl__draghint" aria-hidden="true">⠿ drag onto canvas</span>
           <button
             className="fc-tpl__add"
             data-testid="template-instantiate"

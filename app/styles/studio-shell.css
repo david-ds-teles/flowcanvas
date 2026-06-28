@@ -387,6 +387,75 @@
   box-shadow: 0 0 18px -4px rgba(255, 81, 106, 0.7);
 }
 
+/* ── Collapsed-rail reopen strips — slim icon columns shown in place of a collapsed rail, so it can
+   be reopened (left: to a chosen tab; right: the inspector) without hunting for the toolbar toggle.
+   In-flow flex siblings of the rails, so they never overlap the canvas Controls / minimap. ── */
+.fc-railstrip {
+  flex: 0 0 auto;
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 12px;
+  backdrop-filter: blur(20px);
+  background-image:
+    linear-gradient(rgba(11, 19, 38, 0.74), rgba(11, 19, 38, 0.74)),
+    linear-gradient(160deg, rgba(128, 131, 255, 0.30), rgba(255, 255, 255, 0.03) 60%, rgba(94, 242, 255, 0.12));
+}
+.fc-railstrip--left { border-right: 1px solid var(--color-outline-variant); }
+.fc-railstrip--right { border-left: 1px solid var(--color-outline-variant); }
+.fc-railstrip__btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(34, 42, 61, 0.4);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
+}
+.fc-railstrip__btn:hover {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-primary-cont), #6f5bff);
+  box-shadow: 0 0 0 1px rgba(128, 131, 255, 0.35), 0 0 22px -6px rgba(128, 131, 255, 0.55);
+}
+.fc-railstrip__btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* ── Template drag-to-canvas drop overlay (Decision 8). Cyan-accented so it reads distinctly from the
+   primary-violet file-drop overlay (.fc-dropzone). Only one is ever active — the two drags carry
+   different dataTransfer types. ── */
+.fc-tpldrop {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(11, 19, 38, 0.55);
+  backdrop-filter: blur(2px);
+}
+.fc-tpldrop__inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 26px 40px;
+  border-radius: var(--radius-card);
+  border: 2px dashed var(--color-neon-cyan);
+  background: rgba(13, 21, 40, 0.7);
+  color: var(--color-neon-cyan);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 40px -8px rgba(94, 242, 255, 0.55);
+}
+.fc-tpldrop__icon { font-size: 20px; line-height: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   .fc-studio__rail, .fc-studio__inspector { transition: none; }
 }

@@ -66,7 +66,7 @@ interface CanvasState {
   buildBrief: () => Promise<DesignBrief>
   applyResponse: (resp: AgentResponse) => Promise<MergeReport>
   // ─── v2 — agent round-trip, change-review, references, templates, reconcile ───
-  submitToAgent: (intent: string) => Promise<void>                 // save + snapshot + active pointer (Decision 5/6)
+  submitToAgent: (intent: string, scopeNodeIds?: string[]) => Promise<void> // save + snapshot + active pointer (Decision 5/6); scopeNodeIds ⇒ scope-aware brief
   reviewDiff: () => ReviewDiff | null                              // diffDocs(snapshot, doc) when a round is pending (Decision 6)
   acceptRound: () => Promise<void>                                 // keep the doc, clear the review window (Decision 6)
   discardRound: () => Promise<void>                                // restore the snapshot, delete the round's files (Decision 6)
@@ -491,12 +491,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // Submit the board to the agent: persist it + the intent, open the review window at the saved revision,
   // and publish the active-board pointer the MCP sidecar reads. The round runs out-of-band (the harness
   // drives the MCP tools); the later revision bump + pendingReview drive change-review on reload.
-  async submitToAgent(intent: string) {
+  // Scope-aware submit (v2): a non-empty scopeNodeIds stamps session.briefScope, which buildBrief honours
+  // on both the MCP and clipboard-export paths; omitted/empty clears any prior scope (whole-board brief).
+  // Scope narrows only the brief the agent sees — the full board is still saved + snapshotted for review.
+  async submitToAgent(intent: string, scopeNodeIds?: string[]) {
     const { doc, path } = get()
     if (!doc || !path) throw new Error('no board loaded')
     const withIntent: FlowcanvasDoc = {
       ...doc,
-      flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, intent, pendingReview: true } },
+      flowcanvas: {
+        ...doc.flowcanvas,
+        session: {
+          ...doc.flowcanvas.session,
+          intent,
+          pendingReview: true,
+          ...(scopeNodeIds && scopeNodeIds.length ? { briefScope: scopeNodeIds } : { briefScope: undefined }),
+        },
+      },
     }
     set({ doc: withIntent, dirty: true })
     await get().save()                                   // persist intent + pendingReview (bumps revision)
@@ -532,7 +543,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (!doc || !path) return
     const cleared: FlowcanvasDoc = {
       ...doc,
-      flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, pendingReview: false } },
+      flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, pendingReview: false, briefScope: undefined } },
     }
     set({ doc: cleared, reviewState: null, dirty: true })
     await api.clearReview(path).catch((e) => console.error('clearReview failed', e))
@@ -548,7 +559,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       ...reviewState.snapshot,
       flowcanvas: {
         ...reviewState.snapshot.flowcanvas,
-        session: { ...reviewState.snapshot.flowcanvas.session, pendingReview: false },
+        session: { ...reviewState.snapshot.flowcanvas.session, pendingReview: false, briefScope: undefined },
       },
     }
     const { nodes, bodies: nextBodies } = await hydrateFiles(restored.nodes, bodies)

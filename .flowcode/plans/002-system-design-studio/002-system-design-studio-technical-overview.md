@@ -23,9 +23,9 @@ links: [.flowcode/plans/002-system-design-studio/002-system-design-studio-plan.m
 
 **Risks:** MCP handshake is integration-level (needs a running app + an MCP client); not covered by the automated test suite. The disk-divergence reconcile banner is unbuilt (the `resyncFile` action exists at `lib/canvas/store.ts:265`, but the banner/trigger detection are deferred). `get_board` does not stamp `session.lastBriefId`, so `apply_response` reports `stale:true` (advisory; merge is last-writer-wins and correct). `frontmatter links:` fields are treated as root-relative (not resolved against `basePath`), matching the plan's own worked example but diverging from the spec text.
 
-**Tech-Debt:** Visual-parity pixel capture at 1280/1440 is deferred (no unattended browser-automation harness). Collapsed rails show `width:0` — a thin icon-strip affordance is a follow-up. Drag-to-canvas for templates is button-only (drop surface unbuilt). Scope-aware submit and live MCP-status probe are info-level follow-ups. `reviewDiff().files` is derived from added file-node paths (MCP writes files out-of-band), not from `roundGeneratedFiles`, which leaves the files list empty in the review panel.
+**Tech-Debt:** Visual-parity pixel capture at 1280/1440 is deferred (no unattended browser-automation harness). Live MCP-status probe in the inspector Submit mode is still an info-level follow-up (the pill is currently static "MCP ready"). `reviewDiff().files` is derived from added file-node paths (MCP writes files out-of-band), not from `roundGeneratedFiles`, which leaves the files list empty in the review panel. (The collapsed-rail thin icon strip, drag-to-canvas templates, scope-aware submit, and document-template path uniquification all shipped in the Phase 9 UX follow-ups.)
 
-**Next:** (1) reconcile disk-divergence banner + trigger; (2) visual-parity CDP capture at 1280/1440; (3) collapsed-rail thin icon strip; (4) `get_board` stamps `session.lastBriefId`; (5) drag-to-canvas templates; (6) scope-aware submit; (7) live MCP probe.
+**Next:** (1) reconcile disk-divergence banner + trigger; (2) visual-parity CDP capture at 1280/1440; (3) live MCP probe in the inspector Submit mode.
 
 ---
 
@@ -207,6 +207,21 @@ A second operator runtime round reported 8 UX/interaction defects. A CDP triage 
 
 ---
 
+## Phase 9 — Studio UX Follow-ups (post-close)
+
+The three highest-visibility deferred follow-ups, plus the directly-related document-template path-collision fix that drag-to-canvas makes easy to trip. All four are runtime-verified against the live app via a CDP harness (13/13 checks, clean console) on top of the green static gates.
+
+| # | Follow-up | What shipped | Files |
+|---|-----------|--------------|-------|
+| 1 | **Drag-to-canvas templates** | Template-tray cards are now `draggable`; `onDragStart` serialises the `CanvasTemplate` onto `dataTransfer` under a private MIME (`application/x-flowcanvas-template`). A new `TemplateDropLayer` (window-level listeners, mirrors `Dropzone`) projects the drop point to flow space via `screenToFlowPosition` and calls `store.addTemplate(t, x, y)` — the fragment lands where it was dropped. A cyan drop overlay shows during a template drag; the `+ Instantiate` button stays as the keyboard/a11y fallback. No clash with the file `Dropzone` — the two surfaces key off different `dataTransfer` types (`Files` vs the template MIME). | `components/canvas/template-drop.tsx` (new), `components/canvas/template-tray.tsx`, `components/canvas/canvas-shell.tsx`, `app/styles/studio-{shell,template}.css` |
+| 2 | **Scope-aware submit** | The inspector's pre-existing **Whole board / Selection** toggle is now wired end-to-end. `submitToAgent(intent, scopeNodeIds?)` stamps `session.briefScope` (new optional `SessionMeta` field); `buildBrief` self-narrows to that selection's **structural closure** — selected nodes + their ancestor groups (so `parentId` refs resolve) + descendants of any selected group + edges fully inside the set + comments anchored to kept nodes. One chokepoint covers **both** the MCP `get_board` path and the clipboard Export path (both call the pure `buildBrief`), so no MCP/route/`ActiveBoard` change was needed. Scope narrows only the brief the agent sees — the full board is still saved + snapshotted, so change-review still covers everything. `acceptRound`/`discardRound` clear the scope; a dynamic submit-panel note (`submit-scope-note`) reflects the current selection. | `lib/canvas/jsoncanvas.ts` (`SessionMeta.briefScope`), `lib/canvas/brief.ts` (`scopeNodes` + filtered `buildBrief`), `lib/canvas/store.ts` (`submitToAgent`/`acceptRound`/`discardRound`), `components/canvas/inspector-rail.tsx` |
+| 3 | **Collapsed-rail thin icon strip** | When a rail is collapsed (`data-railleft`/`-right="collapsed"`), a slim 44px icon strip renders in its place (in-flow flex sibling, so it never overlaps the canvas Controls/minimap). The left strip carries **Structure** + **Templates** reopen icons (each restores the rail to that tab); the right strip carries an **Inspector** icon. Wired to the existing `setRailLeft`/`setRailRight` toggles. | `components/canvas/canvas-shell.tsx`, `app/styles/studio-shell.css` |
+| 4 | **Document-template path collision** | `instantiateTemplate` now uniquifies every `files[].path` (suffix before the extension, minted **after** node + edge ids so the existing deterministic id sequence is preserved) and rewrites any file node pointing at a scaffold to its new path — repeated drops of a document template (e.g. `tpl-service`) never collide or overwrite. | `lib/canvas/templates.ts` |
+
+**Coverage:** `brief.test.ts` +3 (scope narrowing · selected-group closure · empty-scope = whole board); `templates.test.ts` +1 net (path uniquify + file-node rewrite + repeat-drop distinctness, replacing the old verbatim-`files` assertion). Static gates: tsc 0 · lint 0 · vitest **147/147** · `smoke:mcp` PASS · `smoke:render` PASS · build ok. Runtime CDP verify 13/13 (rail collapse→strip→reopen both sides · template dragstart payload + dragover overlay + drop instantiates one node + overlay clears · structure-rail selection · submit panel + Selection scope + dynamic note + `session.briefScope` persisted with `pendingReview`) — clean console.
+
+---
+
 ## Deviations from Plan
 
 | Plan Spec | Actual Implementation | Reason |
@@ -264,9 +279,9 @@ A second operator runtime round reported 8 UX/interaction defects. A CDP triage 
 
 - [ ] Reconcile disk-divergence banner + trigger for `Decision 10` (`resyncFile` action exists; banner/trigger detection unbuilt)
 - [ ] Visual-parity pixel-diff at 1280/1440 (the Phase 7 render smoke asserts structure + non-zero canvas as a proxy; full pixel capture still pending)
-- [ ] Collapsed-rail thin icon strip (currently `width:0`; reopen via toolbar toggle)
+- [x] ~~Collapsed-rail thin icon strip~~ — done in Phase 9 (slim reopen strips with per-tab icons)
 - [x] ~~`get_board` stamps `session.lastBriefId`~~ — done in Phase 7 (D3)
-- [ ] Drag-to-canvas template drop surface (currently button-only `addTemplate`)
-- [ ] Scope-aware submit (currently submits the full board brief regardless of selection)
-- [ ] `instantiateTemplate` should uniquify document-template `files[].path` so repeated drops don't collide (Phase 7 review Finding 5)
+- [x] ~~Drag-to-canvas template drop surface~~ — done in Phase 9 (`TemplateDropLayer` + draggable cards)
+- [x] ~~Scope-aware submit~~ — done in Phase 9 (`session.briefScope` honoured by `buildBrief`)
+- [x] ~~`instantiateTemplate` should uniquify document-template `files[].path`~~ — done in Phase 9 (path suffixing + file-node rewrite)
 - [ ] Live MCP-status probe in the inspector Submit mode

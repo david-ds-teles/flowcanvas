@@ -114,6 +114,7 @@ export interface SessionMeta {
   lastBriefId?: string         // id of the most recently exported brief
   baseRevision?: number        // v2 — session.revision captured at Submit (review window start)
   pendingReview?: boolean      // v2 — an agent round landed; open change-review on next load
+  briefScope?: string[]        // v2 — node ids the next brief is narrowed to (scope-aware submit); absent ⇒ whole board
 }
 
 export interface FlowcanvasExt {

@@ -147,6 +147,27 @@ Second operator runtime round (8 reported defects). Triage (CDP over the live ap
 
 ---
 
+## Phase 9 — Studio UX Follow-ups (post-close)
+
+Three highest-visibility deferred follow-ups + the directly-related document-template path-collision fix. Runtime-verified via a CDP harness (13/13, clean console) on top of the green static gates (tsc 0 · lint 0 · vitest 147/147 · build ok · smoke:mcp PASS · smoke:render PASS).
+
+| File | Type | Summary |
+|------|------|---------|
+| `components/canvas/template-drop.tsx` | created | `TemplateDropLayer` — window-level drag listeners (mirrors `Dropzone`) for the private `TEMPLATE_MIME` (`application/x-flowcanvas-template`); projects the drop point to flow space via `screenToFlowPosition` and calls `store.addTemplate(t, x, y)`. Renders a cyan drop overlay while a template is dragged. Exports `TEMPLATE_MIME`. |
+| `components/canvas/template-tray.tsx` | modified | Cards are now `draggable`; `onDragStart` serialises the `CanvasTemplate` onto `dataTransfer` under `TEMPLATE_MIME`. Added a `⠿ drag onto canvas` hint; `+ Instantiate` button kept as the keyboard/a11y fallback. |
+| `lib/canvas/jsoncanvas.ts` | modified | `SessionMeta` gained optional `briefScope?: string[]` — the node ids the next brief is narrowed to (absent ⇒ whole board). |
+| `lib/canvas/brief.ts` | modified | `buildBrief` self-scopes on `session.briefScope`: new pure `scopeNodes` computes the selection's structural closure (selected + ancestor groups + group descendants); edges narrowed to fully-in-scope pairs; comments to anchored-on-kept-nodes. One chokepoint serves both the MCP and clipboard-export paths. |
+| `lib/canvas/store.ts` | modified | `submitToAgent(intent, scopeNodeIds?)` stamps `session.briefScope` (non-empty selection) or clears it (whole board); `acceptRound`/`discardRound` clear it on round resolution. Scope narrows only the brief — the full board is still saved + snapshotted. |
+| `components/canvas/inspector-rail.tsx` | modified | `handleSend` passes the chosen scope (`selection` + non-empty ⇒ `selectedIds`, else whole board); a dynamic `submit-scope-note` reflects the current selection state. |
+| `lib/canvas/templates.ts` | modified | `instantiateTemplate` uniquifies every `files[].path` (suffix before the extension via new `suffixPath`, minted after node/edge ids to preserve the id sequence) and rewrites any file node pointing at a scaffold to the new path — repeat drops never collide. |
+| `components/canvas/canvas-shell.tsx` | modified | Mounts `TemplateDropLayer`; renders the collapsed-rail reopen strips — left (Structure + Templates icons, restore-to-tab) and right (Inspector icon), wired to the existing rail toggles. |
+| `app/styles/studio-shell.css` | modified | `.fc-railstrip`/`.fc-railstrip__btn` (slim 44px in-flow reopen columns) + `.fc-tpldrop`/`.fc-tpldrop__inner` (cyan template drop overlay, distinct from the violet file-drop). |
+| `app/styles/studio-template.css` | modified | Card `cursor: grab`/`grabbing` (stale "not wired yet" note removed) + `.fc-tpl__draghint`. |
+| `lib/canvas/brief.test.ts` | modified | +3 cases — scope narrows nodes/edges/comments, selected-group closure, empty `briefScope` ⇒ whole board. |
+| `lib/canvas/templates.test.ts` | modified | Replaced the verbatim-`files` assertion with path-uniquify + file-node-rewrite + repeat-drop-distinctness cases (net +1). |
+
+---
+
 ## Reconciliation
 
 Code Explorer audit confirmed full spec conformance. The per-phase entries above match the shipped code with the following noted anomalies:

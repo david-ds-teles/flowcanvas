@@ -82,11 +82,15 @@ export function InspectorRail({
   }
 
   // ── submit handler ──
+  // Scope-aware submit: 'selection' narrows the brief to the selected nodes' structural closure
+  // (store stamps session.briefScope; buildBrief honours it). An empty selection falls back to the
+  // whole board (store treats an empty scope as unscoped).
   const handleSend = async () => {
     if (!intent.trim() || sending) return
+    const scopeIds = scope === 'selection' && selectedIds.length > 0 ? selectedIds : undefined
     setSending(true)
     try {
-      await submitToAgent(intent.trim())
+      await submitToAgent(intent.trim(), scopeIds)
       setIntent('')
       setMode('inspector')
     } finally {
@@ -170,6 +174,13 @@ export function InspectorRail({
               >
                 Selection{selectedIds.length > 0 ? ` · ${selectedIds.length}` : ''}
               </button>
+            </div>
+            <div className="fc-insp__snote" data-testid="submit-scope-note">
+              {scope === 'selection'
+                ? selectedIds.length > 0
+                  ? <>The agent brief is <strong>narrowed</strong> to your {selectedIds.length} selected node{selectedIds.length === 1 ? '' : 's'} (plus their groups and members). The full board is still saved and reviewed.</>
+                  : <>Nothing is selected — the <strong>whole board</strong> will be sent.</>
+                : <>The <strong>whole board</strong> goes in the agent brief.</>}
             </div>
             <div className="fc-insp__snote">
               On send: the board saves, a submit-time <strong>snapshot</strong> is captured to{' '}

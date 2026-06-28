@@ -27,6 +27,7 @@ import { LabeledEdge } from './edges/labeled-edge'
 import { CommentLayer } from './comment-layer'
 import { CanvasToolbar } from './canvas-toolbar'
 import { Dropzone } from './dropzone'
+import { TemplateDropLayer } from './template-drop'
 import { ReaderDrawer } from './reader-drawer'
 import { ExportPanel } from './export-panel'
 import { BoardDialog } from './board-dialog'
@@ -144,6 +145,37 @@ function CanvasFlow() {
       )}
 
       <div className="fc-studio__body">
+        {/* Collapsed LEFT-rail reopen strip — a slim icon column that restores the rail (to a chosen
+            tab) without the toolbar toggle. Rendered only while the rail is collapsed. */}
+        {railLeft === 'collapsed' && (
+          <div className="fc-railstrip fc-railstrip--left" data-testid="rail-strip-left">
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="rail-reopen-structure"
+              title="Open Structure"
+              aria-label="Open Structure rail"
+              onClick={() => { setLeftTab('structure'); setRailLeft('open') }}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 6h16M4 12h10M4 18h7" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="rail-reopen-templates"
+              title="Open Templates"
+              aria-label="Open Templates tray"
+              onClick={() => { setLeftTab('templates'); setRailLeft('open') }}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* LEFT structure / templates rail */}
         <aside className="fc-studio__rail" aria-label="Structure" data-testid="structure-rail">
           <div className="fc-studio__rail-tabs" role="tablist">
@@ -190,6 +222,7 @@ function CanvasFlow() {
           </ReactFlow>
 
           <Dropzone />
+          <TemplateDropLayer />
           <CommentLayer />
           {readerNodeId && <ReaderDrawer nodeId={readerNodeId} onClose={closeReader} />}
 
@@ -224,6 +257,25 @@ function CanvasFlow() {
             ? <ReviewPanel onClose={() => setInspectorMode('inspector')} />
             : <InspectorRail mode={inspectorMode} setMode={setInspectorMode} />}
         </aside>
+
+        {/* Collapsed RIGHT-rail reopen strip — slim icon column that restores the inspector. */}
+        {railRight === 'collapsed' && (
+          <div className="fc-railstrip fc-railstrip--right" data-testid="rail-strip-right">
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="rail-reopen-inspector"
+              title="Open Inspector"
+              aria-label="Open Inspector"
+              onClick={() => setRailRight('open')}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 5h16v14H4z" />
+                <path d="M7 15V9l3 3 3-3v6" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Agent round-trip panel (export/import + submit fallback) */}

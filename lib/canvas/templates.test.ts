@@ -133,12 +133,22 @@ describe('instantiateTemplate', () => {
     expect(edges[0].meta?.origin).toBe('user')
   })
 
-  it('returns t.files for a document kind template', () => {
+  it('uniquifies a document scaffold path and rewrites the file node to match (suffix minted after ids)', () => {
     const mint = makeMint()
-    const { files } = instantiateTemplate(DOCUMENT_FIXTURE, 0, 0, mint)
-    expect(files).toEqual(DOCUMENT_FIXTURE.files)
+    const { nodes, files } = instantiateTemplate(DOCUMENT_FIXTURE, 0, 0, mint)
     expect(files).toHaveLength(1)
-    expect(files[0].path).toBe('templates/scaffold.md')
+    expect(files[0].path).toBe('templates/scaffold-0002.md')                 // node id minted first (0001), then the path (0002)
+    expect(files[0].content).toBe(DOCUMENT_FIXTURE.files![0].content)        // content preserved verbatim
+    expect(nodes[0]).toMatchObject({ type: 'file', file: 'templates/scaffold-0002.md' })  // file node kept in lockstep
+  })
+
+  it('repeat instantiation of a document template yields distinct, non-colliding scaffold paths', () => {
+    const mint = makeMint()
+    const a = instantiateTemplate(DOCUMENT_FIXTURE, 0, 0, mint)
+    const b = instantiateTemplate(DOCUMENT_FIXTURE, 0, 0, mint)
+    expect(a.files[0].path).not.toBe(b.files[0].path)
+    expect((a.nodes[0] as { file: string }).file).toBe(a.files[0].path)
+    expect((b.nodes[0] as { file: string }).file).toBe(b.files[0].path)
   })
 
   it('returns files:[] when the template has no files property', () => {

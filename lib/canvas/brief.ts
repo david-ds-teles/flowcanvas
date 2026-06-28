@@ -166,6 +166,34 @@ GROUPS:
 // ─────────────────────────── buildBrief (human → agent) ───────────────────────────
 
 /** Build the self-contained brief from the live doc + resolved markdown content. Pure. */
+/**
+ * Scope-aware submit (v2): narrow a node list to a selection set plus its structural closure —
+ * each selected node's ancestor groups (so `parentId` refs resolve) and every descendant of a
+ * selected group (selecting a subsystem pulls in its members). Original doc order is preserved.
+ */
+function scopeNodes(nodes: CanvasNode[], scopeIds: string[]): CanvasNode[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  const sel = new Set(scopeIds)
+  const keep = new Set<string>()
+  // ancestors of each selected node (parentId chain)
+  for (const id of scopeIds) {
+    let cur = byId.get(id)
+    while (cur && !keep.has(cur.id)) {
+      keep.add(cur.id)
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined
+    }
+  }
+  // descendants of any selected node (members of a selected group)
+  for (const n of nodes) {
+    let cur: CanvasNode | undefined = n
+    while (cur) {
+      if (sel.has(cur.id)) { keep.add(n.id); break }
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined
+    }
+  }
+  return nodes.filter((n) => keep.has(n.id))
+}
+
 export function buildBrief(
   doc: FlowcanvasDoc,
   canvasRef: string,
@@ -173,7 +201,15 @@ export function buildBrief(
   briefId: string,
   generatedAt: string,
 ): DesignBrief {
-  const nodes: BriefNode[] = doc.nodes.map((n) => {
+  // Scope-aware submit (v2): when the session carries a non-empty briefScope, the brief is narrowed
+  // to that selection's structural closure — nodes, the edges fully inside it, and comments anchored
+  // to kept nodes. Absent/empty ⇒ the whole board (unchanged behaviour).
+  const scope = doc.flowcanvas.session.briefScope
+  const isScoped = scope !== undefined && scope.length > 0
+  const scopedNodes = isScoped ? scopeNodes(doc.nodes, scope) : doc.nodes
+  const inScope = new Set(scopedNodes.map((n) => n.id))
+
+  const nodes: BriefNode[] = scopedNodes.map((n) => {
     const kind: NodeKind = nodeKind(n)
     const position = { x: n.x, y: n.y, width: n.width, height: n.height }
     const common = {
@@ -190,12 +226,17 @@ export function buildBrief(
     if (n.type === 'text') return { id: n.id, kind, position, text: n.text, ...common }
     return { id: n.id, kind, position, ...(n.label !== undefined ? { label: n.label } : {}), ...common } // group
   })
-  const edges: BriefEdge[] = doc.edges.map((e) => {
+  const edges: BriefEdge[] = (isScoped
+    ? doc.edges.filter((e) => inScope.has(e.fromNode) && inScope.has(e.toNode))
+    : doc.edges
+  ).map((e) => {
     const origin = e.meta?.origin ?? 'user'
     const rel: RelationshipType = e.meta?.rel ?? (origin === 'links' ? 'references' : 'related')
     return { id: e.id, from: e.fromNode, to: e.toNode, label: e.label, rel, origin }
   })
-  const comments: BriefComment[] = doc.flowcanvas.comments.map((c) => ({
+  const comments: BriefComment[] = doc.flowcanvas.comments
+    .filter((c) => !isScoped || (c.anchor.kind === 'node' && inScope.has(c.anchor.nodeId)))
+    .map((c) => ({
     id: c.id,
     threadId: c.parentId ?? c.id,
     anchorNodeId: c.anchor.kind === 'node' ? c.anchor.nodeId : undefined,

@@ -106,14 +106,27 @@
   border-radius: 8px;
   padding: 11px;
   background: rgba(6, 14, 32, 0.4);
-  cursor: default; /* drag-to-canvas not wired yet — the Instantiate button is the interaction */
+  cursor: grab; /* draggable onto the canvas; the Instantiate button is the keyboard/a11y fallback */
   margin-bottom: 10px;
   transition: box-shadow 0.14s ease, border-color 0.14s ease;
 }
+.fc-tpl__card:active { cursor: grabbing; }
 .fc-tpl__card:hover {
   border-color: transparent;
   box-shadow: 0 0 0 1px rgba(128, 131, 255, 0.35), 0 0 22px -6px rgba(128, 131, 255, 0.55);
 }
+/* drag affordance hint — appears under the preview; reinforces that the card is draggable */
+.fc-tpl__draghint {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+.fc-tpl__card:hover .fc-tpl__draghint { color: var(--color-primary); opacity: 1; }
 .fc-tpl__card:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
