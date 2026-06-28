@@ -1,65 +1,714 @@
 {
   "nodes": [
-    { "id": "g-lib", "type": "group", "label": "Pure Library · lib/canvas", "x": 0, "y": 0, "width": 300, "height": 1240, "meta": { "origin": "user", "shape": "rectangle" } },
-    { "id": "g-state", "type": "group", "label": "State · Zustand", "x": 420, "y": 0, "width": 300, "height": 250, "meta": { "origin": "user", "shape": "rectangle" } },
-    { "id": "g-backend", "type": "group", "label": "Backend · app/api · fs", "x": 420, "y": 350, "width": 300, "height": 540, "meta": { "origin": "user", "shape": "rectangle" } },
-    { "id": "g-ui", "type": "group", "label": "UI · components/canvas", "x": 820, "y": 0, "width": 320, "height": 1010, "meta": { "origin": "user", "shape": "rectangle" } },
-
-    { "id": "n-schema", "type": "file", "file": "docs/architecture/schema.md", "x": 30, "y": 60, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-1-on-disk-schema" } } },
-    { "id": "n-frontmatter", "type": "file", "file": "docs/architecture/frontmatter.md", "x": 30, "y": 290, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
-    { "id": "n-adapter", "type": "file", "file": "docs/architecture/adapter.md", "x": 30, "y": 520, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-2-canvas-rendering-engine" } } },
-    { "id": "n-edges", "type": "file", "file": "docs/architecture/edges.md", "x": 30, "y": 750, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-6-edge-derivation-provenance" } } },
-    { "id": "n-brief", "type": "file", "file": "docs/architecture/brief.md", "x": 30, "y": 980, "width": 240, "height": 150, "parentId": "g-lib", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "the-agent-contract" } } },
-
-    { "id": "n-store", "type": "file", "file": "docs/architecture/store.md", "x": 450, "y": 60, "width": 240, "height": 150, "parentId": "g-state", "color": "5", "meta": { "origin": "user", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
-
-    { "id": "n-api", "type": "file", "file": "docs/architecture/api.md", "x": 450, "y": 410, "width": 240, "height": 150, "parentId": "g-backend", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
-    { "id": "n-guard", "type": "file", "file": "docs/architecture/fs-guard.md", "x": 450, "y": 660, "width": 240, "height": 150, "parentId": "g-backend", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "module-boundaries" } } },
-
-    { "id": "n-shell", "type": "file", "file": "docs/architecture/canvas-shell.md", "x": 850, "y": 60, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-3-application-shape" } } },
-    { "id": "n-reader", "type": "file", "file": "docs/architecture/reader.md", "x": 850, "y": 290, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-4-markdown-rendering-split-perf" } } },
-    { "id": "n-export", "type": "file", "file": "docs/architecture/export-import.md", "x": 850, "y": 520, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "solution-overview" } } },
-    { "id": "n-comments", "type": "file", "file": "docs/architecture/comments.md", "x": 850, "y": 750, "width": 240, "height": 150, "parentId": "g-ui", "meta": { "origin": "import", "collapsed": true, "source": { "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "anchor": "decision-5-comment-model" } } },
-
-    { "id": "n-design", "type": "file", "file": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md", "x": 420, "y": 960, "width": 380, "height": 260, "color": "5", "meta": { "origin": "user" } },
-
-    { "id": "n-jsoncanvas", "type": "link", "url": "https://jsoncanvas.org", "x": 0, "y": -160, "width": 300, "height": 90, "color": "6", "meta": { "origin": "user" } },
-    { "id": "n-reactflow", "type": "link", "url": "https://reactflow.dev", "x": 340, "y": -160, "width": 300, "height": 90, "color": "6", "meta": { "origin": "user" } },
-
-    { "id": "n-loop", "type": "text", "text": "## Agent loop\nExport packs the board into a self-contained **DesignBrief** → the agent answers with an **AgentResponse** → Import runs the idempotent id-keyed merge. The brief embeds parsed frontmatter + body, so the agent needs no filesystem access.", "x": 1200, "y": 0, "width": 300, "height": 230, "color": "#5ef2ff", "meta": { "origin": "user" } }
+    {
+      "id": "g-lib",
+      "type": "group",
+      "label": "Pure Library · lib/canvas",
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 1240,
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "g-state",
+      "type": "group",
+      "label": "State · Zustand",
+      "x": 420,
+      "y": 0,
+      "width": 300,
+      "height": 250,
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "g-backend",
+      "type": "group",
+      "label": "Backend · app/api · fs",
+      "x": 420,
+      "y": 350,
+      "width": 300,
+      "height": 540,
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "g-ui",
+      "type": "group",
+      "label": "UI · components/canvas",
+      "x": 820,
+      "y": 0,
+      "width": 320,
+      "height": 1010,
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "n-schema",
+      "type": "file",
+      "file": "docs/architecture/schema.md",
+      "x": 30,
+      "y": 60,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-lib",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-1-on-disk-schema"
+        },
+        "frontmatter": {
+          "name": "Schema — Extended JSONCanvas",
+          "status": "stable",
+          "tags": [
+            "lib",
+            "schema",
+            "jsoncanvas",
+            "types"
+          ],
+          "description": "The on-disk type root — JSONCanvas 1.0 core plus the namespaced `flowcanvas` extension. Source of truth for every other module's types.",
+          "links": [
+            "docs/architecture/adapter.md",
+            "docs/architecture/edges.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-frontmatter",
+      "type": "file",
+      "file": "docs/architecture/frontmatter.md",
+      "x": 30,
+      "y": 290,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-lib",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "module-boundaries"
+        },
+        "frontmatter": {
+          "name": "Frontmatter — gray-matter wrapper",
+          "status": "stable",
+          "tags": [
+            "lib",
+            "frontmatter",
+            "gray-matter"
+          ],
+          "description": "Thin parse/stringify wrapper over gray-matter — the only place YAML frontmatter is read or written.",
+          "links": [
+            "docs/architecture/schema.md",
+            "docs/architecture/api.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-adapter",
+      "type": "file",
+      "file": "docs/architecture/adapter.md",
+      "x": 30,
+      "y": 520,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-lib",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-2-canvas-rendering-engine"
+        },
+        "frontmatter": {
+          "name": "Adapter — Doc ↔ React Flow",
+          "status": "stable",
+          "tags": [
+            "lib",
+            "adapter",
+            "react-flow"
+          ],
+          "description": "The ~30-line bridge that maps a FlowcanvasDoc onto React Flow's {nodes,edges} and back, preserving absolute coords and meta.",
+          "links": [
+            "docs/architecture/schema.md",
+            "docs/architecture/canvas-shell.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-edges",
+      "type": "file",
+      "file": "docs/architecture/edges.md",
+      "x": 30,
+      "y": 750,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-lib",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-6-edge-derivation-provenance"
+        },
+        "frontmatter": {}
+      }
+    },
+    {
+      "id": "n-brief",
+      "type": "file",
+      "file": "docs/architecture/brief.md",
+      "x": 30,
+      "y": 980,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-lib",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "the-agent-contract"
+        },
+        "frontmatter": {
+          "name": "Brief / Merge — the agent loop",
+          "status": "stable",
+          "tags": [
+            "lib",
+            "brief",
+            "merge",
+            "agent"
+          ],
+          "description": "buildBrief packages the board into a self-contained DesignBrief; applyResponse runs the idempotent id-keyed merge of an AgentResponse.",
+          "links": [
+            "docs/architecture/schema.md",
+            "docs/architecture/frontmatter.md",
+            "docs/architecture/store.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-store",
+      "type": "file",
+      "file": "docs/architecture/store.md",
+      "x": 450,
+      "y": 60,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-state",
+      "color": "5",
+      "meta": {
+        "origin": "user",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "module-boundaries"
+        },
+        "frontmatter": {
+          "name": "Store — Zustand state",
+          "status": "stable",
+          "tags": [
+            "lib",
+            "store",
+            "zustand",
+            "state"
+          ],
+          "description": "The single Zustand store — nodes, edges, comments, session, selection, dirty — and every action that loads, mutates, and persists the board.",
+          "links": [
+            "docs/architecture/adapter.md",
+            "docs/architecture/brief.md",
+            "docs/architecture/edges.md",
+            "docs/architecture/api.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-api",
+      "type": "file",
+      "file": "docs/architecture/api.md",
+      "x": 450,
+      "y": 410,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-backend",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "module-boundaries"
+        },
+        "frontmatter": {
+          "name": "API — guarded fs routes",
+          "status": "stable",
+          "tags": [
+            "api",
+            "backend",
+            "fs",
+            "next"
+          ],
+          "description": "The thin Next.js Route Handlers wrapping Node fs — read/write the .canvas, batch-resolve markdown frontmatter+body, stream local images. Every route is path-traversal guarded.",
+          "links": [
+            "docs/architecture/fs-guard.md",
+            "docs/architecture/frontmatter.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-guard",
+      "type": "file",
+      "file": "docs/architecture/fs-guard.md",
+      "x": 450,
+      "y": 660,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-backend",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "module-boundaries"
+        },
+        "frontmatter": {
+          "name": "FS guard — path-traversal guard",
+          "status": "stable",
+          "tags": [
+            "api",
+            "security",
+            "fs"
+          ],
+          "description": "The single path-traversal guard every API route calls before touching disk — resolves a request path against FLOWCANVAS_ROOT and rejects any escape.",
+          "links": [
+            "docs/architecture/api.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-shell",
+      "type": "file",
+      "file": "docs/architecture/canvas-shell.md",
+      "x": 850,
+      "y": 60,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-ui",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-3-application-shape"
+        },
+        "frontmatter": {
+          "name": "Canvas shell + nodes",
+          "status": "stable",
+          "tags": [
+            "ui",
+            "canvas",
+            "react-flow",
+            "nodes"
+          ],
+          "description": "The React Flow provider host and the per-kind node components — markdown / image / link / note cards rendered as real DOM.",
+          "links": [
+            "docs/architecture/store.md",
+            "docs/architecture/reader.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-reader",
+      "type": "file",
+      "file": "docs/architecture/reader.md",
+      "x": 850,
+      "y": 290,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-ui",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-4-markdown-rendering-split-perf"
+        },
+        "frontmatter": {
+          "name": "Reader — full-fidelity drawer",
+          "status": "stable",
+          "tags": [
+            "ui",
+            "reader",
+            "shiki",
+            "markdown"
+          ],
+          "description": "The read-only right drawer that renders a node's markdown at full fidelity with server-side shiki syntax highlighting.",
+          "links": [
+            "docs/architecture/canvas-shell.md",
+            "docs/architecture/api.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-export",
+      "type": "file",
+      "file": "docs/architecture/export-import.md",
+      "x": 850,
+      "y": 520,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-ui",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "solution-overview"
+        },
+        "frontmatter": {
+          "name": "Export / Import panel",
+          "status": "stable",
+          "tags": [
+            "ui",
+            "agent",
+            "export",
+            "import"
+          ],
+          "description": "The UI for the clipboard agent loop — copy the DesignBrief out, paste the AgentResponse back in.",
+          "links": [
+            "docs/architecture/brief.md",
+            "docs/architecture/store.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-comments",
+      "type": "file",
+      "file": "docs/architecture/comments.md",
+      "x": 850,
+      "y": 750,
+      "width": 240,
+      "height": 150,
+      "parentId": "g-ui",
+      "meta": {
+        "origin": "import",
+        "collapsed": true,
+        "source": {
+          "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+          "anchor": "decision-5-comment-model"
+        },
+        "frontmatter": {
+          "name": "Comments — pins + threads",
+          "status": "stable",
+          "tags": [
+            "ui",
+            "comments",
+            "threads"
+          ],
+          "description": "The comment pin overlay and flat thread UI — Figma-style dual anchors, flat parent/reply threads with sequential badges.",
+          "links": [
+            "docs/architecture/store.md",
+            "docs/architecture/schema.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-design",
+      "type": "file",
+      "file": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
+      "x": 420,
+      "y": 960,
+      "width": 380,
+      "height": 260,
+      "color": "5",
+      "meta": {
+        "origin": "user",
+        "frontmatter": {
+          "name": "001-initial-architecture-design",
+          "description": "Design artifact for Flowcanvas — a node-based canvas that renders, connects, and round-trips flowcode markdown files with an AI agent via an extended-JSONCanvas schema.",
+          "status": "approved",
+          "tags": [
+            "design",
+            "architecture",
+            "canvas",
+            "jsoncanvas",
+            "agent-protocol"
+          ],
+          "links": [
+            "001-initial-architecture-plan.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-jsoncanvas",
+      "type": "link",
+      "url": "https://jsoncanvas.org",
+      "x": 0,
+      "y": -160,
+      "width": 300,
+      "height": 90,
+      "color": "6",
+      "meta": {
+        "origin": "user"
+      }
+    },
+    {
+      "id": "n-reactflow",
+      "type": "link",
+      "url": "https://reactflow.dev",
+      "x": 340,
+      "y": -160,
+      "width": 300,
+      "height": 90,
+      "color": "6",
+      "meta": {
+        "origin": "user"
+      }
+    },
+    {
+      "id": "n-loop",
+      "type": "text",
+      "text": "## Agent loop\nExport packs the board into a self-contained **DesignBrief** → the agent answers with an **AgentResponse** → Import runs the idempotent id-keyed merge. The brief embeds parsed frontmatter + body, so the agent needs no filesystem access.",
+      "x": 1200,
+      "y": 0,
+      "width": 300,
+      "height": 230,
+      "color": "#5ef2ff",
+      "meta": {
+        "origin": "user"
+      }
+    }
   ],
   "edges": [
-    { "id": "e-adapter-schema", "fromNode": "n-adapter", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-brief-schema", "fromNode": "n-brief", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-edges-schema", "fromNode": "n-edges", "toNode": "n-schema", "toEnd": "arrow", "label": "uses types", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-store-adapter", "fromNode": "n-store", "toNode": "n-adapter", "toEnd": "arrow", "label": "toReactFlow", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-store-brief", "fromNode": "n-store", "toNode": "n-brief", "toEnd": "arrow", "label": "buildBrief · applyResponse", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-store-edges", "fromNode": "n-store", "toNode": "n-edges", "toEnd": "arrow", "label": "deriveLinkEdges", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-store-api", "fromNode": "n-store", "toNode": "n-api", "toEnd": "arrow", "label": "GET/POST fs", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-shell-store", "fromNode": "n-shell", "toNode": "n-store", "toEnd": "arrow", "label": "subscribe", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-shell-reader", "fromNode": "n-shell", "toNode": "n-reader", "toEnd": "arrow", "label": "opens", "meta": { "origin": "user", "rel": "related" } },
-    { "id": "e-reader-api", "fromNode": "n-reader", "toNode": "n-api", "toEnd": "arrow", "label": "render md", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-export-store", "fromNode": "n-export", "toNode": "n-store", "toEnd": "arrow", "label": "brief · apply", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-comments-store", "fromNode": "n-comments", "toNode": "n-store", "toEnd": "arrow", "label": "comment actions", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-api-guard", "fromNode": "n-api", "toNode": "n-guard", "toEnd": "arrow", "label": "guardPath", "meta": { "origin": "user", "rel": "depends-on" } },
-    { "id": "e-api-frontmatter", "fromNode": "n-api", "toNode": "n-frontmatter", "toEnd": "arrow", "label": "gray-matter parse", "meta": { "origin": "user", "rel": "calls" } },
-    { "id": "e-brief-frontmatter", "fromNode": "n-brief", "toNode": "n-frontmatter", "toEnd": "arrow", "label": "embeds fm+body", "meta": { "origin": "user", "rel": "references" } },
-    { "id": "e-schema-design", "fromNode": "n-schema", "toNode": "n-design", "toEnd": "arrow", "label": "Decision 1", "meta": { "origin": "import", "rel": "derives-from" } },
-    { "id": "e-edges-design", "fromNode": "n-edges", "toNode": "n-design", "toEnd": "arrow", "label": "Decision 6", "meta": { "origin": "import", "rel": "derives-from" } }
+    {
+      "id": "e-adapter-schema",
+      "fromNode": "n-adapter",
+      "toNode": "n-schema",
+      "toEnd": "arrow",
+      "label": "uses types",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-brief-schema",
+      "fromNode": "n-brief",
+      "toNode": "n-schema",
+      "toEnd": "arrow",
+      "label": "uses types",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-edges-schema",
+      "fromNode": "n-edges",
+      "toNode": "n-schema",
+      "toEnd": "arrow",
+      "label": "uses types",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-store-adapter",
+      "fromNode": "n-store",
+      "toNode": "n-adapter",
+      "toEnd": "arrow",
+      "label": "toReactFlow",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-store-brief",
+      "fromNode": "n-store",
+      "toNode": "n-brief",
+      "toEnd": "arrow",
+      "label": "buildBrief · applyResponse",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-store-edges",
+      "fromNode": "n-store",
+      "toNode": "n-edges",
+      "toEnd": "arrow",
+      "label": "deriveLinkEdges",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-store-api",
+      "fromNode": "n-store",
+      "toNode": "n-api",
+      "toEnd": "arrow",
+      "label": "GET/POST fs",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-shell-store",
+      "fromNode": "n-shell",
+      "toNode": "n-store",
+      "toEnd": "arrow",
+      "label": "subscribe",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-shell-reader",
+      "fromNode": "n-shell",
+      "toNode": "n-reader",
+      "toEnd": "arrow",
+      "label": "opens",
+      "meta": {
+        "origin": "user",
+        "rel": "related"
+      }
+    },
+    {
+      "id": "e-reader-api",
+      "fromNode": "n-reader",
+      "toNode": "n-api",
+      "toEnd": "arrow",
+      "label": "render md",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-export-store",
+      "fromNode": "n-export",
+      "toNode": "n-store",
+      "toEnd": "arrow",
+      "label": "brief · apply",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-comments-store",
+      "fromNode": "n-comments",
+      "toNode": "n-store",
+      "toEnd": "arrow",
+      "label": "comment actions",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-api-guard",
+      "fromNode": "n-api",
+      "toNode": "n-guard",
+      "toEnd": "arrow",
+      "label": "guardPath",
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-api-frontmatter",
+      "fromNode": "n-api",
+      "toNode": "n-frontmatter",
+      "toEnd": "arrow",
+      "label": "gray-matter parse",
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-brief-frontmatter",
+      "fromNode": "n-brief",
+      "toNode": "n-frontmatter",
+      "toEnd": "arrow",
+      "label": "embeds fm+body",
+      "meta": {
+        "origin": "user",
+        "rel": "references"
+      }
+    },
+    {
+      "id": "e-schema-design",
+      "fromNode": "n-schema",
+      "toNode": "n-design",
+      "toEnd": "arrow",
+      "label": "Decision 1",
+      "meta": {
+        "origin": "import",
+        "rel": "derives-from"
+      }
+    },
+    {
+      "id": "e-edges-design",
+      "fromNode": "n-edges",
+      "toNode": "n-design",
+      "toEnd": "arrow",
+      "label": "Decision 6",
+      "meta": {
+        "origin": "import",
+        "rel": "derives-from"
+      }
+    }
   ],
   "flowcanvas": {
     "schemaVersion": "0.2",
     "session": {
       "title": "Flowcanvas — Initial Architecture (001)",
-      "intent": "Self-referential architecture board extracted from 001-initial-architecture-design.md",
+      "intent": "what is this all about?",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-28T00:00:00Z",
-      "revision": 1
+      "updatedAt": "2026-06-28T17:13:16.493Z",
+      "revision": 2,
+      "pendingReview": true
     },
     "comments": [
       {
         "id": "c-1",
-        "anchor": { "kind": "node", "nodeId": "n-store", "offsetX": 0.5, "offsetY": 0.1 },
+        "anchor": {
+          "kind": "node",
+          "nodeId": "n-store",
+          "offsetX": 0.5,
+          "offsetY": 0.1
+        },
         "parentId": null,
         "author": "human:david",
         "text": "Should load() reconcile edges on every load, or cache the derived set?",
