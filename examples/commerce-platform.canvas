@@ -355,8 +355,9 @@
       "title": "Commerce Platform",
       "intent": "Commerce platform — decomposed architecture (v2 System Design Studio demo)",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-29T13:26:21.087Z",
-      "revision": 2
+      "updatedAt": "2026-06-29T23:28:05.397Z",
+      "revision": 3,
+      "coreDocPath": "examples/commerce-platform/commerce-design.md"
     },
     "comments": [
       {

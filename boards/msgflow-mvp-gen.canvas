@@ -1,0 +1,715 @@
+{
+  "nodes": [
+    {
+      "id": "g-msgflow",
+      "type": "group",
+      "label": "msgflow Central App",
+      "x": 80,
+      "y": 80,
+      "width": 1240,
+      "height": 760,
+      "meta": {
+        "origin": "agent",
+        "shape": "rectangle",
+        "kind": "boundary"
+      }
+    },
+    {
+      "id": "g-google",
+      "type": "group",
+      "label": "Google Workspace",
+      "x": 1480,
+      "y": 80,
+      "width": 700,
+      "height": 540,
+      "meta": {
+        "origin": "agent",
+        "shape": "rectangle",
+        "kind": "boundary"
+      }
+    },
+    {
+      "id": "n-webhook",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/webhook-handler.md",
+      "x": 120,
+      "y": 120,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "Webhook Handler",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "api--interface-contracts"
+        },
+        "frontmatter": {
+          "name": "Webhook Handler",
+          "description": "Receives zavu WhatsApp webhooks, verifies the signature, persists + enqueues an arq job.",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "api--interface-contracts"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-oauth",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/oauth-handler.md",
+      "x": 420,
+      "y": 120,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "OAuth Handler",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-5-calendar-capability"
+        },
+        "frontmatter": {
+          "name": "OAuth Handler",
+          "description": "Google OAuth start/callback; stores the encrypted refresh token per business.",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-5-calendar-capability"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-channel",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/channel-adapter.md",
+      "x": 720,
+      "y": 120,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "Channel Adapter",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-1-whatsapp-channel"
+        },
+        "frontmatter": {
+          "name": "Channel Adapter",
+          "description": "Normalizes zavu provider payloads to/from the internal message model.",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-1-whatsapp-channel"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-agent",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/langgraph-agent.md",
+      "x": 1020,
+      "y": 120,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "LangGraph Agent",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-3-llm--agent-orchestration"
+        },
+        "frontmatter": {
+          "name": "LangGraph Agent",
+          "description": "Agent orchestration; binds per-business tools to the LLM and runs the reply graph.",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-3-llm--agent-orchestration"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-ingest",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/knowledge-ingester.md",
+      "x": 120,
+      "y": 320,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "Knowledge Ingester",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "retrieval--knowledge-ingestion-rag"
+        },
+        "frontmatter": {
+          "name": "Knowledge Ingester",
+          "description": "Ingests business docs and builds embeddings for retrieval (RAG).",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "retrieval--knowledge-ingestion-rag"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-tei",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/tei-sidecar.md",
+      "x": 420,
+      "y": 320,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "service",
+        "label": "TEI Sidecar",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "retrieval--knowledge-ingestion-rag"
+        },
+        "frontmatter": {
+          "name": "TEI Sidecar",
+          "description": "Local Text-Embeddings-Inference sidecar serving embeddings.",
+          "kind": "service",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "retrieval--knowledge-ingestion-rag"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-worker",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/arq-worker.md",
+      "x": 720,
+      "y": 320,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "process",
+        "label": "ARQ Worker",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-2-deployment-topology"
+        },
+        "frontmatter": {
+          "name": "ARQ Worker",
+          "description": "Async worker draining the arq job queue and driving the agent turn.",
+          "kind": "process",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-2-deployment-topology"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-queue",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/redis-arq-queue.md",
+      "x": 1020,
+      "y": 320,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "queue",
+        "label": "Redis / ARQ Queue",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-2-deployment-topology"
+        },
+        "frontmatter": {
+          "name": "Redis / ARQ Queue",
+          "description": "Redis-backed arq job queue decoupling the webhook from agent work.",
+          "kind": "queue",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-2-deployment-topology"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-pg",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/postgresql.md",
+      "x": 120,
+      "y": 520,
+      "width": 230,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "datastore",
+        "label": "PostgreSQL",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "data-models"
+        },
+        "frontmatter": {
+          "name": "PostgreSQL",
+          "description": "Contacts, messages, businesses, encrypted tokens, and pgvector embeddings.",
+          "kind": "datastore",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "data-models"
+          }
+        }
+      },
+      "parentId": "g-msgflow"
+    },
+    {
+      "id": "n-customer",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/customer.md",
+      "x": 420,
+      "y": 520,
+      "width": 220,
+      "height": 120,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "actor",
+        "label": "Customer",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "problem-statement"
+        },
+        "frontmatter": {
+          "name": "Customer",
+          "description": "WhatsApp end customer messaging the business.",
+          "kind": "actor",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "problem-statement"
+          }
+        }
+      }
+    },
+    {
+      "id": "n-owner",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/business-owner.md",
+      "x": 720,
+      "y": 520,
+      "width": 220,
+      "height": 120,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "actor",
+        "label": "Business Owner",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-7-human-escalation"
+        },
+        "frontmatter": {
+          "name": "Business Owner",
+          "description": "Business owner who receives escalations and approves bookings.",
+          "kind": "actor",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-7-human-escalation"
+          }
+        }
+      }
+    },
+    {
+      "id": "n-zavu",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/zavu-bsp.md",
+      "x": 1020,
+      "y": 520,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "external",
+        "label": "zavu BSP",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-1-whatsapp-channel"
+        },
+        "frontmatter": {
+          "name": "zavu BSP",
+          "description": "zavu WhatsApp Business Solution Provider (inbound + outbound).",
+          "kind": "external",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-1-whatsapp-channel"
+          }
+        }
+      }
+    },
+    {
+      "id": "n-or",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/openrouter-llm.md",
+      "x": 120,
+      "y": 720,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "external",
+        "label": "OpenRouter LLM",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-3-llm--agent-orchestration"
+        },
+        "frontmatter": {
+          "name": "OpenRouter LLM",
+          "description": "OpenRouter LLM gateway (swappable model ids).",
+          "kind": "external",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-3-llm--agent-orchestration"
+          }
+        }
+      }
+    },
+    {
+      "id": "n-gcal",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/google-calendar.md",
+      "x": 1920,
+      "y": 720,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "external",
+        "label": "Google Calendar",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-5-calendar-capability"
+        },
+        "frontmatter": {
+          "name": "Google Calendar",
+          "description": "Google Calendar API for availability + booking.",
+          "kind": "external",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-5-calendar-capability"
+          }
+        }
+      },
+      "parentId": "g-google"
+    },
+    {
+      "id": "n-gdrive",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/google-drive.md",
+      "x": 2220,
+      "y": 720,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "external",
+        "label": "Google Drive",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-6-price-source"
+        },
+        "frontmatter": {
+          "name": "Google Drive",
+          "description": "Google Drive holding the business price documents.",
+          "kind": "external",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-6-price-source"
+          }
+        }
+      },
+      "parentId": "g-google"
+    },
+    {
+      "id": "n-gsheets",
+      "type": "file",
+      "file": "boards/msgflow-mvp-gen.nodes/google-sheets.md",
+      "x": 2520,
+      "y": 720,
+      "width": 220,
+      "height": 140,
+      "color": "6",
+      "meta": {
+        "origin": "agent",
+        "kind": "external",
+        "label": "Google Sheets",
+        "source": {
+          "path": "boards/msgflow-mvp-gen.md",
+          "anchor": "decision-6-price-source"
+        },
+        "frontmatter": {
+          "name": "Google Sheets",
+          "description": "Google Sheets price tables read at answer time.",
+          "kind": "external",
+          "source": {
+            "path": "boards/msgflow-mvp-gen.md",
+            "anchor": "decision-6-price-source"
+          }
+        }
+      },
+      "parentId": "g-google"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-gen-0",
+      "fromNode": "n-customer",
+      "toNode": "n-zavu",
+      "label": "messages",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-1",
+      "fromNode": "n-zavu",
+      "toNode": "n-webhook",
+      "label": "webhook",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-2",
+      "fromNode": "n-webhook",
+      "toNode": "n-queue",
+      "label": "enqueue",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "e-gen-3",
+      "fromNode": "n-queue",
+      "toNode": "n-worker",
+      "label": "dequeue",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "informs"
+      }
+    },
+    {
+      "id": "e-gen-4",
+      "fromNode": "n-worker",
+      "toNode": "n-channel",
+      "label": "handle",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-5",
+      "fromNode": "n-channel",
+      "toNode": "n-agent",
+      "label": "turn",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-6",
+      "fromNode": "n-agent",
+      "toNode": "n-or",
+      "label": "completion",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-7",
+      "fromNode": "n-agent",
+      "toNode": "n-ingest",
+      "label": "retrieve",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "depends-on"
+      }
+    },
+    {
+      "id": "e-gen-8",
+      "fromNode": "n-ingest",
+      "toNode": "n-tei",
+      "label": "embed",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-9",
+      "fromNode": "n-ingest",
+      "toNode": "n-pg",
+      "label": "vectors",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "e-gen-10",
+      "fromNode": "n-agent",
+      "toNode": "n-pg",
+      "label": "read/write",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-11",
+      "fromNode": "n-webhook",
+      "toNode": "n-pg",
+      "label": "persist",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "e-gen-12",
+      "fromNode": "n-oauth",
+      "toNode": "n-pg",
+      "label": "store token",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "e-gen-13",
+      "fromNode": "n-oauth",
+      "toNode": "n-gcal",
+      "label": "oauth",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-14",
+      "fromNode": "n-agent",
+      "toNode": "n-gcal",
+      "label": "book",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "e-gen-15",
+      "fromNode": "n-agent",
+      "toNode": "n-gdrive",
+      "label": "price docs",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "references"
+      }
+    },
+    {
+      "id": "e-gen-16",
+      "fromNode": "n-agent",
+      "toNode": "n-gsheets",
+      "label": "price tables",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "references"
+      }
+    },
+    {
+      "id": "e-gen-17",
+      "fromNode": "n-agent",
+      "toNode": "n-owner",
+      "label": "escalate",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "informs"
+      }
+    },
+    {
+      "id": "e-gen-18",
+      "fromNode": "n-worker",
+      "toNode": "n-zavu",
+      "label": "reply",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    }
+  ],
+  "flowcanvas": {
+    "schemaVersion": "0.3",
+    "session": {
+      "title": "msgflow MVP",
+      "intent": "WhatsApp AI customer assistant — system design extracted from the msgflow-mvp design doc",
+      "createdAt": "2026-06-29T00:00:00Z",
+      "updatedAt": "2026-06-29T22:46:08.572Z",
+      "revision": 1,
+      "coreDocPath": "boards/msgflow-mvp-gen.md"
+    },
+    "comments": []
+  }
+}
