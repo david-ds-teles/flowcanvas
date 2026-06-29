@@ -33,7 +33,7 @@ export function useSaveShortcut() {
 }
 
 interface CanvasToolbarProps {
-  onOpenAgent: (tab: 'export' | 'import') => void
+  onOpenAgent: (tab: 'export' | 'import' | 'kit') => void
   onOpenBoard: (mode: 'open' | 'save') => void
   onClearBoard: () => void
   railLeft: 'open' | 'collapsed'
@@ -331,6 +331,10 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
       <div className="fc-toolbar__spacer" />
 
       {/* v2 — agent round-trip + studio surfaces */}
+      {/* 004 — discoverable Agent Generation Kit: opens the kit bundle (copy-paste for any LLM). */}
+      <button type="button" className="fc-tbtn fc-tbtn--kit" data-testid="generation-kit-button" aria-label="Agent Generation Kit" title="Agent Generation Kit — copy the full kit for any LLM" onClick={() => onOpenAgent('kit')}>
+        {sv(<><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 3v18M4 7.5l8 4.5 8-4.5" /></>)}<span>Kit</span>
+      </button>
       <button type="button" className="fc-tbtn fc-tbtn--primary" data-testid="toolbar-submit" aria-label="Submit to agent" title="Submit to agent" onClick={onOpenSubmit}>
         {sv(<path d="M4 12l16-8-6 16-3-6z" />)}<span>Submit</span>
       </button>

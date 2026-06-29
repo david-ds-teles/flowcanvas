@@ -49,3 +49,6 @@ next-env.d.ts
 # v2 runtime state — active-board pointer + per-board change-review snapshots (regenerable, not tracked)
 /.flowcanvas/
 *.review.json
+
+# IDE
+.idea/

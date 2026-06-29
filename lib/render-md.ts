@@ -3,6 +3,7 @@ import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
 import rehypeSanitize from 'rehype-sanitize'
+import rehypeSlug from 'rehype-slug'
 import rehypeShiki from '@shikijs/rehype'
 import rehypeStringify from 'rehype-stringify'
 
@@ -18,6 +19,7 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkRehype)
   .use(rehypeSanitize)
+  .use(rehypeSlug)                                   // 004 — heading ids = slugify() = meta.source.anchor
   .use(rehypeShiki, { theme: 'github-dark-default' })
   .use(rehypeStringify)
 

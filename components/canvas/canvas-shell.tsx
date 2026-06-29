@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -24,6 +24,7 @@ import { LinkChipNode } from './nodes/link-node'
 import { NoteNode } from './nodes/note-node'
 import { GroupNode } from './nodes/group-node'
 import { FallbackNode } from './nodes/fallback-node'
+import { ComponentNode } from './nodes/component-node'
 import { LabeledEdge } from './edges/labeled-edge'
 import { CommentLayer } from './comment-layer'
 import { CanvasToolbar } from './canvas-toolbar'
@@ -36,6 +37,8 @@ import { StructureRail } from './structure-rail'
 import { TemplateTray } from './template-tray'
 import { InspectorRail } from './inspector-rail'
 import { ReviewPanel } from './review-panel'
+import { CoreSpine } from './core-spine'
+import { citedDocPaths } from '@/lib/canvas/spine'
 import { useRoundReady } from './use-round-ready'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
@@ -56,7 +59,10 @@ const nodeTypes = {
   note: NoteNode,
   group: GroupNode,
   file: FallbackNode,
-} satisfies Record<NodeKind, NodeTypes[string]>
+  // 004 — meta.kind-routed system-design widget (adapter maps a kinded non-group node to 'component').
+  // Not a NodeKind; kept alongside the exhaustive NodeKind registry via the intersection below.
+  component: ComponentNode,
+} satisfies Record<NodeKind, NodeTypes[string]> & { component: NodeTypes[string] }
 const edgeTypes: EdgeTypes = { labeled: LabeledEdge }
 const defaultEdgeOptions = { type: 'labeled' }
 
@@ -86,10 +92,11 @@ function CanvasFlow() {
   const readerNodeId = useCanvasStore((s) => s.readerNodeId)
   const closeReader = useCanvasStore((s) => s.closeReader)
   const clearBoard = useCanvasStore((s) => s.clearBoard)
+  const linkedNodeIds = useCanvasStore((s) => s.linkedNodeIds)   // 004 — spine→canvas pulse targets
   const handlers = useCanvasHandlers()
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
-  const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' }>({ open: false, tab: 'export' })
+  const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' | 'kit' }>({ open: false, tab: 'export' })
   const [board, setBoard] = useState<{ open: boolean; mode: 'open' | 'save' }>({ open: false, mode: 'open' })
   const [confirmClear, setConfirmClear] = useState(false)
   const isEmpty = !!doc && doc.nodes.length === 0
@@ -99,6 +106,16 @@ function CanvasFlow() {
   const [railRight, setRailRight] = useState<Rail>('open')
   const [leftTab, setLeftTab] = useState<LeftTab>('structure')
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>('inspector')
+  const [spineOpen, setSpineOpen] = useState(true)   // 004 — the docked core-doc spine
+
+  // The spine is available when the board binds a core doc OR cites at least one source doc (Q4 switcher).
+  const spineAvailable = !!doc && (!!doc.flowcanvas.session.coreDocPath || citedDocPaths(doc.nodes).length > 0)
+  // Pulse the spine→canvas linked nodes by tagging their RF node className (transient highlight).
+  const rfNodes = useMemo(() => {
+    if (linkedNodeIds.length === 0) return handlers.nodes
+    const set = new Set(linkedNodeIds)
+    return handlers.nodes.map((n) => (set.has(n.id) ? { ...n, className: [n.className, 'fc-rf--linked'].filter(Boolean).join(' ') } : n))
+  }, [handlers.nodes, linkedNodeIds])
 
   useEffect(() => {
     void load(path).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
@@ -194,7 +211,7 @@ function CanvasFlow() {
         <div className="fc-studio__center">
           <ReactFlow
             className={mode === 'connect' ? 'fc-rf--connect' : undefined}
-            nodes={handlers.nodes}
+            nodes={rfNodes}
             edges={handlers.edges}
             onNodesChange={handlers.onNodesChange}
             onEdgesChange={handlers.onEdgesChange}
@@ -255,6 +272,26 @@ function CanvasFlow() {
             </div>
           )}
         </div>
+
+        {/* 004 — docked living core-doc spine (between canvas and inspector). Mounted when the board
+            binds a core doc or cites a source doc; a thin strip reopens it when closed. */}
+        {spineAvailable && spineOpen && <CoreSpine onClose={() => setSpineOpen(false)} />}
+        {spineAvailable && !spineOpen && (
+          <div className="fc-railstrip fc-railstrip--spine" data-testid="spine-strip">
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="spine-reopen"
+              title="Open Core Doc spine"
+              aria-label="Open Core Doc spine"
+              onClick={() => setSpineOpen(true)}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* RIGHT inspector — default / submit / review (collapsible) */}
         <aside className="fc-studio__inspector" aria-label="Inspector">

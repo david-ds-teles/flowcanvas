@@ -3,12 +3,10 @@ import { useState } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { extractRefs } from '@/lib/canvas/refs'
 import type { DocRef } from '@/lib/canvas/refs'
-import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
+import { isFileNode, nodeKind, COMPONENT_KIND_META } from '@/lib/canvas/jsoncanvas'
+import { normPath } from '@/lib/canvas/spine'
 import { nodeDisplayName } from '@/lib/canvas/node-name'
 // studio-inspector.css is loaded via app/globals.css (matches the project's CSS-centralization convention).
-
-/** Normalize root-relative paths for matching (mirrors store.ts `normPath`). */
-const normPath = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
 
 export function InspectorRail({
   mode,
@@ -22,6 +20,7 @@ export function InspectorRail({
   const selectedIds  = useCanvasStore((s) => s.selectedIds)
   const bodies       = useCanvasStore((s) => s.bodies)
   const navigateRef  = useCanvasStore((s) => s.navigateRef)
+  const highlightSpineSection = useCanvasStore((s) => s.highlightSpineSection)   // 004 Phase 4 — § → spine
   const removeNode   = useCanvasStore((s) => s.removeNode)
   const submitToAgent = useCanvasStore((s) => s.submitToAgent)
   const reviewDiff   = useCanvasStore((s) => s.reviewDiff)
@@ -242,6 +241,11 @@ export function InspectorRail({
         <div className="fc-insp__meta">
           {selectedNode && (
             <>
+              {selectedNode.meta?.kind && (
+                <span className="fc-insp__ckind" data-testid="inspector-kind" data-kind={selectedNode.meta.kind}>
+                  {COMPONENT_KIND_META[selectedNode.meta.kind]?.label ?? selectedNode.meta.kind}
+                </span>
+              )}
               <span className="fc-insp__kind">{nodeKind(selectedNode)}</span>
               <span className="fc-insp__selpill">selected</span>
             </>
@@ -284,6 +288,18 @@ export function InspectorRail({
                     {selectedNode.meta.source.anchor ? `#${selectedNode.meta.source.anchor}` : ''}
                   </div>
                 </div>
+                {selectedNode.meta.source.anchor && (
+                  <button
+                    type="button"
+                    className="fc-insp__src-foc"
+                    data-testid="inspector-spine-section"
+                    aria-label="Highlight this section in the core-doc spine"
+                    title="Highlight in the core-doc spine"
+                    onClick={() => highlightSpineSection(selectedNode.meta!.source!.anchor!)}
+                  >
+                    §
+                  </button>
+                )}
                 <button
                   type="button"
                   className="fc-insp__src-foc"

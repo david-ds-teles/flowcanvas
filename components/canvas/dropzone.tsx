@@ -10,8 +10,11 @@ import { uploadFile } from '@/lib/api'
 export function Dropzone() {
   const { screenToFlowPosition } = useReactFlow()
   const addFileNode = useCanvasStore((s) => s.addFileNode)
+  const importCanvasFile = useCanvasStore((s) => s.importCanvasFile)
+  const dirty = useCanvasStore((s) => s.dirty)
   const doc = useCanvasStore((s) => s.doc)
   const [active, setActive] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   const onDrop = useCallback(
     async (e: DragEvent) => {
@@ -19,17 +22,33 @@ export function Dropzone() {
       setActive(false)
       const files = e.dataTransfer?.files
       if (!files || files.length === 0) return
+      const arr = Array.from(files)
+      // 004 Phase 5 (Decision 5) — extension dispatch: a `.canvas` drop loads a board (handled
+      // EXCLUSIVELY, behind a dirty-guard confirm); md / image / other still add nodes via the
+      // UNCHANGED uploadFile + addFileNode path, so the existing add-node drop never breaks.
+      const canvasFile = arr.find((f) => f.name.toLowerCase().endsWith('.canvas'))
+      if (canvasFile) {
+        if (dirty && !window.confirm('Replace the current board with the dropped .canvas? Unsaved changes will be lost.')) return
+        try {
+          await importCanvasFile(canvasFile)
+        } catch (e2) {
+          console.error('import .canvas failed', e2)
+          setErr(e2 instanceof Error ? e2.message : 'Invalid .canvas file')
+          setTimeout(() => setErr(null), 4500)
+        }
+        return // .canvas handled exclusively — never falls through to the add-node path
+      }
       const base = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       let i = 0
-      for (const f of Array.from(files)) {
+      for (const f of arr) {
         try {
           const path = await uploadFile(f)
           await addFileNode(path, Math.round(base.x / 20) * 20 + i * 24, Math.round(base.y / 20) * 20 + i * 24)
           i++
-        } catch (err) { console.error('drop upload failed', f.name, err) } // disallowed/oversize rejected by the route
+        } catch (err2) { console.error('drop upload failed', f.name, err2) } // disallowed/oversize rejected by the route
       }
     },
-    [screenToFlowPosition, addFileNode],
+    [screenToFlowPosition, addFileNode, importCanvasFile, dirty],
   )
 
   useEffect(() => {
@@ -48,10 +67,17 @@ export function Dropzone() {
     }
   }, [onDrop])
 
-  if (!doc || !active) return null
+  if (!doc) return null
   return (
-    <div className="fc-dropzone" data-testid="dropzone" aria-hidden="true">
-      <div className="fc-dropzone__inner">Drop images or markdown to add nodes</div>
-    </div>
+    <>
+      {active && (
+        <div className="fc-dropzone" data-testid="dropzone" aria-hidden="true">
+          <div className="fc-dropzone__inner">Drop images / markdown to add nodes · a <code>.canvas</code> to load a board</div>
+        </div>
+      )}
+      {err && (
+        <div className="fc-dropzone__err" data-testid="import-drop-error" role="alert">{err}</div>
+      )}
+    </>
   )
 }

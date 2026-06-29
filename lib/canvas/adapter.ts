@@ -1,7 +1,7 @@
 import { MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
 import type { CSSProperties } from 'react'
 import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, Side, EdgeOrigin, RelationshipType } from './jsoncanvas'
-import { nodeKind } from './jsoncanvas'
+import { nodeKind, COMPONENT_KIND_META } from './jsoncanvas'
 
 const PRESET: Record<string, string> = { '1': '#ff516a', '2': '#f59f00', '3': '#e3b341', '4': '#b6f36a', '5': '#5ef2ff', '6': '#a371f7' }   // nyx §2.4
 export const colorVar = (c?: CanvasColor): string | undefined => (!c ? undefined : c.startsWith('#') ? c : PRESET[c])
@@ -13,9 +13,13 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
   const ordered = [...doc.nodes].sort((a, b) => Number(!!a.parentId) - Number(!!b.parentId))
   const nodes = ordered.map<RFNode>((n) => {
     const kind = nodeKind(n)                              // 'markdown'|'image'|'link'|'note'|'file'|'group'
-    const autoHeight = kind === 'markdown'                // content-sized so the collapse toggle visibly shrinks the card
+    // 004 — a non-group node carrying meta.kind renders as the system-design component widget; a group
+    // keeps type:'group' (a meta.kind:'boundary' group is tinted via --node-accent below).
+    const renderType = n.meta?.kind && n.type !== 'group' ? 'component' : kind
+    const autoHeight = renderType === 'markdown'          // component keeps its authored box; markdown auto-measures
     const vars: Record<string, string> = {}
     if (n.color) vars['--node-accent'] = colorVar(n.color) ?? ''
+    else if (n.meta?.kind && n.type === 'group') vars['--node-accent'] = colorVar(COMPONENT_KIND_META[n.meta.kind].accent) ?? ''
     if (autoHeight) vars['--fc-body-max'] = `${Math.max(72, n.height - 88)}px`   // clamp the rendered body to ~the authored box
     // Doc coords are ABSOLUTE; React Flow wants a child positioned RELATIVE to its parent. A dangling
     // parentId (parent not on the board) degrades to a top-level node at its absolute position.
@@ -23,7 +27,7 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
     const position = parent ? { x: n.x - parent.x, y: n.y - parent.y } : { x: n.x, y: n.y }
     return {
       id: n.id,
-      type: kind,
+      type: renderType,
       position,
       width: n.width,
       height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box

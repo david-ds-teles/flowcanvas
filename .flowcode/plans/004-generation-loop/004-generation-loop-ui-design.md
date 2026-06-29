@@ -1,7 +1,7 @@
 ---
 name: 004-generation-loop-ui-design
 description: UI design artifact for the Markdown-Core Generation Loop — one nyx mockup rendering the reframe: a system-design canvas of kind-typed component widgets generated from a living, editable, bidirectionally-linked core-markdown spine, plus the Agent Generation Kit and frictionless import surfaces.
-status: draft
+status: approved
 tags: [ui-design, frontend, mockups, canvas, mcp, nyx]
 links: [.flowcode/plans/004-generation-loop/004-generation-loop-plan.md, .flowcode/ui/ui-workflow.md, .flowcode/ui/ui-mockup-discipline.md]
 ---
@@ -10,12 +10,12 @@ links: [.flowcode/plans/004-generation-loop/004-generation-loop-plan.md, .flowco
 
 - One high-fidelity nyx mockup (the language selected in plan 003) rendering the full reframe at real density, built from the verbatim `@theme` tokens + the nyx component language — `mockups/01-generation-loop.html`.
 - The canvas is now a **system-design diagram**: kind-typed component widgets (service · datastore · queue · actor · external · decision) with distinct icon/shape/accent + a `§section` provenance chip — not markdown-file cards.
-- The right pane is the **living Core-Doc spine** (docked, not an overlay): full-fidelity render, Edit toggle, dirty indicator, "Submit changes" (re-submit over MCP), and per-section highlight.
+- The right pane is the **living Core-Doc spine** (docked, not an overlay): full-fidelity render, Edit toggle, dirty indicator, "Submit changes" (re-submit over MCP), per-section highlight, and — when the board cites more than one source doc — a **spine switcher** to repoint which doc is the spine (design Q4).
 - **Bidirectional linking**: selecting a component highlights its section in the spine (and a "↔ linked to §…" tag); the canvas widget shows a matching link tag.
 - The **Agent Generation Kit** is a discoverable modal (System prompt · Schema contracts · MCP loop · Worked example · + your markdown) with one-click "Copy full kit" AND the MCP surface (`get_generation_kit()` · `flowcanvas://generation-kit`).
 - **Frictionless import** modal: Paste JSON · Upload `.canvas` · Drag-drop, with the extension-dispatch guarantee (md/images still add as nodes) and the zod-validate + `0.x → 0.3` migration note.
 - A MOCKUP-CONTROLS bar steps through the states: Overview · Kinds · Linking · Edit core · Generation Kit · Import.
-- Status draft; author agent (built in the main session from the nyx language + the 004 design); dated 2026-06-28.
+- Status approved; author agent (built in the main session from the nyx language + the 004 design); dated 2026-06-28, approved 2026-06-29 (3 UI open questions resolved at the mockup's shown defaults; spine switcher added per design Q4).
 - Sibling plan: `004-generation-loop-plan.md`.
 
 ---
@@ -40,7 +40,7 @@ Plan 004 turns the canvas from "an arrangement of markdown-file cards" into a sy
 - **Import** — the import modal: Paste JSON · Upload `.canvas` · Drag-drop tabs, the drop target, "Validate & load", and the migration note.
 
 **Key elements (testids for implementation):**
-- `component-node` (per kind, `data-kind`), `component-source-chip` (→ `navigateRef`), `core-spine`, `spine-edit-toggle`, `spine-dirty`, `spine-submit`, `spine-section` (`data-anchor`, `is-linked`), `generation-kit-button` / `generation-kit-modal` / `kit-copy`, `import-button` / `import-modal` / `import-paste` / `import-upload` / `import-drop`.
+- `component-node` (per kind, `data-kind`), `component-source-chip` (→ `navigateRef`), `core-spine`, `spine-switcher` (multi-source repoint → `setCoreDoc`), `spine-edit-toggle`, `spine-dirty`, `spine-submit`, `spine-section` (`data-anchor`, `is-linked`), `generation-kit-button` / `generation-kit-modal` / `kit-copy`, `import-button` / `import-modal` / `import-paste` / `import-upload` / `import-drop`.
 
 ## Interaction Contract
 
@@ -85,6 +85,8 @@ Required for every UI-touching plan; populated at phase close. Unlike 003 there 
 
 ## Open Questions
 
-- [ ] Spine placement — docked right (shown) vs a left spine vs a toggleable full-height panel; confirm against the 003 inspector/structure rails so the studio doesn't over-crowd.
-- [ ] Component widget density — how much role text shows at rest vs on hover/select (the mock shows a one-line role + source chip).
-- [ ] Kit copy payload — whether the attached markdown is always inlined or linked when large (design Open Question).
+All resolved 2026-06-29 at the built mockup's shown defaults (approving the ui-design adopts the mockup's choices); the planner/implementer may refine within these against `01-generation-loop.html`.
+
+- [x] Spine placement — **Resolved: docked right** (as shown), sharing the 003 right-rail region with the inspector (the spine is the Core-Doc pane; inspector and spine coexist on the right per the tri-pane shell). A toggleable full-height expand is a nice-to-have, not required for the loop.
+- [x] Component widget density — **Resolved: one-line role + `§section` source chip at rest** (as shown); fuller detail (typed relations, full provenance) lives in the inspector on select — consistent with the 003 inspector pattern.
+- [x] Kit copy payload — **Resolved: raw markdown always inlined, no size warning** (design Q5). The attached doc is inlined verbatim into the copied kit regardless of size.

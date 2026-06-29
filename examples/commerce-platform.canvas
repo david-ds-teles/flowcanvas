@@ -8,7 +8,10 @@
       "y": 0,
       "width": 320,
       "height": 200,
-      "meta": { "origin": "user", "shape": "rectangle" }
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
     },
     {
       "id": "g-core",
@@ -18,7 +21,10 @@
       "y": 0,
       "width": 360,
       "height": 560,
-      "meta": { "origin": "user", "shape": "rectangle" }
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
     },
     {
       "id": "g-data",
@@ -28,7 +34,10 @@
       "y": 0,
       "width": 320,
       "height": 360,
-      "meta": { "origin": "user", "shape": "rectangle" }
+      "meta": {
+        "origin": "user",
+        "shape": "rectangle"
+      }
     },
     {
       "id": "n-gateway",
@@ -41,7 +50,19 @@
       "parentId": "g-edge",
       "meta": {
         "origin": "user",
-        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "edge" }
+        "source": {
+          "path": "examples/commerce-platform/commerce-design.md",
+          "anchor": "edge"
+        },
+        "frontmatter": {
+          "name": "API Gateway",
+          "status": "active",
+          "tags": [
+            "service",
+            "edge"
+          ],
+          "description": "Public entry point — TLS termination, auth, request fan-out."
+        }
       }
     },
     {
@@ -55,7 +76,20 @@
       "parentId": "g-core",
       "meta": {
         "origin": "import",
-        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "authentication" }
+        "source": {
+          "path": "examples/commerce-platform/commerce-design.md",
+          "anchor": "authentication"
+        },
+        "frontmatter": {
+          "name": "Auth Service",
+          "status": "active",
+          "tags": [
+            "service",
+            "core",
+            "security"
+          ],
+          "description": "Issues and verifies session tokens."
+        }
       }
     },
     {
@@ -69,7 +103,23 @@
       "parentId": "g-core",
       "meta": {
         "origin": "import",
-        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "order-lifecycle" }
+        "source": {
+          "path": "examples/commerce-platform/commerce-design.md",
+          "anchor": "order-lifecycle"
+        },
+        "frontmatter": {
+          "name": "Order Service",
+          "status": "active",
+          "tags": [
+            "service",
+            "core"
+          ],
+          "description": "Owns the order lifecycle — create, reserve, charge, confirm.",
+          "links": [
+            "examples/commerce-platform/commerce-design.md",
+            "examples/commerce-platform/runbook.md"
+          ]
+        }
       }
     },
     {
@@ -83,7 +133,20 @@
       "parentId": "g-core",
       "meta": {
         "origin": "import",
-        "source": { "path": "examples/commerce-platform/commerce-design.md", "anchor": "payments" }
+        "source": {
+          "path": "examples/commerce-platform/commerce-design.md",
+          "anchor": "payments"
+        },
+        "frontmatter": {
+          "name": "Payment Service",
+          "status": "active",
+          "tags": [
+            "service",
+            "core",
+            "pci"
+          ],
+          "description": "Wraps the external Stripe API; isolates PCI scope."
+        }
       }
     },
     {
@@ -95,7 +158,18 @@
       "width": 240,
       "height": 120,
       "parentId": "g-data",
-      "meta": { "origin": "user" }
+      "meta": {
+        "origin": "user",
+        "frontmatter": {
+          "name": "Orders DB",
+          "status": "stable",
+          "tags": [
+            "data",
+            "postgres"
+          ],
+          "description": "System of record for orders."
+        }
+      }
     },
     {
       "id": "n-eventbus",
@@ -106,7 +180,18 @@
       "width": 240,
       "height": 120,
       "parentId": "g-data",
-      "meta": { "origin": "agent" }
+      "meta": {
+        "origin": "agent",
+        "frontmatter": {
+          "name": "Event Bus",
+          "status": "active",
+          "tags": [
+            "events",
+            "kafka"
+          ],
+          "description": "Carries domain events between services."
+        }
+      }
     },
     {
       "id": "n-design",
@@ -117,7 +202,23 @@
       "width": 360,
       "height": 200,
       "color": "5",
-      "meta": { "origin": "user" }
+      "meta": {
+        "origin": "user",
+        "frontmatter": {
+          "name": "Commerce Platform — Design",
+          "status": "approved",
+          "tags": [
+            "design",
+            "commerce",
+            "architecture"
+          ],
+          "description": "Source design doc the board was extracted from — services derive-from this, it stays on disk as the reference.",
+          "links": [
+            "examples/commerce-platform/order-service.md",
+            "examples/commerce-platform/payment-service.md"
+          ]
+        }
+      }
     },
     {
       "id": "n-diagram",
@@ -127,7 +228,9 @@
       "y": 440,
       "width": 320,
       "height": 220,
-      "meta": { "origin": "user" }
+      "meta": {
+        "origin": "user"
+      }
     },
     {
       "id": "n-slo",
@@ -138,7 +241,9 @@
       "width": 280,
       "height": 160,
       "color": "#5ef2ff",
-      "meta": { "origin": "user" }
+      "meta": {
+        "origin": "user"
+      }
     },
     {
       "id": "n-stripe",
@@ -149,7 +254,9 @@
       "width": 260,
       "height": 90,
       "color": "6",
-      "meta": { "origin": "user" }
+      "meta": {
+        "origin": "user"
+      }
     }
   ],
   "edges": [
@@ -159,7 +266,10 @@
       "toNode": "n-order",
       "toEnd": "arrow",
       "label": "POST /orders",
-      "meta": { "origin": "user", "rel": "calls" }
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
     },
     {
       "id": "e-order-pay",
@@ -167,7 +277,10 @@
       "toNode": "n-payment",
       "toEnd": "arrow",
       "label": "charge",
-      "meta": { "origin": "user", "rel": "calls" }
+      "meta": {
+        "origin": "user",
+        "rel": "calls"
+      }
     },
     {
       "id": "e-order-bus",
@@ -175,7 +288,10 @@
       "toNode": "n-eventbus",
       "toEnd": "arrow",
       "label": "order.created",
-      "meta": { "origin": "agent", "rel": "produces" }
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
     },
     {
       "id": "e-order-db",
@@ -183,7 +299,10 @@
       "toNode": "n-ordersdb",
       "toEnd": "arrow",
       "label": "depends on",
-      "meta": { "origin": "user", "rel": "depends-on" }
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
     },
     {
       "id": "e-auth-gw",
@@ -191,7 +310,10 @@
       "toNode": "n-gateway",
       "toEnd": "arrow",
       "label": "verifies",
-      "meta": { "origin": "user", "rel": "informs" }
+      "meta": {
+        "origin": "user",
+        "rel": "informs"
+      }
     },
     {
       "id": "e-pay-stripe",
@@ -199,7 +321,10 @@
       "toNode": "n-stripe",
       "toEnd": "arrow",
       "label": "depends on",
-      "meta": { "origin": "user", "rel": "depends-on" }
+      "meta": {
+        "origin": "user",
+        "rel": "depends-on"
+      }
     },
     {
       "id": "e-order-design",
@@ -207,7 +332,10 @@
       "toNode": "n-design",
       "toEnd": "arrow",
       "label": "derives from",
-      "meta": { "origin": "import", "rel": "derives-from" }
+      "meta": {
+        "origin": "import",
+        "rel": "derives-from"
+      }
     },
     {
       "id": "e-auth-design",
@@ -215,22 +343,30 @@
       "toNode": "n-design",
       "toEnd": "arrow",
       "label": "derives from",
-      "meta": { "origin": "import", "rel": "derives-from" }
+      "meta": {
+        "origin": "import",
+        "rel": "derives-from"
+      }
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.2",
+    "schemaVersion": "0.3",
     "session": {
       "title": "Commerce Platform",
       "intent": "Commerce platform — decomposed architecture (v2 System Design Studio demo)",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-28T00:00:00Z",
-      "revision": 1
+      "updatedAt": "2026-06-29T13:26:21.087Z",
+      "revision": 2
     },
     "comments": [
       {
         "id": "c-1",
-        "anchor": { "kind": "node", "nodeId": "n-order", "offsetX": 0.5, "offsetY": 0.1 },
+        "anchor": {
+          "kind": "node",
+          "nodeId": "n-order",
+          "offsetX": 0.5,
+          "offsetY": 0.1
+        },
         "parentId": null,
         "author": "human:david",
         "text": "Should order.created be transactional with the DB write?",

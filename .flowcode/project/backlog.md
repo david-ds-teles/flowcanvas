@@ -28,6 +28,8 @@ links: [.flowcode/workflow/flowcode-rules.md, .flowcode/templates/backlog-entry-
 | BL-006 | New | Feature | Low | 2026-06-27 | flowcanvas v2 brainstorm | `002-system-design-studio` | Deterministic in-tool markdown→canvas parser. v2 deliberately delegates extraction to the agent (no fragile parser); revisit a deterministic parser only if agent-driven import proves insufficient or costly |
 | BL-007 | New | Feature | Medium | 2026-06-27 | flowcanvas v2 brainstorm | `002-system-design-studio` | Rich import of arbitrary (non-flowcode) markdown — beyond v2's best-effort single-node degrade; richer structural extraction for arbitrary md |
 | BL-008 | New | Feature | Medium | 2026-06-27 | flowcanvas v2 brainstorm | `002-system-design-studio` | Per-change cherry-pick reject / branching history / full undo stack for agent change-review. v2 ships round-level accept-or-discard only; granular per-change reject + history is a future extension |
+| BL-009 | New | Debt | Medium | 2026-06-29 | user — KB tech-debt review | `lib/fs-guard.ts` | `guardPath` does lexical-only normalization, so a symlink inside `FLOWCANVAS_ROOT` that points outside it is not dereferenced and a guarded read/write can escape the root |
+| BL-010 | New | Debt | Medium | 2026-06-29 | user — KB tech-debt review | `lib/canvas/jsoncanvas.ts`, `lib/render-md.ts` | No vitest unit coverage for the schema module (`nodeKind`/guards), the `render-md` server pipeline, or the reader drawer — those render paths are exercised only by `smoke:render` |
 
 ---
 

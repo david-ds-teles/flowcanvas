@@ -9,6 +9,45 @@ export type NodeOrigin = 'user' | 'agent' | 'import'
 /** Drawn outline of a `group` node. Absent → rectangle (the JSONCanvas default). */
 export type NodeShape = 'rectangle' | 'ellipse' | 'diamond'
 
+// ── 004 — semantic system-design kind. DISTINCT from the derived render NodeKind
+//    ('markdown'|'image'|'file'|'link'|'note'|'group'). Do NOT reuse that name — it
+//    is the content render-kind consumed by nodeKind(), adapter, brief.BriefNode.kind. ──
+export type ComponentKind =
+  | 'service' | 'datastore' | 'queue' | 'actor'
+  | 'external' | 'decision' | 'process' | 'boundary'
+
+/** Ordered allowed set — drives the kind picker UI and the agent contract. */
+export const COMPONENT_KINDS: readonly ComponentKind[] = [
+  'service', 'datastore', 'queue', 'actor',
+  'external', 'decision', 'process', 'boundary',
+]
+
+/** Per-kind render hints consumed by component-node.tsx + the kind picker (Phase 2/4). */
+export interface ComponentKindMeta {
+  label: string
+  glyph: string
+  silhouette:
+    | 'box' | 'cylinder' | 'lane' | 'circle'
+    | 'cloud' | 'diamond' | 'gear' | 'frame'
+  accent: CanvasColor   // nyx preset id '1'..'6' (mapped by adapter colorVar) → --node-accent
+}
+
+// NOTE (004): `accent` drives ONLY the group/boundary outline tint (adapter sets it as --node-accent
+// when a meta.kind:'boundary'/colored group renders). The leaf COMPONENT WIDGET color is keyed off
+// `data-kind` in app/styles/nodes.css (the ui-design palette: service=cyan · datastore=lime · queue=amber
+// · actor=violet · external=rose · decision=indigo) — a separate consumer. Editing `.accent` will NOT
+// change the widget color; edit the `.fc-cmp[data-kind=…]` rules for that.
+export const COMPONENT_KIND_META: Record<ComponentKind, ComponentKindMeta> = {
+  service:   { label: 'Service',   glyph: 'server',   silhouette: 'box',      accent: '6' },
+  datastore: { label: 'Datastore', glyph: 'database', silhouette: 'cylinder', accent: '5' },
+  queue:     { label: 'Queue',     glyph: 'layers',   silhouette: 'lane',     accent: '2' },
+  actor:     { label: 'Actor',     glyph: 'person',   silhouette: 'circle',   accent: '4' },
+  external:  { label: 'External',  glyph: 'cloud',    silhouette: 'cloud',    accent: '3' },
+  decision:  { label: 'Decision',  glyph: 'diamond',  silhouette: 'diamond',  accent: '1' },
+  process:   { label: 'Process',   glyph: 'gear',     silhouette: 'gear',     accent: '6' },
+  boundary:  { label: 'Boundary',  glyph: 'frame',    silhouette: 'frame',    accent: '5' },
+}
+
 // ── Decision 7 — curated relationship catalog ──────────────────────────────
 // `contains` is NOT here: containment is group membership (parentId).
 // Free-form display still lives in CanvasEdge.label.
@@ -37,7 +76,7 @@ export const REL_LABELS: Record<RelationshipType, string> = {
 // Decision 4 — 'import' marks extraction-seeded edges; 'links' stays for legacy/migrated.
 export type EdgeOrigin = 'links' | 'user' | 'agent' | 'import'
 export const EDGE_ORIGINS: readonly EdgeOrigin[] = ['links', 'user', 'agent', 'import']
-export const SCHEMA_VERSIONS = ['0.1', '0.2'] as const
+export const SCHEMA_VERSIONS = ['0.1', '0.2', '0.3'] as const
 
 // Decision 2 — provenance back to the source design/plan doc a node was extracted from.
 export interface NodeSource {
@@ -59,6 +98,7 @@ export interface NodeMeta {
   frontmatter?: Record<string, unknown>
   source?: NodeSource                      // v2 (Decision 2)
   template?: string                        // v2 — template id this node came from (Decision 8)
+  kind?: ComponentKind                     // 004 — optional, additive; absent ⇒ legacy card render
 }
 
 interface NodeBase {
@@ -115,10 +155,11 @@ export interface SessionMeta {
   baseRevision?: number        // v2 — session.revision captured at Submit (review window start)
   pendingReview?: boolean      // v2 — an agent round landed; open change-review on next load
   briefScope?: string[]        // v2 — node ids the next brief is narrowed to (scope-aware submit); absent ⇒ whole board
+  coreDocPath?: string         // 004 — root-relative path of the living core-markdown spine
 }
 
 export interface FlowcanvasExt {
-  schemaVersion: '0.1' | '0.2'   // v2 boards persist '0.2'
+  schemaVersion: '0.1' | '0.2' | '0.3'   // 004 boards persist '0.3'
   session: SessionMeta
   comments: Comment[]
 }

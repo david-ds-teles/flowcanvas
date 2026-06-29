@@ -1,125 +1,41 @@
+<!-- GENERATED — do not hand-edit. Source of truth: kitSections().schemaContract in lib/canvas/generation-kit.ts. Regenerate via the same. -->
+
 # Flowcanvas Agent Contract
 
-This is the contract an AI agent follows when answering a Flowcanvas **DesignBrief**. The same text ships
-inline on every brief as `DesignBrief.responseContract` (source of truth: `AGENT_CONTRACT` in
-`lib/canvas/brief.ts`) — keep the two in sync.
+Return exactly one JSON object matching AgentResponse — no prose, no code fence, nothing outside it.
+Echo briefId from the brief (it is the concurrency token).
+Mint new ids with the "ag-" prefix; reuse an existing brief id to update that item.
+To add a markdown file: include it in generatedFiles (full content INCLUDING YAML frontmatter) AND a matching upsertNodes entry { type:"file", file:"<same path>" }.
+Reply to a comment by setting parentId to that comment's id from the brief and copying its anchor.
+Keep coordinates on a 20px grid and place new nodes in empty regions.
 
-## The loop
+EXTRACTION (design doc -> typed system-design board, NOT document cards):
+- Map each component to one node and stamp meta.kind (see COMPONENT KINDS). Map each subsystem
+  cluster to a group node (type:"group", label + optional shape, set members' parentId to it).
+  A system/trust container is a group with meta.kind:"boundary". Map each documented
+  relationship/arrow to a typed edge.
+- Decompose node content into small generated .md files (one per node) under
+  "<board-stem>.nodes/<slug>.md", each with frontmatter source: { path, anchor }.
+- Never inline document prose into the .canvas; never delete or rewrite the source doc.
+TYPED EDGES:
+- Set rel from [references, depends-on, implements, derives-from, calls, produces, informs, related].
+  Set label to a short human display (defaults to rel). Do NOT invent rel values. Use containment
+  (parentId) for "contains", not an edge.
 
-1. The human exports a **DesignBrief**: a self-contained JSON snapshot of the board — every markdown
-   node's parsed `frontmatter` + `body` embedded, the edges with their relationship labels, the comment
-   threads addressed by id, and the human's high-level `intent`. No filesystem access is needed to read it.
-2. You (the agent) reply with **exactly one** `AgentResponse` JSON object.
-3. The human imports it. An idempotent, id-keyed merge writes any files you authored, upserts your nodes
-   and edges (typed via `rel`), attaches your comment replies, and persists — so re-importing the same
-   response is a no-op.
+COMPONENT KINDS (set meta.kind on a node; absent ⇒ a plain card):
+- service   — a runtime process that executes logic (API, microservice, worker, gateway, function).
+- datastore — persistent state (database, table, cache, blob/object store, search index).
+- queue     — an asynchronous channel (broker, topic, stream, event bus, job queue).
+- actor     — a human role / external user (persona, operator, admin, end user).
+- external  — a third-party system/API outside the ownership boundary (payment gateway, SaaS).
+- decision  — a branch/gate/conditional in a flow (router, policy check, switch, guard).
+- process   — a step/activity/transform inside a flow that is not a deployable service.
+- boundary  — a system/trust/bounded-context container. GROUP-ONLY: meta.kind:"boundary" is valid
+              ONLY on a type:"group" node, never on a leaf node.
+Do NOT invent kinds. Allowed set: service, datastore, queue, actor, external, decision, process, boundary.
 
-> **The canvas is the source of truth for relationships (v2).** Typed/labeled edges live on the board
-> (`meta.rel` + `label`); `links:` frontmatter is demoted to an *extraction input* (seeding a board from a
-> design doc) and an *export projection* (written back only when a portable bundle is exported). Express a
-> structural relationship as a typed edge with a `rel`, or as group containment (`parentId`) — not by
-> editing `links:`.
-
-## Rules
-
-- Return **exactly one** JSON object matching `AgentResponse` — no prose, no code fence, nothing outside it.
-- **Echo `briefId`** from the brief (it is the concurrency token; a mismatch raises a stale warning).
-- **Mint new ids with the `ag-` prefix.** Reuse an existing brief id to *update* that item.
-- **To add a markdown file:** include it in `generatedFiles` (full content **including** YAML frontmatter)
-  **and** a matching `upsertNodes` entry with `type:"file"`, `file:"<same path>"`.
-- **Reply to a comment** by setting `parentId` to that comment's `id` from the brief and copying its `anchor`.
-- **Express relationships as typed edges.** Set `rel` to one of `references, depends-on, implements,
-  derives-from, calls, produces, informs, related`; `label` is a short human display (defaults to `rel`).
-  Do not invent `rel` values. Use group containment (`parentId`) for "contains", not an edge.
-- **Extraction (design doc → initial board).** Map each major concept / Module-Boundaries row / component
-  to a node and each subsystem cluster to a `type:"group"` node (label + optional shape; set members'
-  `parentId`). Decompose node content into small generated `.md` files under `<board-stem>.nodes/<slug>.md`,
-  each with `source: { path, anchor }` frontmatter pointing back at the design doc + heading slug. For a
-  pure view of one section, instead emit a `type:"file"` node with `subpath:"<anchor>"` (no new file). Never
-  inline document prose into the `.canvas`; never delete or rewrite the source doc.
-- **Groups.** `type:"group"` carries `label` and an optional `shape` (`rectangle|ellipse|diamond`); child
-  nodes reference it via `parentId`.
-- **Keep coordinates on a 20px grid** and place new nodes in empty regions (the brief's positions reveal the
-  occupied layout).
-
-## AgentResponse schema
-
-```typescript
-interface AgentResponse {
-  responseVersion: '0.1'
-  briefId: string                 // echoes DesignBrief.briefId
-  summary: string                 // human-readable changelog of what you did
-  upsertNodes?: AgentNode[]
-  removeNodeIds?: string[]        // explicit removals only
-  upsertEdges?: AgentEdge[]
-  removeEdgeIds?: string[]
-  comments?: AgentComment[]
-  generatedFiles?: { path: string; content: string }[]   // content includes YAML frontmatter
-}
-
-interface AgentNode {
-  id?: string                     // present + known → update; absent or new "ag-*" → create
-  type: 'file' | 'link' | 'text' | 'group'
-  x: number; y: number; width: number; height: number
-  file?: string                   // type:'file'  (markdown/image/other, by extension)
-  url?: string                    // type:'link'
-  text?: string                   // type:'text'  (note, markdown)
-  label?: string                  // type:'group' display label
-  shape?: 'rectangle' | 'ellipse' | 'diamond'   // type:'group' outline (default rectangle)
-  parentId?: string               // group membership — id of the containing group node
-  source?: { path: string; anchor?: string }    // provenance — design doc this node was extracted from
-  color?: string                  // "#RRGGBB" or preset "1".."6"
-}
-
-interface AgentEdge {
-  id?: string
-  fromNode: string; toNode: string
-  fromSide?: 'top' | 'right' | 'bottom' | 'left'
-  toSide?: 'top' | 'right' | 'bottom' | 'left'
-  label?: string                  // short human display (defaults to rel)
-  rel?: 'references' | 'depends-on' | 'implements' | 'derives-from'
-       | 'calls' | 'produces' | 'informs' | 'related'   // typed relationship (Decision 1/7)
-}
-
-interface AgentComment {
-  id?: string
-  parentId: string | null         // set → reply to that thread; null → new annotation
-  anchor:
-    | { kind: 'node'; nodeId: string; offsetX: number; offsetY: number }   // 0..1 fractions of the node box
-    | { kind: 'canvas'; x: number; y: number }                              // canvas coordinates
-  author: string                  // "agent:<model>" e.g. "agent:opus-4.8"
-  text: string                    // markdown
-  createdAt?: string              // ISO 8601 (optional; tool stamps if absent)
-}
-```
-
-## Worked example
-
-A brief that contains a `design ↔ plan` pair and a question on `n-plan`:
-
-```json
-{
-  "responseVersion": "0.1",
-  "briefId": "brief-77a1",
-  "summary": "Added a test-notes node + answered the file-API question.",
-  "upsertNodes": [
-    { "id": "ag-tests", "type": "file", "file": "examples/test-notes.md", "x": 460, "y": -200, "width": 380, "height": 320 }
-  ],
-  "generatedFiles": [
-    { "path": "examples/test-notes.md", "content": "---\nname: test-notes\nstatus: active\nlinks: [\"examples/plan.md\"]\n---\n## Test notes\n…" }
-  ],
-  "comments": [
-    {
-      "parentId": "c-1",
-      "anchor": { "kind": "node", "nodeId": "n-plan", "offsetX": 0.5, "offsetY": 0.9 },
-      "author": "agent:opus-4.8",
-      "text": "Yes — guardPath + the POST handler are reused verbatim."
-    }
-  ]
-}
-```
-
-To relate the new `ag-tests` node to `n-plan`, add a typed edge in `upsertEdges` — e.g.
-`{ "fromNode": "ag-tests", "toNode": "n-plan", "rel": "references" }`. In v2 `links:` frontmatter no longer
-auto-derives board edges: it is an extraction input + an export projection only (the canvas holds the typed
-relationship graph).
+SECTION ANCHORS (provenance, bidirectional linking):
+- Stamp meta.source = { path:"<core doc path>", anchor:"<github-slug of the heading>" } on every
+  extracted node so it links back to the doc section it came from.
+- The anchor MUST be the github-slugger slug of the heading text (lowercase, spaces→"-",
+  punctuation dropped). e.g. "## Order lifecycle" ⇒ "order-lifecycle".

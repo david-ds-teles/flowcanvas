@@ -14,6 +14,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { buildBrief, applyResponse } from "../lib/canvas/brief";
 import type { AgentResponse } from "../lib/canvas/brief";
+import { buildKit } from "../lib/canvas/generation-kit";
 import type { FileNode } from "../lib/canvas/jsoncanvas";
 import type { FlowcanvasDoc } from "../lib/canvas/jsoncanvas";
 import type { ResolvedFile, DirEntry, ActiveBoard } from "../lib/api";
@@ -369,6 +370,58 @@ server.registerTool(
       };
     }
   }
+);
+
+// ── Tool 8: get_generation_kit ──────────────────────────────────────────────
+// 004 — the load-bearing kit surface. Returns the full Agent Generation Kit (system prompt +
+// schema contracts + MCP loop how-to + worked example) from the single-source buildKit(). Pass
+// markdownPath to attach that document (read via the guarded /api/file route) as the doc-to-convert.
+
+server.registerTool(
+  "get_generation_kit",
+  {
+    description:
+      "Return the full Flowcanvas Agent Generation Kit (system prompt + schema contracts + MCP loop " +
+      "how-to + worked example). Pass markdownPath to attach that document as the payload to convert.",
+    inputSchema: {
+      markdownPath: z
+        .string()
+        .optional()
+        .describe(
+          "Root-relative .md/.mdx to attach as the doc-to-convert; omit for the base kit."
+        ),
+    },
+  },
+  async ({ markdownPath }) => {
+    try {
+      const md = markdownPath
+        ? (await apiGet<{ content: string }>(`/api/file?path=${encodeURIComponent(markdownPath)}`)).content
+        : undefined;
+      return { content: [{ type: "text" as const, text: buildKit(md) }] };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({ error: String(e) }) }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ── Resource: flowcanvas://generation-kit ─────────────────────────────────────
+// 004 — passive discovery. The base, payload-less kit served as a static-URI resource
+// (registerResource signature verified against @modelcontextprotocol/sdk@1.29.0 — design Q1).
+
+server.registerResource(
+  "generation-kit",
+  "flowcanvas://generation-kit",
+  {
+    title: "Flowcanvas Agent Generation Kit",
+    description: "Turn a markdown design doc into a typed system-design .canvas",
+    mimeType: "text/markdown",
+  },
+  async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "text/markdown", text: buildKit() }],
+  })
 );
 
 // ── Startup ─────────────────────────────────────────────────────────────────

@@ -14,6 +14,17 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 004-generation-loop — Markdown-Core Generation Loop — 2026-06-29
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Delivered:** The closed generation loop, end to end: any LLM turns a markdown design doc into a **system-design `.canvas`** via a discoverable **Agent Generation Kit** (single-source `lib/canvas/generation-kit.ts` → MCP tool `get_generation_kit` + static resource `flowcanvas://generation-kit` + a UI "Copy full kit"); components render as kind-typed widgets (`ComponentKind` on `meta.kind` → `component-node.tsx`), not document cards; the markdown is a **living, editable, bidirectionally-linked core spine** (`core-spine.tsx`) re-submittable over MCP; and a generated `.canvas` **imports three ways** (paste · upload · drag-drop → zod-validate → migrate → adopt). Schema `0.2 → 0.3` (additive; boards upgrade on open). New pure libs `spine`/`validate`/`migrate`/`generation-kit`. Built over Plan 003; no existing board changes behavior at rest.
+**Phases:** 5/5 — all complete (Schema & Pure-Lib Foundation · System-Design Component Rendering · Agent Generation Kit Surfaces · Living Core Spine & Bidirectional Linking · Frictionless Import).
+**Artifacts:** `004-generation-loop-{technical-overview,changelog,test-notes,qa-report}.md`; 6 new + 9 refreshed module docs; `project-overview.md` propagated; showcase `examples/commerce-system.{canvas,md}`.
+**Gates:** tsc 0 · lint 0 · build ok · vitest 178/178 (+20) · smoke:mcp (8 tools) · smoke:render · CDP browser automation all surfaces — 0 console errors · all reviews PASS.
+**Follow-ups:** store/adapter/MCP are smoke/CDP-covered (no vitest yet); 2 deferred info findings (mixed-drop non-canvas discard — intentional; ZodError toast reflow — cosmetic). Commit held pending operator review (004 work currently on the `003-canvas-foundation` branch).
+
+---
+
 ## [BUGFIX] 003 canvas-foundation visual follow-ups — group resize scaling, RF group chrome, sharp rect corners, full-reader frontmatter — 2026-06-29
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>

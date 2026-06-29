@@ -244,3 +244,48 @@ describe('v2 extraction surfaces', () => {
     expect(brief.edges.find((e) => e.id === 'lk:n-design->n-plan')!.rel).toBe('references')
   })
 })
+
+// ─────────────────────────── 004 — ComponentKind + coreDocPath round-trip (Phase 1) ───────────────────────────
+
+describe('004 generation-loop round-trip', () => {
+  const counter = () => {
+    let i = 0
+    return (prefix: string) => `${prefix}${(++i).toString(16).padStart(4, '0')}`
+  }
+
+  it('buildBrief emits componentKind when meta.kind is set, and coreDocPath when the session carries one', () => {
+    const doc = seed()
+    doc.nodes = doc.nodes.map((n) => (n.id === 'n-design' ? { ...n, meta: { ...n.meta, kind: 'service' as const } } : n))
+    doc.flowcanvas.session.coreDocPath = 'examples/design.md'
+    const brief = buildBrief(doc, 'b.canvas', new Map(), 'brief-k', 'now')
+
+    expect(brief.coreDocPath).toBe('examples/design.md')
+    expect(brief.nodes.find((n) => n.id === 'n-design')!.componentKind).toBe('service')
+    // a node without meta.kind carries no componentKind field
+    expect(brief.nodes.find((n) => n.id === 'n-plan')!.componentKind).toBeUndefined()
+  })
+
+  it('buildBrief omits coreDocPath when the session has none', () => {
+    const brief = buildBrief(seed(), 'b.canvas', new Map(), 'brief-nc', 'now')
+    expect(brief.coreDocPath).toBeUndefined()
+  })
+
+  it('applyResponse threads AgentNode.kind into meta.kind (and onto an existing node)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: '',
+      upsertNodes: [
+        { id: 'ag-svc', type: 'file', file: 'examples/svc.md', x: 0, y: 0, width: 220, height: 120, kind: 'service' },
+        { id: 'n-plan', type: 'file', file: 'examples/plan.md', x: 40, y: -200, width: 380, height: 320, kind: 'datastore' },
+      ],
+    }
+    const { next } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.nodes.find((n) => n.id === 'ag-svc')!.meta).toMatchObject({ origin: 'agent', kind: 'service' })
+    expect(next.nodes.find((n) => n.id === 'n-plan')!.meta).toMatchObject({ origin: 'agent', kind: 'datastore' })
+  })
+
+  it('responseContract is the single-source kit schema contract (=== AGENT_CONTRACT)', () => {
+    const brief = buildBrief(seed(), 'b.canvas', new Map(), 'brief-c', 'now')
+    expect(brief.responseContract).toBe(AGENT_CONTRACT)
+    expect(brief.responseContract).toContain('COMPONENT KINDS')   // proves it is the 004 kit text
+  })
+})

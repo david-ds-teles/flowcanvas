@@ -16,6 +16,7 @@
 @import "./styles/studio-inspector.css";
 @import "./styles/studio-review.css";
 @import "./styles/studio-template.css";
+@import "./styles/studio-spine.css";
 @source "../app";
 @source "../components";
 @source "../lib";

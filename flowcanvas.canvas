@@ -691,14 +691,14 @@
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.2",
+    "schemaVersion": "0.3",
     "session": {
       "title": "Flowcanvas — Initial Architecture (001)",
       "intent": "what is this all about?",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-28T17:13:16.493Z",
-      "revision": 2,
-      "pendingReview": true
+      "updatedAt": "2026-06-29T13:19:04.994Z",
+      "revision": 3,
+      "pendingReview": false
     },
     "comments": [
       {

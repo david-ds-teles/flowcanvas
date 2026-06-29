@@ -2,11 +2,14 @@ import { create } from 'zustand'
 import type { Connection } from '@xyflow/react'
 import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType } from './jsoncanvas'
 import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
-import { deriveLinkEdges, reconcileEdges } from './edges'
+import { deriveLinkEdges } from './edges'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
 import type { AgentResponse, DesignBrief, MergeReport } from './brief'
 import { diffDocs } from './review'
 import type { ReviewState, ReviewDiff } from './review'
+import { buildSourceIndex, normPath } from './spine'
+import { migrateDoc } from './migrate'
+import { parseFlowcanvasDoc } from './validate'
 import { instantiateTemplate } from './templates'
 import type { CanvasTemplate } from './templates'
 import type { DocRef } from './refs'
@@ -30,6 +33,12 @@ interface CanvasState {
   selectedIds: string[]              // UI-only: ids in the current multi-selection (transient, never persisted)
   reviewState: ReviewState | null    // v2: the submit-time snapshot loaded when a round is pending (transient)
   focusNodeId: string | null         // v2: navigateRef target the shell should setCenter on (transient, UI consumes + clears)
+  // 004 Phase 4 — living core-markdown spine + bidirectional link highlight (all transient, never persisted)
+  coreDocBody: string | null         // resolved markdown of session.coreDocPath (the spine render source)
+  coreDocDraft: string | null        // in-progress edit buffer for the spine
+  coreDocDirty: boolean              // coreDocDraft !== coreDocBody
+  spineHighlightAnchor: string | null  // component-selected → spine scrolls/pulses this anchor
+  linkedNodeIds: string[]            // spine-section-selected → canvas pulses these node ids
   load: (path: string) => Promise<void>
   save: () => Promise<void>
   bodyFor: (id: string) => string | undefined
@@ -75,6 +84,16 @@ interface CanvasState {
   navigateRef: (sourceNodeId: string, ref: DocRef) => Promise<void> // focus-or-add + references edge (Decision 9)
   addTemplate: (t: CanvasTemplate, x: number, y: number) => Promise<void>  // instantiate a template fragment (Decision 8)
   resyncFile: (path: string) => Promise<void>                     // re-derive one file's links edges + refresh its frontmatter (Decision 10)
+  // ─── 004 Phase 4 — living core spine + bidirectional linking (Decisions 3/4) ───
+  setCoreDoc: (path: string) => Promise<void>                     // stamp session.coreDocPath + resolve body → coreDocBody/Draft (spine switcher, Q4)
+  editCoreDoc: (markdown: string) => void                         // coreDocDraft = markdown; coreDocDirty = (markdown !== coreDocBody)
+  submitCoreDocEdit: (summary: string) => Promise<void>           // GUARD pendingReview; writeFileApi(coreDocPath, draft) → submitToAgent(summary)
+  highlightSpineSection: (anchor: string) => void                 // component → spine: set spineHighlightAnchor
+  highlightComponents: (anchor: string) => void                   // spine → canvas: linkedNodeIds = buildSourceIndex(...).get(anchor)
+  clearLinkHighlight: () => void                                  // clear both highlight channels
+  // ─── 004 Phase 5 — frictionless import (Decision 5) ───
+  importDoc: (doc: FlowcanvasDoc, path?: string) => Promise<void>  // migrateDoc → write → adopt (like openBoard)
+  importCanvasFile: (file: File) => Promise<void>                 // file.text() → parseFlowcanvasDoc → importDoc
 }
 
 /** Short random suffix for a manually-drawn edge id. */
@@ -83,9 +102,6 @@ const edgeId = () => `e-${crypto.randomUUID().slice(0, 8)}`
 const commentId = () => `c-${crypto.randomUUID().slice(0, 8)}`
 /** Short random suffix for a user-created node id. */
 const nodeId = () => `n-${crypto.randomUUID().slice(0, 8)}`
-
-/** Normalize a root-relative path for matching (drop a leading `./`, unify separators). */
-const normPath = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
 
 /** Hydrate file nodes' markdown frontmatter into `meta` + bodies map; returns the next nodes + bodies. */
 async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>) {
@@ -119,6 +135,7 @@ export const selectNodeCommentCount =
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null,
+  coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
   bodyFor: (id) => get().bodies[id],
   // Canvas-authoritative load (Decision 4): doc.edges from disk are truth — no per-load reconcile.
   // One-time 0.1→0.2 migration bakes previously-live-only links: edges into persisted edges, then bumps
@@ -127,20 +144,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   async load(path) {
     const doc = await api.getCanvas(path)
     const { nodes, bodies } = await hydrateFiles(doc.nodes, {})
-    let edges = doc.edges
-    let migrated = false
-    if (doc.flowcanvas.schemaVersion === '0.1') {
-      edges = reconcileEdges(doc.edges, deriveLinkEdges(nodes))   // bake the derived links: edges once
-      migrated = true
-    }
-    const next: FlowcanvasDoc = {
-      ...doc, nodes, edges,
-      ...(migrated ? { flowcanvas: { ...doc.flowcanvas, schemaVersion: '0.2' as const } } : {}),   // immutable bump
-    }
+    // 004 Phase 5 — one shared ladder for load + import: migrateDoc 0.1→0.2 (bake derived links: edges,
+    // reading the now-hydrated frontmatter) → 0.3 (no-op version bump). Boards persist '0.3'.
+    const { doc: next, migrated } = migrateDoc({ ...doc, nodes })
     let reviewState: ReviewState | null = null
     if (next.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
-    set({ path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [] })
-    if (migrated) await get().save()                              // persist the 0.2 bake (one-time)
+    // 004 — resolve the living core-doc body so the spine renders immediately when coreDocPath is set.
+    const coreDocPath = next.flowcanvas.session.coreDocPath
+    const coreBody = coreDocPath ? await api.readFileApi(coreDocPath).catch(() => null) : null
+    set({
+      path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [],
+      coreDocBody: coreBody, coreDocDraft: coreBody, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
+    })
+    if (migrated) await get().save()                              // persist the migrateDoc upgrade (0.1→0.2 bake and/or 0.2→0.3 bump) once
     const rev = get().doc?.flowcanvas.session.revision ?? next.flowcanvas.session.revision
     void api.putActive({ canvasRef: path, baseRevision: rev, intent: next.flowcanvas.session.intent ?? '' })
       .catch((e) => console.error('putActive failed', e))
@@ -300,12 +316,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const doc: FlowcanvasDoc = {
       nodes: [], edges: [],
       flowcanvas: {
-        schemaVersion: '0.2',
+        schemaVersion: '0.3',
         session: { title: 'Untitled board', intent: '', createdAt: now, updatedAt: now, revision: 0 },
         comments: [],
       },
     }
-    set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], readerNodeId: null })
+    set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], readerNodeId: null,
+      coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [] })
     doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
     if (typeof window !== 'undefined') {
       const u = new URL(window.location.href)
@@ -327,6 +344,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         flowcanvas: { ...doc.flowcanvas, comments: [], session: { ...doc.flowcanvas.session, pendingReview: false } },
       },
       bodies: {}, dirty: true, selectedIds: [], readerNodeId: null, reviewState: null,
+      coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
     })
   },
   setNodePosition(id: string, x: number, y: number) {
@@ -674,5 +692,78 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const seen = new Set(kept.map((e) => `${e.fromNode}>${e.toNode}`))
     const fresh = deriveLinkEdges(nodes).filter((e) => e.fromNode === target.id && !seen.has(`${e.fromNode}>${e.toNode}`))
     set({ doc: { ...doc, nodes, edges: [...kept, ...fresh] }, bodies, dirty: true })
+  },
+  // ─── 004 Phase 4 — living core spine + bidirectional linking (Decisions 3/4) ───
+  // Bind the spine to `path`: stamp session.coreDocPath (persisted, so the brief carries it + a reload
+  // reopens it) and resolve its markdown into coreDocBody/Draft. Drives the spine switcher (Q4).
+  async setCoreDoc(path: string) {
+    const { doc } = get()
+    if (!doc) return
+    if (doc.flowcanvas.session.coreDocPath !== path) {
+      set({
+        doc: { ...doc, flowcanvas: { ...doc.flowcanvas, session: { ...doc.flowcanvas.session, coreDocPath: path } } },
+        dirty: true,
+      })
+    }
+    const body = await api.readFileApi(path).catch(() => null)
+    set({ coreDocBody: body, coreDocDraft: body, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [] })
+  },
+  // Edit buffer for the spine textarea — dirties only when the draft diverges from the resolved body.
+  editCoreDoc(markdown: string) {
+    set({ coreDocDraft: markdown, coreDocDirty: markdown !== get().coreDocBody })
+  },
+  // Submit the revised core doc to the agent. GUARD: blocked while a round is already pending (single open
+  // round invariant — Decision 3). Persist the draft via /api/file, adopt it as the body, then submitToAgent
+  // (snapshot + pendingReview + active pointer) so the agent re-reads the doc over MCP and returns a board.
+  async submitCoreDocEdit(summary: string) {
+    const { doc, coreDocDraft } = get()
+    if (!doc || coreDocDraft == null) return
+    if (doc.flowcanvas.session.pendingReview) {
+      throw new Error('A review round is already open — accept or discard it before submitting core-doc edits.')
+    }
+    const coreDocPath = doc.flowcanvas.session.coreDocPath
+    if (!coreDocPath) throw new Error('No core doc bound — pick one in the spine switcher first.')
+    await api.writeFileApi(coreDocPath, coreDocDraft)
+    set({ coreDocBody: coreDocDraft, coreDocDirty: false })
+    await get().submitToAgent(summary)
+  },
+  // Component → spine: the spine scrolls to + pulses this anchor (its meta.source.anchor).
+  highlightSpineSection(anchor: string) {
+    set({ spineHighlightAnchor: anchor })
+  },
+  // Spine → canvas: pulse every component whose meta.source.anchor === anchor (under the current core doc).
+  highlightComponents(anchor: string) {
+    const { doc } = get()
+    const coreDocPath = doc?.flowcanvas.session.coreDocPath
+    if (!doc || !coreDocPath) { set({ linkedNodeIds: [] }); return }
+    set({ linkedNodeIds: buildSourceIndex(doc.nodes, coreDocPath).get(anchor) ?? [] })
+  },
+  clearLinkHighlight() {
+    set({ spineHighlightAnchor: null, linkedNodeIds: [] })
+  },
+  // ─── 004 Phase 5 — frictionless import (Decision 5) ───
+  // Adopt an in-memory FlowcanvasDoc as the active board: migrate to 0.3, write it to a fresh
+  // collision-safe path (keeping a recognizable stem), then load() it through the normal adoption path
+  // (hydrate · active pointer · core-doc resolve · transient reset · ?path=). Like openBoard, but for a
+  // doc that isn't on disk yet (pasted / uploaded / dropped).
+  async importDoc(doc: FlowcanvasDoc, path?: string) {
+    const stem = (path ? path.replace(/\.canvas$/i, '').split('/').pop() : '') || 'imported'
+    const targetPath = `${stem}-${crypto.randomUUID().slice(0, 8)}.canvas`
+    // Write the validated doc as-is, then adopt via load() — which hydrates frontmatter BEFORE migrateDoc
+    // (the correct order so the 0.1→0.2 link-edge bake reads FRESH disk frontmatter) and persists '0.3'.
+    await api.saveCanvas(targetPath, doc)
+    await get().load(targetPath)
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href)
+      u.searchParams.set('path', targetPath)
+      window.history.replaceState(null, '', u.toString())
+    }
+  },
+  // Read a dropped/uploaded .canvas file → parse + zod-validate (throws on bad JSON / invalid doc; the
+  // caller surfaces the message) → importDoc. The board is only replaced AFTER validation succeeds.
+  async importCanvasFile(file: File) {
+    const parsed = JSON.parse(await file.text()) as unknown   // SyntaxError on bad JSON → caller catches
+    const doc = parseFlowcanvasDoc(parsed)                    // ZodError on an invalid doc → caller catches
+    await get().importDoc(doc, file.name)
   },
 }))

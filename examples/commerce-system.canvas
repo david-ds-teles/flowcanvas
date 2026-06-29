@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    { "id": "g-edge", "type": "group", "label": "Edge & Actors", "x": 40, "y": 80, "width": 300, "height": 460, "meta": { "origin": "agent", "kind": "boundary" } },
+    { "id": "g-core", "type": "group", "label": "Core Services", "x": 420, "y": 80, "width": 300, "height": 620, "meta": { "origin": "agent", "kind": "boundary" } },
+    { "id": "g-data", "type": "group", "label": "Data & Events", "x": 800, "y": 80, "width": 300, "height": 380, "meta": { "origin": "agent", "kind": "boundary" } },
+
+    { "id": "n-gw", "type": "text", "text": "API Gateway\nTLS termination, auth, request fan-out.", "x": 80, "y": 150, "width": 220, "height": 120, "parentId": "g-edge", "meta": { "origin": "agent", "kind": "service", "source": { "path": "examples/commerce-system.md", "anchor": "api-gateway" } } },
+    { "id": "n-cust", "type": "text", "text": "Customer\nPlaces orders via the storefront.", "x": 80, "y": 360, "width": 220, "height": 120, "parentId": "g-edge", "meta": { "origin": "agent", "kind": "actor", "source": { "path": "examples/commerce-system.md", "anchor": "customer" } } },
+
+    { "id": "n-auth", "type": "text", "text": "Auth Service\nIssues + verifies session tokens.", "x": 460, "y": 150, "width": 220, "height": 120, "parentId": "g-core", "meta": { "origin": "agent", "kind": "service", "source": { "path": "examples/commerce-system.md", "anchor": "auth-service" } } },
+    { "id": "n-order", "type": "text", "text": "Order Service\nOwns the order lifecycle.", "x": 460, "y": 330, "width": 220, "height": 120, "parentId": "g-core", "meta": { "origin": "agent", "kind": "service", "source": { "path": "examples/commerce-system.md", "anchor": "order-service" } } },
+    { "id": "n-pay", "type": "text", "text": "Payment Service\nWraps Stripe; isolates PCI.", "x": 460, "y": 510, "width": 220, "height": 120, "parentId": "g-core", "meta": { "origin": "agent", "kind": "service", "source": { "path": "examples/commerce-system.md", "anchor": "payment-service" } } },
+
+    { "id": "n-db", "type": "text", "text": "Orders DB\nPostgres — orders + line items.", "x": 840, "y": 150, "width": 220, "height": 120, "parentId": "g-data", "meta": { "origin": "agent", "kind": "datastore", "source": { "path": "examples/commerce-system.md", "anchor": "orders-db" } } },
+    { "id": "n-bus", "type": "text", "text": "Event Bus\nDomain events between services.", "x": 840, "y": 310, "width": 220, "height": 120, "parentId": "g-data", "meta": { "origin": "agent", "kind": "queue", "source": { "path": "examples/commerce-system.md", "anchor": "event-bus" } } },
+
+    { "id": "n-stripe", "type": "text", "text": "Stripe API\nThird-party card processor.", "x": 460, "y": 760, "width": 220, "height": 120, "meta": { "origin": "agent", "kind": "external", "source": { "path": "examples/commerce-system.md", "anchor": "stripe-api" } } }
+  ],
+  "edges": [
+    { "id": "e-cust-gw", "fromNode": "n-cust", "toNode": "n-gw", "toEnd": "arrow", "label": "calls", "meta": { "origin": "agent", "rel": "calls" } },
+    { "id": "e-gw-auth", "fromNode": "n-gw", "toNode": "n-auth", "toEnd": "arrow", "label": "informs", "meta": { "origin": "agent", "rel": "informs" } },
+    { "id": "e-gw-order", "fromNode": "n-gw", "toNode": "n-order", "toEnd": "arrow", "label": "calls", "meta": { "origin": "agent", "rel": "calls" } },
+    { "id": "e-order-db", "fromNode": "n-order", "toNode": "n-db", "toEnd": "arrow", "label": "writes", "meta": { "origin": "agent", "rel": "produces" } },
+    { "id": "e-order-bus", "fromNode": "n-order", "toNode": "n-bus", "toEnd": "arrow", "label": "order.created", "meta": { "origin": "agent", "rel": "produces" } },
+    { "id": "e-order-pay", "fromNode": "n-order", "toNode": "n-pay", "toEnd": "arrow", "label": "calls", "meta": { "origin": "agent", "rel": "calls" } },
+    { "id": "e-pay-stripe", "fromNode": "n-pay", "toNode": "n-stripe", "toEnd": "arrow", "label": "depends on", "meta": { "origin": "agent", "rel": "depends-on" } }
+  ],
+  "flowcanvas": {
+    "schemaVersion": "0.3",
+    "session": { "title": "Commerce Platform", "intent": "A system-design board generated from commerce-system.md", "createdAt": "2026-06-29T00:00:00Z", "updatedAt": "2026-06-29T00:00:00Z", "revision": 1, "coreDocPath": "examples/commerce-system.md" },
+    "comments": []
+  }
+}

@@ -24,9 +24,11 @@ import type {
   RelationshipType,
   NodeSource,
   NodeShape,
+  ComponentKind,
 } from './jsoncanvas'
 import { nodeKind, REL_LABELS } from './jsoncanvas'
 import { extractRefs, type DocRef } from './refs'
+import { kitSections } from './generation-kit'
 
 // ─────────────────────────── Direction A: DesignBrief (human → agent) ───────────────────────────
 
@@ -44,6 +46,7 @@ export interface BriefNode {
   frontmatter?: Record<string, unknown>  // markdown — parsed
   body?: string                          // markdown — body WITHOUT frontmatter, embedded
   truncated?: boolean                    // body capped (> BODY_CAP) — agent may request full
+  componentKind?: ComponentKind          // 004 — surfaces meta.kind so the agent preserves it
 }
 export interface BriefEdge {
   id: string
@@ -72,7 +75,8 @@ export interface DesignBrief {
   nodes: BriefNode[]
   edges: BriefEdge[]
   comments: BriefComment[]
-  responseContract: string               // inline copy of the Agent Contract (below)
+  responseContract: string               // inline copy of the Agent Contract (kitSections().schemaContract)
+  coreDocPath?: string                   // 004 — tells the agent which doc is the spine (read it on a round)
 }
 
 // ─────────────────────────── Direction B: AgentResponse (agent → tool) ───────────────────────────
@@ -96,6 +100,7 @@ export interface AgentNode {
   parentId?: string                      // group membership for the node (v2)
   source?: NodeSource                    // provenance — extraction source doc (v2, Decision 2)
   color?: CanvasColor
+  kind?: ComponentKind                   // 004 — agent emits the semantic kind; nodeFromAgent → meta.kind
 }
 export interface AgentEdge {
   id?: string
@@ -137,31 +142,11 @@ export interface MergeReport {
 
 // ─────────────────────────── The Agent Contract ───────────────────────────
 //
-// Shipped inline as `DesignBrief.responseContract` AND as `docs/flowcanvas-agent-contract.md`
-// (keep the two in sync). The agent reads this verbatim.
+// 004 — single source of truth: the contract text now lives in `generation-kit.ts`
+// (`kitSections().schemaContract`). This re-export keeps existing importers working;
+// `DesignBrief.responseContract` and `docs/flowcanvas-agent-contract.md` render from the same source.
 
-export const AGENT_CONTRACT = `Return exactly one JSON object matching AgentResponse — no prose, no code fence, nothing outside it.
-Echo briefId from the brief (it is the concurrency token).
-Mint new ids with the "ag-" prefix; reuse an existing brief id to update that item.
-To add a markdown file: include it in generatedFiles (full content INCLUDING YAML frontmatter) AND a matching upsertNodes entry { type:"file", file:"<same path>" }.
-Reply to a comment by setting parentId to that comment's id from the brief and copying its anchor.
-Keep coordinates on a 20px grid and place new nodes in empty regions (the brief's positions reveal the occupied layout).
-
-EXTRACTION (design doc -> initial board):
-- Map each major concept / Module-Boundaries row / component to one node; each subsystem
-  cluster to a group node (type:"group", give it a label + optional shape, set members'
-  parentId to it). Map each documented relationship/arrow to a typed edge.
-- Decompose node content into small generated .md files (one per node) under
-  "<board-stem>.nodes/<slug>.md", each with frontmatter source: { path, anchor } pointing
-  back at the design doc + heading slug. For a pure view of one section, instead emit a
-  type:"file" node with subpath:"<anchor>" (no new file). Use type:"text" only for scratch.
-- Never inline document prose into the .canvas; never delete or rewrite the source doc.
-TYPED EDGES:
-- Set meta via the edge: choose rel from [references, depends-on, implements, derives-from,
-  calls, produces, informs, related]. Set label to a short human display (defaults to rel).
-  Do NOT invent rel values. Use containment (parentId) for "contains", not an edge.
-GROUPS:
-- type:"group" carries label, optional shape (rectangle|ellipse|diamond); children set parentId.`
+export const AGENT_CONTRACT = kitSections().schemaContract
 
 // ─────────────────────────── buildBrief (human → agent) ───────────────────────────
 
@@ -215,6 +200,7 @@ export function buildBrief(
     const common = {
       ...(n.parentId ? { parentId: n.parentId } : {}),
       ...(n.meta?.source ? { source: n.meta.source } : {}),
+      ...(n.meta?.kind ? { componentKind: n.meta.kind } : {}),
     }
     if (n.type === 'file') {
       const r = resolved.get(n.file)
@@ -255,7 +241,8 @@ export function buildBrief(
     nodes,
     edges,
     comments,
-    responseContract: AGENT_CONTRACT,
+    responseContract: kitSections().schemaContract,
+    ...(doc.flowcanvas.session.coreDocPath ? { coreDocPath: doc.flowcanvas.session.coreDocPath } : {}),
   }
 }
 
@@ -269,7 +256,9 @@ function nodeFromAgent(an: AgentNode, id: string, existing?: CanvasNode): Canvas
     x: an.x, y: an.y, width: an.width, height: an.height,
     ...(an.color ? { color: an.color } : existing?.color ? { color: existing.color } : {}),
     ...(parentId ? { parentId } : {}),
-    meta: { ...existing?.meta, origin: 'agent' as const, ...(an.source ? { source: an.source } : {}) },
+    meta: { ...existing?.meta, origin: 'agent' as const,
+      ...(an.source ? { source: an.source } : {}),
+      ...(an.kind ? { kind: an.kind } : {}) },
   }
   if (an.type === 'group') {
     return {

@@ -30,7 +30,7 @@ const send = (url: string, method: string, body: unknown) =>
 const miniDoc = () => ({
   nodes: [{ id: 'n1', type: 'text', text: 'hi', x: 0, y: 0, width: 100, height: 60 }],
   edges: [],
-  flowcanvas: { schemaVersion: '0.2', session: { createdAt: 't', updatedAt: 't', revision: 1 }, comments: [] },
+  flowcanvas: { schemaVersion: '0.3', session: { createdAt: 't', updatedAt: 't', revision: 1 }, comments: [] },
 })
 
 beforeAll(async () => { await mkdir(path.join(ROOT, TMP), { recursive: true }) })
@@ -60,7 +60,7 @@ describe('GET /api/canvas', () => {
     const res = await canvasGET(get(`/api/canvas?path=${encodeURIComponent(DEMO)}`))
     expect(res.status).toBe(200)
     const { doc } = await res.json()
-    expect(doc.flowcanvas.schemaVersion).toBe('0.2')
+    expect(doc.flowcanvas.schemaVersion).toBe('0.3')   // 004: load migrates + persists 0.3 for every opened board
     expect(doc.nodes.length).toBeGreaterThan(10)
     expect(doc.edges.some((e: { meta?: { rel?: string } }) => e.meta?.rel === 'calls')).toBe(true)
   })

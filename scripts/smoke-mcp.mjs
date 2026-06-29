@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// scripts/smoke-mcp.mjs — MCP round-trip smoke (Phase 7 coverage).
+// scripts/smoke-mcp.mjs — MCP round-trip smoke (002 Phase 7 + 004 Phase 3 coverage).
 //
 // Drives the real stdio MCP sidecar against a running app and asserts the full agent round-trip:
-// all 7 tools register, get_board builds a brief + stamps lastBriefId, apply_response merges +
+// all 8 tools register (incl. 004 get_generation_kit + the generation-kit resource), get_board builds
+// a brief + stamps lastBriefId, apply_response merges +
 // persists and is NOT stale, and the change-review snapshot round-trips. Exits non-zero on any
 // failure so CI / pre-close can catch an integration break that the unit gate cannot.
 //
@@ -50,8 +51,18 @@ async function main() {
 
   const tools = (await client.listTools()).tools.map((t) => t.name).sort()
   ok(JSON.stringify(tools) === JSON.stringify([
-    'apply_response', 'get_active_board', 'get_board', 'list_dir', 'read_file', 'resolve_paths', 'write_file',
-  ]), `all 7 tools register (${tools.length})`)
+    'apply_response', 'get_active_board', 'get_board', 'get_generation_kit', 'list_dir', 'read_file', 'resolve_paths', 'write_file',
+  ]), `all 8 tools register (${tools.length})`)
+
+  // 004 — the generation-kit tool (base + doc-attached) and the static resource.
+  const kit = j(await client.callTool({ name: 'get_generation_kit', arguments: {} }))
+  ok(typeof kit === 'string' && kit.includes('Agent Generation Kit') && kit.includes('COMPONENT KINDS'), 'get_generation_kit returns the base kit')
+  const kitDoc = j(await client.callTool({ name: 'get_generation_kit', arguments: { markdownPath: 'examples/welcome.md' } }))
+  ok(typeof kitDoc === 'string' && kitDoc.includes('Your document to convert'), 'get_generation_kit attaches the markdown payload')
+  const resources = (await client.listResources()).resources.map((r) => r.uri)
+  ok(resources.includes('flowcanvas://generation-kit'), 'generation-kit resource registers')
+  const kitResText = (await client.readResource({ uri: 'flowcanvas://generation-kit' })).contents?.[0]?.text
+  ok(typeof kitResText === 'string' && kitResText.includes('Agent Generation Kit'), 'generation-kit resource returns the kit markdown')
 
   const brief = j(await client.callTool({ name: 'get_board', arguments: { canvasRef: BOARD } }))
   ok(!brief.error && typeof brief.briefId === 'string' && brief.nodes?.length === 1, 'get_board builds a brief')

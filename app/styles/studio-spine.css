@@ -1,0 +1,144 @@
+/* 004 Phase 4 — the living core-markdown spine: a docked flex pane (between canvas and inspector),
+   its section outline + per-heading component badges, the editor, and the bidirectional link pulse. */
+
+.fc-spine {
+  width: 410px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-lowest);
+  background-image:
+    linear-gradient(rgba(6, 14, 32, 0.86), rgba(6, 14, 32, 0.86)),
+    linear-gradient(200deg, rgba(228, 198, 255, 0.18), rgba(128, 131, 255, 0.08));
+}
+
+/* header */
+.fc-spine__h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--color-outline-variant);
+  background: rgba(6, 14, 32, 0.6);
+}
+.fc-spine__ic { color: var(--color-secondary); flex: none; }
+.fc-spine__title { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.fc-spine__t { font-size: 13.5px; font-weight: 600; color: var(--color-text-primary); }
+.fc-spine__ext { font-family: var(--font-jetbrains-mono); font-size: 10px; color: var(--color-outline); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-spine__dirty {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-jetbrains-mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--color-status-amber);
+}
+.fc-spine__dirtydot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-status-amber); box-shadow: 0 0 8px -1px var(--color-status-amber); }
+.fc-spine__tools { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.fc-spine__tool {
+  height: 28px; padding: 0 11px; border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant); background: transparent; color: var(--color-text-secondary);
+  font-size: 11.5px; cursor: pointer; transition: color .12s ease, border-color .12s ease, background-color .12s ease;
+}
+.fc-spine__tool:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-spine__tool.is-on { color: #06222a; border-color: transparent; background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary)); }
+.fc-spine__x { width: 28px; height: 28px; border-radius: var(--radius-control); border: 1px solid var(--color-outline-variant); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.fc-spine__x:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+
+/* switcher */
+.fc-spine__switch { display: flex; align-items: center; gap: 8px; padding: 9px 14px; flex: 0 0 auto; border-bottom: 1px solid var(--color-outline-variant); }
+.fc-spine__switch-lbl { font-family: var(--font-jetbrains-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
+.fc-spine__switch-sel {
+  flex: 1; height: 30px; padding: 0 8px; border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant); background: var(--color-surface-low); color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono); font-size: 11.5px; cursor: pointer;
+}
+.fc-spine__switch-sel:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+
+/* section outline */
+.fc-spine__outline { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: 6px 8px; border-bottom: 1px solid var(--color-outline-variant); }
+.fc-spine__sec {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 5px 9px; border-radius: var(--radius-control); border: 1px solid transparent; background: transparent;
+  color: var(--color-text-secondary); font-size: 12px; text-align: left; cursor: pointer;
+  transition: background-color .12s ease, color .12s ease;
+}
+.fc-spine__sec:hover { background: rgba(128, 131, 255, 0.08); color: var(--color-text-primary); }
+.fc-spine__sec.is-linked { background: rgba(228, 198, 255, 0.1); color: var(--color-text-primary); box-shadow: inset 0 0 0 1px rgba(228, 198, 255, 0.28); }
+.fc-spine__sec-tx { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-spine__sec-ct {
+  flex: none; min-width: 18px; height: 17px; padding: 0 5px; display: grid; place-items: center;
+  border-radius: 999px; background: rgba(128, 131, 255, 0.16); color: var(--color-primary);
+  font-family: var(--font-jetbrains-mono); font-size: 9.5px;
+}
+
+/* render / edit body */
+.fc-spine__scroll { flex: 1; min-height: 0; overflow: auto; padding: 6px 0 18px; }
+.fc-spine__msg { padding: 18px 20px; color: var(--color-text-secondary); font-size: 13px; }
+.fc-spine__msg--err { color: var(--color-neon-rose); }
+.fc-spine__editor {
+  width: calc(100% - 24px); min-height: 100%; margin: 8px 12px; resize: none;
+  border: 1px solid rgba(192, 193, 255, 0.4); border-radius: 10px; background: rgba(6, 14, 32, 0.7);
+  color: var(--color-text-primary); font-family: var(--font-jetbrains-mono); font-size: 12.5px; line-height: 1.6; padding: 14px 16px;
+}
+.fc-spine__editor:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+
+/* prose — reuse the reader's readability scale; headings carry rehype-slug ids for scroll-to + pulse */
+.fc-spine__prose { max-width: 64ch; margin-inline: auto; padding: 14px 22px; font-size: 15px; line-height: 1.7; color: var(--color-text-primary); }
+.fc-spine__prose h1 { font-size: 22px; font-weight: 600; margin: 0.2em 0 0.5em; }
+.fc-spine__prose h2 { font-size: 17px; margin: 1.2em 0 0.4em; scroll-margin-top: 12px; }
+.fc-spine__prose h3 { font-size: 15px; margin: 1em 0 0.35em; scroll-margin-top: 12px; }
+.fc-spine__prose p { margin: 0 0 0.85em; }
+.fc-spine__prose strong { color: var(--color-text-primary); }
+.fc-spine__prose em { color: var(--color-text-primary); font-style: italic; }
+.fc-spine__prose a { color: var(--color-primary); text-decoration: none; }
+.fc-spine__prose a:hover { text-decoration: underline; }
+.fc-spine__prose code { font-family: var(--font-jetbrains-mono); font-size: 0.84em; color: var(--color-neon-cyan); background: rgba(94, 242, 255, 0.1); border: 1px solid rgba(94, 242, 255, 0.18); border-radius: 6px; padding: 1px 6px; }
+.fc-spine__prose pre { background: rgba(94, 242, 255, 0.06); border: 1px solid rgba(94, 242, 255, 0.12); border-radius: 8px; padding: 12px 14px; overflow: auto; }
+.fc-spine__prose pre code { background: none; border: 0; padding: 0; color: var(--color-text-secondary); }
+.fc-spine__prose ul, .fc-spine__prose ol { margin: 0 0 0.85em; padding-left: 1.3em; }
+.fc-spine__prose li { margin-bottom: 0.3em; }
+/* component-selected → the section heading pulses */
+.fc-spine__prose :is(h1, h2, h3).is-pulse {
+  border-radius: 6px;
+  animation: fc-spine-pulse 1.5s ease-out;
+}
+@keyframes fc-spine-pulse {
+  0% { box-shadow: 0 0 0 2px var(--color-secondary), 0 0 18px -2px var(--color-secondary); background: rgba(228, 198, 255, 0.16); }
+  100% { box-shadow: none; background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .fc-spine__prose :is(h1, h2, h3).is-pulse { animation: none; } }
+
+/* footer — submit */
+.fc-spine__foot { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--color-outline-variant); background: rgba(6, 14, 32, 0.6); }
+.fc-spine__note { margin: 0 0 8px; font-size: 11.5px; color: var(--color-status-amber); }
+.fc-spine__submit {
+  width: 100%; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 0; border-radius: var(--radius-control); color: #0a0f20;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-cont));
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: opacity .12s ease, box-shadow .12s ease;
+}
+.fc-spine__submit:hover:not(:disabled) { box-shadow: 0 0 18px -4px var(--color-primary); }
+.fc-spine__submit:disabled { opacity: 0.45; cursor: default; }
+
+/* collapsed-spine reopen strip (mirrors the rail strips) */
+.fc-railstrip--spine { border-left: 1px solid var(--color-outline-variant); }
+
+/* spine → canvas pulse: the RF node wrapper gets .fc-rf--linked while linkedNodeIds holds its id.
+   The ring pulses via a one-shot keyframe (fades to nothing) so it leaves no persistent style — the
+   class can linger harmlessly until the next highlight reassigns linkedNodeIds. */
+.react-flow__node.fc-rf--linked :is(.fc-cmp, .fc-node, .fc-node--note, .fc-node--link) {
+  animation: fc-linked-pulse 1.6s ease-out;
+}
+@keyframes fc-linked-pulse {
+  0% { box-shadow: 0 0 0 2px var(--color-secondary), 0 0 22px -3px var(--color-secondary); }
+  100% { box-shadow: 0 0 0 0 rgba(228, 198, 255, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .react-flow__node.fc-rf--linked :is(.fc-cmp, .fc-node, .fc-node--note, .fc-node--link) { animation: none; } }
+
+/* inspector component-kind eyebrow */
+.fc-insp__ckind {
+  font-family: var(--font-jetbrains-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-primary); border: 1px solid rgba(192, 193, 255, 0.35); border-radius: 6px; padding: 1px 6px;
+}

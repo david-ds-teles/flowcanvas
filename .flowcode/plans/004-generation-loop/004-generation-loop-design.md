@@ -1,7 +1,7 @@
 ---
 name: 004-generation-loop-design
 description: Design artifact for the Markdown-Core Generation Loop — turn a markdown design doc into a rich, system-design-centric .canvas via any LLM (a complete, discoverable Agent Generation Kit), keep that markdown as the living, editable, bidirectionally-linked core, and import a generated .canvas frictionlessly.
-status: draft
+status: approved
 tags: [design, canvas, mcp, generation, markdown, system-design, agent-loop]
 links: [.flowcode/plans/004-generation-loop/004-generation-loop-plan.md, .flowcode/plans/004-generation-loop/004-generation-loop-ui-design.md]
 ---
@@ -14,7 +14,7 @@ links: [.flowcode/plans/004-generation-loop/004-generation-loop-plan.md, .flowco
 - **Frictionless import:** a generated `.canvas` enters the app three ways — JSON paste · `.canvas` file upload · `.canvas` drag-drop — without breaking the existing md/image add-node drop.
 - Scope — in: the Agent Generation Kit (MCP resource + copy-paste), the system-design component model (`meta.kind`), the living core-markdown spine (read/write/dirty/re-submit), bidirectional component↔section linking, frictionless `.canvas` import, and the UI/UX for all of it. Out: re-doing 003's foundation fixes, multi-human realtime collab, an in-app LLM runtime.
 - Builds on **Plan 003** (the foundation must be solid first); 004 DOES change the schema (`meta.kind`), the MCP surface (kit resource + import), and the agent contract (kit + kind extraction) — all deferred here from 003 deliberately.
-- Status draft; author agent (conversation) + human (scope approval); dated 2026-06-28.
+- Status approved; author agent (conversation) + human (scope approval); dated 2026-06-28, approved 2026-06-29 (5 Open Questions resolved — Q1/Q2 verified against the installed SDK + on-disk anchors, Q3 group-only, Q4 **spine switcher** per operator override, Q5 raw kit payload).
 - Sibling plan: `004-generation-loop-plan.md` (created after this design is approved).
 
 ---
@@ -104,7 +104,9 @@ High-level approach alternatives evaluated before this design was locked in. Per
 
 **Decision:** Option C. Create `lib/canvas/generation-kit.ts` exporting `kitSections()` (structured) and `buildKit(markdown?)` (paste-ready string) as the **single source of truth**. Expose it three ways, all rendering from `buildKit`: (1) **MCP tool `get_generation_kit({ markdownPath? })`** — the load-bearing surface, parameterized so the harness fetches the kit with a specific doc attached; uses the exact `registerTool` + `{content:[{type:'text',text}]}` shape the seven existing tools use. (2) **MCP static resource `flowcanvas://generation-kit`** (`mimeType:'text/markdown'`) — the base, payload-less kit for passive discovery in resource listings. (3) **UI copy-paste bundle** — a "Kit" affordance in `export-panel.tsx` that copies `buildKit(coreDocMarkdown)` for any non-MCP LLM. `DesignBrief.responseContract` and `docs/flowcanvas-agent-contract.md` both become renders of `kitSections().schemaContract`, so the legacy standalone `AGENT_CONTRACT` string is no longer an independent copy.
 
-**Rationale:** the tool is fully grounded in the cached MCP research (registration + return shape) and fits the existing tool-based harness; the resource adds discoverability for clients that surface resources; one `buildKit()` source means the MCP loop, the UI bundle, and `docs/` can never drift. Resource-API specifics are flagged in Open Questions for a one-line verification against the pinned SDK.
+**Rationale:** the tool is fully grounded in the cached MCP research (registration + return shape) and fits the existing tool-based harness; the resource adds discoverability for clients that surface resources; one `buildKit()` source means the MCP loop, the UI bundle, and `docs/` can never drift.
+
+**Resolved (Q1, verified 2026-06-29):** `server.registerResource(name, uriOrTemplate, config, readCallback)` is confirmed verbatim against the installed `@modelcontextprotocol/sdk@1.29.0` (`node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.d.ts:102-103`). The proposed `registerResource('generation-kit', 'flowcanvas://generation-kit', metadata, handler)` matches the **static-URI overload** exactly; the read callback receives `(uri: URL, extra)` and MUST return `{ contents: [{ uri, mimeType, text }] }` (`ReadResourceResult`, `spec.types.d.ts:684`). Ship **tool + static resource** as designed. The templated `flowcanvas://generation-kit/{markdownPath}` variant is **not** used — its `ResourceTemplate` constructor requires a mandatory `list` callback (extra surface for no payoff here); the parameterized `get_generation_kit({ markdownPath })` tool already covers the doc-attached case.
 
 ### Decision 3: Living core-markdown spine — `session.coreDocPath` pointer, docked editable panel, dirty → resubmit via `submitToAgent`
 
@@ -120,6 +122,8 @@ High-level approach alternatives evaluated before this design was locked in. Per
 
 **Rationale:** an explicit pointer is the only unambiguous identity for a doc that may not be a board node; reusing `submitToAgent` + `/api/file` + the review window means the spine adds a panel and three store actions, not a new round-trip. The pending-round block reuses the existing single-round invariant rather than inventing round queuing.
 
+**Resolved (Q4 — operator override, 2026-06-29): mixed-source boards get a spine switcher, not pinned-only.** When a board's nodes cite several `meta.source.path` docs, the spine still binds to exactly one `session.coreDocPath` at a time, but the human can **repoint** it: `core-spine.tsx` renders a switcher control listing every distinct cited doc (newest/most-referenced first), and selecting one calls the existing `setCoreDoc(path)` action (already specified) to rebind the spine, its outline, and the `buildSourceIndex` highlight map to that doc. The set of choices comes from a new pure helper `citedDocPaths(nodes): string[]` in `lib/canvas/spine.ts` (distinct `meta.source.path` values, ordered). Components whose `meta.source.path` differs from the *current* `coreDocPath` are not in the active outline, but their provenance still shows on their inspector `§ path` row — so nothing is hidden, and the human chooses which doc is the spine. This is additive UI over the already-planned `setCoreDoc` action and one pure helper; no new persisted state (the active choice is just `session.coreDocPath`).
+
 ### Decision 4: Bidirectional component↔section linking — derived `Map<anchor, nodeId[]>`, pulse highlight, "§…" affordance both sides
 
 **Options considered:**
@@ -133,6 +137,8 @@ High-level approach alternatives evaluated before this design was locked in. Per
 **Decision:** Option B. A pure `buildSourceIndex(nodes, coreDocPath): Map<string, string[]>` (in a new `lib/canvas/spine.ts`) groups every node whose `meta.source.path === coreDocPath` by its `meta.source.anchor`, yielding `anchor → nodeId[]`. Highlight is transient store state: selecting a component sets `spineHighlightAnchor` (its `meta.source.anchor`) → the spine scrolls to `[id="<anchor>"]` and pulses it; hovering/selecting a spine heading calls `highlightComponents(anchor)` → sets `linkedNodeIds` → the canvas pulses those component nodes. The visible affordance: a `§ {anchor}` chip on each component (node + inspector) that triggers `highlightSpineSection`, and a gutter "{n} components" badge on each spine heading that triggers `highlightComponents`. Heading anchors are produced by a github-slugger-compatible `slugify` shared between the spine outline, the agent's `meta.source.anchor` convention (stated in the kit), and the render pipeline (add `rehype-slug` so `/api/render` headings carry matching `id`s).
 
 **Rationale:** `meta.source` is already stamped on every extracted node — deriving the reverse index is free and never drifts. The pulse + chip pattern reuses the existing `focusNode`/`FocusBridge` transient-highlight idiom. Sharing one slugger across spine, agent, and renderer is what makes the two directions actually line up.
+
+**Resolved (Q2, verified 2026-06-29): standardize on `github-slugger`.** The de-facto anchor convention already on disk is github-slug format — `examples/commerce-platform.canvas` stamps `edge`, `authentication`, `order-lifecycle`, `payments` from headings `## Edge` / `## Authentication` / `## Order lifecycle` / `## Payments`, and `extractRefs` (`lib/canvas/refs.ts:30-33`) stores link anchors **raw** (no transform), so adopting github-slugger introduces no break. Caveat the planner must honor: **neither `github-slugger` nor `rehype-slug` is a *direct* dependency today** (both are transitive only), and `lib/render-md.ts` currently has **no** heading-id step — so the implementation MUST (1) add `github-slugger` + `rehype-slug` as direct deps, (2) wrap `github-slugger` in the single `spine.ts:slugify()`, (3) insert `rehype-slug` into the `render-md.ts` pipeline **after `rehypeSanitize`**, and (4) state the slug rule in the kit's `schemaContract` so the agent stamps matching `meta.source.anchor` values. A unit test MUST assert three-way parity: `slugify("Order lifecycle") === "order-lifecycle"` === the rendered `<h2 id>` === the agent anchor.
 
 ### Decision 5: Frictionless import dispatch — zod `FlowcanvasDoc` validator, `importDoc` action, extension-dispatched Dropzone
 
@@ -271,7 +277,7 @@ Kind catalog — meaning of each value (this is the definition the kit hands the
 - **`external`** — a third-party system or API outside the design's ownership boundary: payment gateway, SaaS provider, upstream/downstream system not built here.
 - **`decision`** — a branch / gate / conditional in a flow: router, policy check, switch, guard. Typically diamond-silhouetted.
 - **`process`** — a step / activity / transformation inside a flow that is not a standalone deployable service: a pipeline stage, a batch job, a transform.
-- **`boundary`** — a system / trust / network / bounded-context container that frames other components. Applied to a `group` node (the renderer keeps `type:'group'` and tints it); not a leaf widget.
+- **`boundary`** — a system / trust / network / bounded-context container that frames other components. **Group-only (Q3, resolved 2026-06-29):** `meta.kind:'boundary'` is valid ONLY on a `type:'group'` node — the renderer keeps `type:'group'` and tints it; it is never a leaf widget. The kit's `schemaContract` MUST state this constraint, and `flowcanvasDocSchema` SHOULD reject `boundary` on a non-group node (or the renderer falls back to `nodeKind` for the stray case).
 
 Unknown / absent kind: a node with no `meta.kind` (or, defensively, an unrecognized string surviving validation) renders via the existing `nodeKind` path — a plain markdown/note/file card. No kind is ever required.
 
@@ -310,6 +316,9 @@ export function outlineOf(markdown: string): SpineHeading[]
 
 /** anchor → nodeIds, restricted to nodes whose meta.source.path === coreDocPath. Memoize on doc identity. */
 export function buildSourceIndex(nodes: CanvasNode[], coreDocPath: string): Map<string, string[]>
+
+/** Distinct meta.source.path values across the board, ordered — feeds the spine switcher (Q4). */
+export function citedDocPaths(nodes: CanvasNode[]): string[]
 ```
 
 ```ts
@@ -357,7 +366,7 @@ server.registerTool('get_generation_kit', {
   return { content: [{ type: 'text' as const, text: buildKit(md) }] }
 })
 
-// Resource (secondary — passive discoverability; verify registerResource against @modelcontextprotocol/sdk@1.29.0).
+// Resource (secondary — passive discoverability; registerResource signature VERIFIED against @modelcontextprotocol/sdk@1.29.0, static-URI overload).
 server.registerResource('generation-kit', 'flowcanvas://generation-kit',
   { title: 'Flowcanvas Agent Generation Kit', description: 'Turn a design doc into a typed .canvas', mimeType: 'text/markdown' },
   async (uri) => ({ contents: [{ uri: uri.href, mimeType: 'text/markdown', text: buildKit() }] }))
@@ -438,19 +447,20 @@ Touched files — NEW vs EDIT and the responsibility each carries for plan 004.
 | `lib/canvas/jsoncanvas.ts` | EDIT | `ComponentKind` + `COMPONENT_KINDS` + `COMPONENT_KIND_META`; `NodeMeta.kind`; `SessionMeta.coreDocPath`; `schemaVersion '0.3'` + `SCHEMA_VERSIONS` |
 | `lib/canvas/generation-kit.ts` | NEW | Single-source kit: `kitSections()` + `buildKit(markdown?)` |
 | `lib/canvas/brief.ts` | EDIT | `AgentNode.kind`, `BriefNode.componentKind`, `DesignBrief.coreDocPath`; `nodeFromAgent` carries `kind` → `meta.kind`; `responseContract = kitSections().schemaContract` |
-| `lib/canvas/spine.ts` | NEW | Pure `slugify`, `outlineOf`, `buildSourceIndex` (anchor ↔ nodeId index) |
+| `lib/canvas/spine.ts` | NEW | Pure `slugify` (wraps `github-slugger`), `outlineOf`, `buildSourceIndex` (anchor ↔ nodeId index), `citedDocPaths` (spine-switcher choices) |
 | `lib/canvas/validate.ts` | NEW | `flowcanvasDocSchema` + `parseFlowcanvasDoc` (zod over `FlowcanvasDoc`) |
 | `lib/canvas/migrate.ts` | NEW | `migrateDoc` version ladder (`0.1→0.2→0.3`), extracted from `store.load`, shared with `importDoc` |
 | `lib/canvas/adapter.ts` | EDIT | Route `meta.kind` (non-group) → React Flow `type:'component'`; group `boundary` accent |
 | `lib/canvas/store.ts` | EDIT | Core-spine + import + link-highlight transient state and actions; `load`/`newBoard` go through `migrateDoc` and persist `'0.3'` |
 | `mcp/flowcanvas-mcp.ts` | EDIT | Register `get_generation_kit` tool + `flowcanvas://generation-kit` resource |
 | `components/canvas/nodes/component-node.tsx` | NEW | Kind-aware widget: glyph + silhouette + accent from `COMPONENT_KIND_META`; `§ anchor` chip; 4 handles |
-| `components/canvas/core-spine.tsx` | NEW | Docked editable spine: render (`/api/render`) + edit (textarea) + dirty + submit; heading anchors + per-heading badges |
+| `components/canvas/core-spine.tsx` | NEW | Docked editable spine: render (`/api/render`) + edit (textarea) + dirty + submit; heading anchors + per-heading badges; **spine switcher** over `citedDocPaths` → `setCoreDoc` (Q4) |
 | `components/canvas/canvas-shell.tsx` | EDIT | Register `component` nodeType; mount `<CoreSpine>` when `coreDocPath` is set; pulse `linkedNodeIds` |
 | `components/canvas/dropzone.tsx` | EDIT | Extension dispatch: `.canvas` → dirty-guarded `importCanvasFile`; md/image → unchanged `uploadFile`+`addFileNode` |
 | `components/canvas/export-panel.tsx` | EDIT | Import tab: detect pasted full doc → `importDoc`; `.canvas` upload input; new "Kit" copy bundle (`buildKit`) |
 | `components/canvas/inspector-rail.tsx` | EDIT | Component-kind row + `§ anchor` affordance → `highlightSpineSection` |
-| `lib/render-md.ts` | EDIT | Add `rehype-slug` so rendered headings carry `id`s matching `slugify` / `meta.source.anchor` |
+| `lib/render-md.ts` | EDIT | Add `rehype-slug` (after `rehypeSanitize`) so rendered headings carry `id`s matching `slugify` / `meta.source.anchor` |
+| `package.json` | EDIT | Add direct deps `github-slugger` + `rehype-slug` (both transitive today, neither imported directly — Q2) |
 | `docs/flowcanvas-agent-contract.md` | EDIT | Regenerate from `kitSections().schemaContract` (no longer an independent copy) |
 | `app/styles/studio-spine.css` + `app/styles/nodes.css` | NEW + EDIT | Spine pane styling; component-node silhouettes + per-kind accents |
 
@@ -468,7 +478,8 @@ Touched files — NEW vs EDIT and the responsibility each carries for plan 004.
 | `ComponentKind` value the renderer does not know (unknown string survives import) | Crash or blank widget | `flowcanvasDocSchema` validates the enum on import; `component-node.tsx` defaults to a neutral `box` silhouette + falls back to `nodeKind` when the kind is unrecognized |
 | Heading slug mismatch between agent anchors, the spine, and `/api/render` | Bidirectional links silently fail to resolve | One github-slugger-compatible `slugify` shared by `spine.ts`, the kit's `meta.source.anchor` rule, and `rehype-slug` in the render pipeline |
 | `NodeKind` name collision (existing derived render-kind) | Reusing the name corrupts every `nodeKind` call site | New enum is named `ComponentKind`; called out in Decision 1 + Data Models |
-| MCP `registerResource` signature unverified against pinned SDK | Resource surface may not compile / wire as written | Tool is the load-bearing surface (fully covered by cached research); resource is secondary and gated on a one-line verification (Open Questions) |
+| MCP `registerResource` signature (resource surface) | Resource surface may not compile / wire as written | **Resolved** — signature verified verbatim against `@modelcontextprotocol/sdk@1.29.0` (`mcp.d.ts:102-103`); ship the static-URI overload as written. Tool stays the load-bearing surface regardless |
+| `github-slugger` / `rehype-slug` not direct deps; render pipeline has no heading-id step | Three-way slug parity (agent ↔ spine ↔ render) silently fails | Add both as direct deps; one `slugify()` wraps `github-slugger`; `rehype-slug` after `rehypeSanitize`; unit test asserts parity (Decision 4 Q2) |
 
 ## Research References
 
@@ -476,12 +487,14 @@ Touched files — NEW vs EDIT and the responsibility each carries for plan 004.
 |-------|------|-------------|
 | MCP TS SDK — tool registration | `.flowcode/researches/mcp-typescript-sdk-research.md` | `@modelcontextprotocol/sdk@1.29.0` + `zod@3`; `registerTool(name,{description,inputSchema},handler)` returning `{content:[{type:'text',text}]}` — directly backs `get_generation_kit` (the kit's primary, load-bearing surface) |
 | MCP sidecar over HTTP to app routes | `.flowcode/researches/nextjs-node-runtime-mcp-sidecar-research.md` | Sidecar reaches app routes via `fetch` + `FLOWCANVAS_BASE_URL`; `get_generation_kit` reads the attached doc via `GET /api/file` rather than touching the filesystem directly |
-| MCP resources API (resource-vs-tool) | `.flowcode/researches/mcp-typescript-sdk-research.md` | Cache covers tools, not `registerResource`; resource-API specifics flagged in Open Questions for verification against the pinned SDK before wiring the secondary surface |
+| MCP resources API (resource-vs-tool) | installed `@modelcontextprotocol/sdk@1.29.0` `.d.ts` (`dist/esm/server/mcp.d.ts:102-103`, `spec.types.d.ts:684`) | **Verified 2026-06-29** (Q1): `registerResource(name, uriOrTemplate, config, readCallback)`; static-URI read callback `(uri:URL, extra) ⇒ { contents:[{uri,mimeType,text}] }`. Ship tool + static resource; skip the `ResourceTemplate` variant (mandatory `list` callback, no payoff). The cached `mcp-typescript-sdk-research.md` covers tools only |
 
 ## Open Questions
 
-- [ ] **MCP `registerResource` signature** — confirm `server.registerResource(name, uri, metadata, handler)` (and `ResourceTemplate` if a templated `flowcanvas://generation-kit/{markdownPath}` is wanted) against `@modelcontextprotocol/sdk@1.29.0`; the cache only documents tools. If the resource API is awkward in this version, ship tool-only (`get_generation_kit`) — the tool already satisfies the success criteria. (A `flowcode:researcher-agent` pass on the SDK resources API should resolve this; this designer pass had no agent-dispatch surface.)
-- [ ] **Heading slugger parity** — confirm the slug algorithm used when `meta.source.anchor` was first stamped (003 / the agent) so `slugify`, `rehype-slug`, and the agent's anchor convention all agree; github-slugger is the proposed common base, but existing anchors must be spot-checked.
-- [ ] **`boundary` on non-group nodes** — should the agent be allowed to emit `meta.kind:'boundary'` on a `file`/`text` node, or is `boundary` constrained to `type:'group'`? Recommendation: boundary ⇒ group-only (the renderer keeps `type:'group'`); state this in the kit's schema contract.
-- [ ] **Mixed-source boards** — when a board's nodes cite several source docs, `coreDocPath` pins exactly one as the spine; how should components whose `meta.source.path` differs be surfaced — excluded from the spine index (shown only via their own inspector `§ path`), or offered as a spine switcher? Recommendation: index only the pinned doc; show others' provenance in the inspector.
-- [ ] **Copy-paste kit payload size** — the UI bundle attaches the full core markdown; define whether it attaches raw vs trimmed markdown and whether a large doc needs a size warning before the clipboard write.
+All five resolved 2026-06-29 (Q1/Q2 by verification, Q3/Q4/Q5 by operator decision) — the design above reflects each resolution. Retained here as the decision record.
+
+- [x] **MCP `registerResource` signature** — **Resolved (verified).** `registerResource(name, uriOrTemplate, config, readCallback)` matches `@modelcontextprotocol/sdk@1.29.0` verbatim (`mcp.d.ts:102-103`); ship the **static-URI** overload (`'flowcanvas://generation-kit'`) returning `{ contents:[{uri,mimeType,text}] }`. Skip the templated `ResourceTemplate` variant (mandatory `list` callback, no payoff — the `get_generation_kit({markdownPath})` tool covers the doc-attached case). See Decision 2 + Research References.
+- [x] **Heading slugger parity** — **Resolved (verified): `github-slugger`.** On-disk anchors are already github-slug format (`commerce-platform.canvas`: `edge`/`authentication`/`order-lifecycle`/`payments`) and `extractRefs` stores anchors raw, so no break. Implementation must add `github-slugger` + `rehype-slug` as **direct** deps (transitive today), wrap one `slugify()`, insert `rehype-slug` after `rehypeSanitize` in `render-md.ts`, and unit-test agent↔spine↔render parity. See Decision 4.
+- [x] **`boundary` on non-group nodes** — **Resolved: group-only.** `meta.kind:'boundary'` is valid only on `type:'group'`; the kit's `schemaContract` states it and `flowcanvasDocSchema` rejects (or the renderer falls back) for the stray non-group case. See the kind catalog `boundary` entry.
+- [x] **Mixed-source boards** — **Resolved: spine switcher** (operator override of the original "index pinned only" recommendation). The spine binds one `coreDocPath` at a time but the human repoints it via a switcher over `citedDocPaths(nodes)` → `setCoreDoc(path)`; off-spine components still show provenance on their inspector `§ path` row. See Decision 3.
+- [x] **Copy-paste kit payload size** — **Resolved: raw, no warning.** The UI bundle attaches the full core markdown verbatim via `buildKit(coreDocMarkdown)` (no lossy trimming — the agent needs full fidelity); no size check/warning before the clipboard write. See Decision 2.
