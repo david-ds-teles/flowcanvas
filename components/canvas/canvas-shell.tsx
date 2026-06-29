@@ -40,7 +40,6 @@ import { ReviewPanel } from './review-panel'
 import { CoreSpine } from './core-spine'
 import { citedDocPaths } from '@/lib/canvas/spine'
 import { useRoundReady } from './use-round-ready'
-import { AgentFab } from './agent-fab'
 import { cn } from '@/lib/utils'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
@@ -98,7 +97,6 @@ function CanvasFlow() {
   const clearBoard = useCanvasStore((s) => s.clearBoard)
   const linkedNodeIds = useCanvasStore((s) => s.linkedNodeIds)   // 004 — spine→canvas pulse targets
   const reviewState = useCanvasStore((s) => s.reviewState)       // drives the dock Review-tab attention dot
-  const revealCommentsNodeId = useCanvasStore((s) => s.revealCommentsNodeId)  // comment badge → open inspector
   const clearRevealComments = useCanvasStore((s) => s.clearRevealComments)
   const handlers = useCanvasHandlers()
   const [path] = useState(readPath)
@@ -152,15 +150,19 @@ function CanvasFlow() {
   }, [railLeft, railRight])
 
   // Comment badge → reveal its message: open the right dock on the Inspector tab so the "Comments on
-  // this node" list is visible (the badge already selected the node). Without this the badge looks dead
-  // when the dock is collapsed or showing another tab.
+  // this node" list is visible (the badge already selected the node). Driven off the store subscription
+  // (an external-event callback, not a render-effect) so opening the dock never cascades a synchronous
+  // setState during render (react-hooks/set-state-in-effect).
   useEffect(() => {
-    if (!revealCommentsNodeId) return
-    setRailRight('open')
-    setRightTab('inspector')
-    setInspectorMode('inspector')
-    clearRevealComments()
-  }, [revealCommentsNodeId, clearRevealComments])
+    return useCanvasStore.subscribe((s, prev) => {
+      if (s.revealCommentsNodeId && s.revealCommentsNodeId !== prev.revealCommentsNodeId) {
+        setRailRight('open')
+        setRightTab('inspector')
+        setInspectorMode('inspector')
+        clearRevealComments()
+      }
+    })
+  }, [clearRevealComments])
 
   // Phase 7 (Decision 5/6) — detect the out-of-band agent round (MCP apply_response bumps the on-disk
   // revision) while the board is pending review, and surface a non-blocking "round ready" banner.
@@ -424,15 +426,6 @@ function CanvasFlow() {
           </div>
         )}
       </div>
-
-      {/* Issue #8 — floating agent widget: barely-visible bottom-right control that opens a small
-          upward menu, reusing the same handlers as the toolbar (export/kit) and the submit flow. */}
-      {doc && (
-        <AgentFab
-          onOpenAgent={(tab) => setAgent((a) => (a.open && a.tab === tab ? { ...a, open: false } : { open: true, tab }))}
-          onSubmit={() => { setRightTab('inspector'); setInspectorMode('submit'); setRailRight('open') }}
-        />
-      )}
 
       {/* Agent round-trip panel (export/import + submit fallback) */}
       {agent.open && (

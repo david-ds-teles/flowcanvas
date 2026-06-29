@@ -4,22 +4,26 @@
    links = dashed muted + lock (auto-derived), user = solid indigo, agent = neon cyan. */
 .fc-edge-label {
   position: absolute;
+  z-index: 6;                       /* #6 — sit above node bodies so a crossing edge/widget never buries the label */
   pointer-events: all;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 7px;
+  padding: 2px 8px;
   font-family: var(--font-jetbrains-mono);
   font-size: 10px;
   letter-spacing: 0.02em;
   border-radius: 999px;
   border: 1px solid var(--color-outline-variant);
-  background: rgba(13, 21, 40, 0.82);
+  background: rgba(9, 16, 33, 0.97); /* #6 — near-opaque plate so a crossing edge line can't read through the text */
   backdrop-filter: blur(8px);
   color: var(--color-text-secondary);
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: 0 2px 10px -3px rgba(0, 0, 0, 0.7); /* #6 — lift the pill off the lines beneath it */
 }
+/* #6 — raise the whole edge-label layer above the node layer so labels are never painted behind widgets */
+.react-flow__edgelabel-renderer { z-index: 6; }
 .fc-edge-label--links { color: var(--color-text-secondary); border-color: var(--color-outline-variant); }
 .fc-edge-label--user  { color: var(--color-primary);        border-color: rgba(192, 193, 255, 0.4); }
 .fc-edge-label--agent { color: var(--color-neon-cyan);      border-color: rgba(94, 242, 255, 0.4); }

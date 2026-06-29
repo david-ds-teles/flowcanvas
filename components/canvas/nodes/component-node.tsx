@@ -86,7 +86,7 @@ function Inner({ id, selected, data }: NodeProps) {
             onClick={(e) => { e.stopPropagation(); highlightSpineSection(anchor) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M5 4h14v16H5zM8 9h8M8 13h6" /></svg>
-            §{anchor}
+            <span className="fc-cmp__src-tx">§{anchor}</span>
           </button>
         )}
       </div>

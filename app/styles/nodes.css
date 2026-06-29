@@ -604,6 +604,7 @@
 .fc-cmp__src {
   align-self: flex-start; margin-top: auto;
   display: inline-flex; align-items: center; gap: 5px;
+  max-width: 100%;                                   /* #5 — never spill past the widget edge */
   font-family: var(--font-jetbrains-mono); font-size: 9.5px; color: var(--color-secondary);
   border: 1px solid rgba(228,198,255,.3); background: rgba(228,198,255,.08);
   border-radius: 999px; padding: 2px 8px;
@@ -611,7 +612,9 @@
 }
 .fc-cmp__src:hover { border-color: rgba(228,198,255,.6); box-shadow: 0 0 12px -3px var(--color-secondary); }
 .fc-cmp__src:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-.fc-cmp__src svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.fc-cmp__src svg { width: 10px; height: 10px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; }
+/* #5 — truncate a long anchor slug (e.g. §decision-3-llm--agent-orchestration) instead of overflowing */
+.fc-cmp__src-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* datastore — cylinder cap (the silhouette differentiator) */
 .fc-cmp[data-silhouette="cylinder"] { border-top: none; }

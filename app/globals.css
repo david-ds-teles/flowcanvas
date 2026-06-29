@@ -17,7 +17,6 @@
 @import "./styles/studio-review.css";
 @import "./styles/studio-template.css";
 @import "./styles/studio-spine.css";
-@import "./styles/agent-fab.css";
 @source "../app";
 @source "../components";
 @source "../lib";
