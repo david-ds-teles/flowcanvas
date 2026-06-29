@@ -1,0 +1,566 @@
+{
+  "nodes": [
+    {
+      "id": "ag-g-msgflow",
+      "x": 280,
+      "y": 160,
+      "width": 1020,
+      "height": 880,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "solution-overview"
+        },
+        "kind": "boundary"
+      },
+      "type": "group",
+      "label": "msgflow Central App"
+    },
+    {
+      "id": "ag-g-google",
+      "x": 1360,
+      "y": 160,
+      "width": 300,
+      "height": 540,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "architecture-decisions"
+        },
+        "kind": "boundary"
+      },
+      "type": "group",
+      "label": "Google Workspace"
+    },
+    {
+      "id": "ag-actor-customer",
+      "x": 40,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "problem-statement"
+        },
+        "kind": "actor"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/customer.md"
+    },
+    {
+      "id": "ag-actor-owner",
+      "x": 1720,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "decision-7-human-escalation"
+        },
+        "kind": "actor"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/business-owner.md"
+    },
+    {
+      "id": "ag-ext-zavu",
+      "x": 40,
+      "y": 500,
+      "width": 200,
+      "height": 140,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "decision-1-whatsapp-channel"
+        },
+        "kind": "external"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/zavu-bsp.md"
+    },
+    {
+      "id": "ag-ext-openrouter",
+      "x": 1380,
+      "y": 720,
+      "width": 220,
+      "height": 100,
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "decision-3-llm--agent-orchestration"
+        },
+        "kind": "external"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/openrouter-llm.md"
+    },
+    {
+      "id": "ag-svc-webhook",
+      "x": 320,
+      "y": 280,
+      "width": 240,
+      "height": 140,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "api--interface-contracts"
+        },
+        "kind": "service"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/webhook-handler.md"
+    },
+    {
+      "id": "ag-svc-oauth",
+      "x": 320,
+      "y": 480,
+      "width": 240,
+      "height": 140,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "api--interface-contracts"
+        },
+        "kind": "service"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/oauth-handler.md"
+    },
+    {
+      "id": "ag-queue-redis",
+      "x": 620,
+      "y": 280,
+      "width": 220,
+      "height": 120,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "technology-stack"
+        },
+        "kind": "queue"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/redis-arq-queue.md"
+    },
+    {
+      "id": "ag-svc-worker",
+      "x": 620,
+      "y": 460,
+      "width": 220,
+      "height": 140,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "technical-design"
+        },
+        "kind": "service"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/arq-worker.md"
+    },
+    {
+      "id": "ag-svc-agent",
+      "x": 900,
+      "y": 460,
+      "width": 240,
+      "height": 160,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "module-boundaries"
+        },
+        "kind": "service"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/langgraph-agent.md"
+    },
+    {
+      "id": "ag-svc-channel",
+      "x": 620,
+      "y": 660,
+      "width": 220,
+      "height": 140,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "api--interface-contracts"
+        },
+        "kind": "process"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/channel-adapter.md"
+    },
+    {
+      "id": "ag-svc-ingester",
+      "x": 900,
+      "y": 660,
+      "width": 240,
+      "height": 160,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "retrieval--knowledge-ingestion-rag"
+        },
+        "kind": "process"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/knowledge-ingester.md"
+    },
+    {
+      "id": "ag-svc-tei",
+      "x": 900,
+      "y": 860,
+      "width": 240,
+      "height": 120,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "retrieval--knowledge-ingestion-rag"
+        },
+        "kind": "service"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/tei-sidecar.md"
+    },
+    {
+      "id": "ag-db-postgres",
+      "x": 320,
+      "y": 700,
+      "width": 260,
+      "height": 140,
+      "parentId": "ag-g-msgflow",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "data-models"
+        },
+        "kind": "datastore"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/postgresql.md"
+    },
+    {
+      "id": "ag-ext-calendar",
+      "x": 1400,
+      "y": 240,
+      "width": 220,
+      "height": 120,
+      "parentId": "ag-g-google",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "decision-5-calendar-capability"
+        },
+        "kind": "external"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/google-calendar.md"
+    },
+    {
+      "id": "ag-ext-drive",
+      "x": 1400,
+      "y": 400,
+      "width": 220,
+      "height": 120,
+      "parentId": "ag-g-google",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "retrieval--knowledge-ingestion-rag"
+        },
+        "kind": "external"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/google-drive.md"
+    },
+    {
+      "id": "ag-ext-sheets",
+      "x": 1400,
+      "y": 560,
+      "width": 220,
+      "height": 100,
+      "parentId": "ag-g-google",
+      "meta": {
+        "origin": "agent",
+        "source": {
+          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "anchor": "decision-6-price-source"
+        },
+        "kind": "external"
+      },
+      "type": "file",
+      "file": "boards/msgflow-mvp.nodes/google-sheets.md"
+    }
+  ],
+  "edges": [
+    {
+      "id": "ag-e01",
+      "fromNode": "ag-actor-customer",
+      "toNode": "ag-ext-zavu",
+      "label": "sends WhatsApp msg",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e02",
+      "fromNode": "ag-ext-zavu",
+      "toNode": "ag-svc-webhook",
+      "label": "POST /webhooks/zavu",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e03",
+      "fromNode": "ag-svc-webhook",
+      "toNode": "ag-queue-redis",
+      "label": "enqueue job",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "ag-e04",
+      "fromNode": "ag-queue-redis",
+      "toNode": "ag-svc-worker",
+      "label": "deliver job",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e05",
+      "fromNode": "ag-svc-worker",
+      "toNode": "ag-svc-agent",
+      "label": "run agent",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e06",
+      "fromNode": "ag-svc-agent",
+      "toNode": "ag-ext-calendar",
+      "label": "check_availability",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e07",
+      "fromNode": "ag-svc-agent",
+      "toNode": "ag-ext-drive",
+      "label": "answer_from_documents",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e08",
+      "fromNode": "ag-svc-agent",
+      "toNode": "ag-ext-sheets",
+      "label": "lookup_price",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e09",
+      "fromNode": "ag-svc-agent",
+      "toNode": "ag-ext-openrouter",
+      "label": "LLM inference",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e10",
+      "fromNode": "ag-svc-agent",
+      "toNode": "ag-svc-channel",
+      "label": "compose reply / escalate",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e11",
+      "fromNode": "ag-svc-channel",
+      "toNode": "ag-ext-zavu",
+      "label": "send_text / template",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e12",
+      "fromNode": "ag-ext-zavu",
+      "toNode": "ag-actor-customer",
+      "label": "delivers reply",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e13",
+      "fromNode": "ag-ext-zavu",
+      "toNode": "ag-actor-owner",
+      "label": "escalation notification",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e14",
+      "fromNode": "ag-svc-worker",
+      "toNode": "ag-db-postgres",
+      "label": "load conversation history",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e15",
+      "fromNode": "ag-svc-webhook",
+      "toNode": "ag-db-postgres",
+      "label": "upsert contact + message",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "ag-e16",
+      "fromNode": "ag-actor-owner",
+      "toNode": "ag-svc-oauth",
+      "label": "Google OAuth onboarding",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e17",
+      "fromNode": "ag-svc-oauth",
+      "toNode": "ag-db-postgres",
+      "label": "store encrypted tokens",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    },
+    {
+      "id": "ag-e18",
+      "fromNode": "ag-queue-redis",
+      "toNode": "ag-svc-ingester",
+      "label": "daily ingest cron",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e19",
+      "fromNode": "ag-svc-ingester",
+      "toNode": "ag-ext-drive",
+      "label": "list + download PDFs",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e20",
+      "fromNode": "ag-svc-ingester",
+      "toNode": "ag-svc-tei",
+      "label": "embed chunks",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "calls"
+      }
+    },
+    {
+      "id": "ag-e21",
+      "fromNode": "ag-svc-ingester",
+      "toNode": "ag-db-postgres",
+      "label": "store document chunks",
+      "toEnd": "arrow",
+      "meta": {
+        "origin": "agent",
+        "rel": "produces"
+      }
+    }
+  ],
+  "flowcanvas": {
+    "schemaVersion": "0.3",
+    "session": {
+      "title": "msgflow MVP — System Design",
+      "intent": "WhatsApp AI customer assistant with Google Workspace grounding — system-design extraction from msgflow-mvp-design.md",
+      "createdAt": "2026-06-29T00:00:00Z",
+      "updatedAt": "2026-06-29T21:22:38.217Z",
+      "revision": 5
+    },
+    "comments": []
+  }
+}

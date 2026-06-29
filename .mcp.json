@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "flowcanvas": {
+      "command": "npx",
+      "args": ["tsx", "mcp/flowcanvas-mcp.ts"],
+      "cwd": "/Users/davidteles/Projects/flowcanvas",
+      "env": {
+        "FLOWCANVAS_BASE_URL": "http://localhost:3000",
+        "FLOWCANVAS_ROOT": "/Users/davidteles/Projects/flowcanvas"
+      }
+    }
+  }
+}
