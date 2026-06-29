@@ -3,7 +3,7 @@ name: flowcode:bootstrap
 description: Initialize flowcode for a project from scratch (or re-bootstrap a stale one) — explore the codebase and generate the living knowledge base: project-overview, per-module docs, detected quality gates, project tools, code-quality conventions, and (for frontend) the UI design system. Runs the `flowcode:bootstrap-agent` (sonnet). Use on first install, for an empty/skeleton project-overview, after major restructuring, or when the operator asks to initialize/re-initialize.
 status: active
 tags: [bootstrap, initialization, scratch, project-overview, quality-gates]
-links: [.claude/agents/flowcode/bootstrap-agent.md, .claude/agents/flowcode/module-explorer-agent.md, .flowcode/templates/project-overview-template.md, .flowcode/project/project-overview.md, .flowcode/quality-checks/quality-checks-index.md, .claude/commands/flowcode/bootstrap.md, .claude/skills/flowcode/design/SKILL.md]
+links: [.flowcode/templates/project-overview-template.md, .flowcode/project/project-overview.md, .flowcode/quality-checks/quality-checks-index.md]
 ---
 
 # Bootstrap Session
@@ -39,7 +39,7 @@ Read the top of `.flowcode/project/project-overview.md`:
 
 ### 2 — Dispatch the bootstrap agent
 
-Read `.claude/agents/flowcode/bootstrap-agent.md` in full, then execute it as a sub-agent task (`flowcode:bootstrap-agent`) targeting the project root, model **sonnet**. It will:
+Dispatch `flowcode:bootstrap-agent` (sonnet) as a sub-agent task targeting the project root. It will:
 
 - Explore manifests, README, env, CI, and folder structure in parallel.
 - Detect the stack (architecture, languages, frameworks, datastores, infra, modules, tests, lint, typecheck, CI/CD, integrations).
@@ -61,12 +61,12 @@ Surface the agent's report: what was detected, which files were written/updated,
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/bootstrap-agent.md` | The worker (sonnet) — explores the project and writes the full knowledge base |
-| `.claude/agents/flowcode/module-explorer-agent.md` | Dispatched per-module by the bootstrap agent — deeply explores one module and writes its `modules/{name}.md` |
+| `flowcode:bootstrap-agent` | The worker (sonnet) — explores the project and writes the full knowledge base |
+| `flowcode:module-explorer-agent` | Dispatched per-module by the bootstrap agent — deeply explores one module and writes its `modules/{name}.md` |
 | `.flowcode/templates/project-overview-template.md` | Shape of the project-overview the agent generates |
 | `.flowcode/project/project-overview.md` | The target — read its top to decide if bootstrap is warranted; the agent (re)writes it |
 | `.flowcode/quality-checks/quality-checks-index.md` | Receives the detected + operator-confirmed quality gates |
-| `.claude/skills/flowcode/design/SKILL.md` | The natural next step once the project is bootstrapped |
+| `flowcode:design` | The natural next step once the project is bootstrapped |
 
 ## Non-Goals
 

@@ -3,7 +3,7 @@ name: flowcode:design
 description: Run a standalone design session — turn a fuzzy idea (or an already-approved scope) into a complete, execution-ready `{PREFIX}-design.md`. Conversational, main-session: scopes the problem one question at a time, then dispatches `flowcode:designer-agent` to deepen DDL, signatures, mermaid, risks, and research refs. Use whenever you want to design a feature/change before planning it — the canonical surface `/flowcode:design` and `/flowcode:brainstorm` both run.
 status: active
 tags: [design, brainstorm, scope, ideation, architecture, session]
-links: [.claude/agents/flowcode/designer-agent.md, .claude/agents/flowcode/code-explorer-agent.md, .claude/skills/flowcode/research/SKILL.md, .flowcode/templates/design-template.md, .flowcode/plans/plan-index.md, .flowcode/ui/ui-workflow.md, .claude/commands/flowcode/design.md]
+links: [.flowcode/templates/design-template.md, .flowcode/plans/plan-index.md, .flowcode/ui/ui-workflow.md]
 ---
 
 # Design Session
@@ -94,13 +94,13 @@ Tell the operator the design is complete at `.flowcode/plans/{PREFIX}/{PREFIX}-d
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/designer-agent.md` | The depth worker (opus) — gap-fills the technical sections; runs the UI gate for frontend scope |
-| `.claude/agents/flowcode/code-explorer-agent.md` | Silent context-gather — surveys modules/patterns the topic touches |
-| `.claude/skills/flowcode/research/SKILL.md` | Fills external knowledge gaps before designing (cache-first) |
+| `flowcode:designer-agent` | The depth worker (opus) — gap-fills the technical sections; runs the UI gate for frontend scope |
+| `flowcode:code-explorer-agent` | Silent context-gather — surveys modules/patterns the topic touches |
+| `flowcode:research` | Fills external knowledge gaps before designing (cache-first) |
 | `.flowcode/templates/design-template.md` | The design artifact's section shape — match it exactly |
 | `.flowcode/plans/plan-index.md` | Source for the next PREFIX number; receives the new `draft` row |
 | `.flowcode/ui/ui-workflow.md` | Visual-companion iterations (step 4) and the designer's UI gate |
-| `.claude/commands/flowcode/plan.md` | The next phase the session hands off to (user-gated) |
+| `/flowcode:plan` | The next phase the session hands off to (user-gated) |
 
 ## Non-Goals
 

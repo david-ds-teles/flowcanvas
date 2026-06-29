@@ -4,12 +4,12 @@ description: Standalone slash command to turn an approved design into an executi
 status: active
 tags: [command, plan, planning, phases, standalone]
 argument-hint: "<PREFIX>"
-links: [.claude/skills/flowcode/plan/SKILL.md, .claude/commands/flowcode/design.md, .claude/commands/flowcode/execute.md, .flowcode/plans/plan-instructions.md]
+links: [.flowcode/plans/plan-instructions.md]
 ---
 
 # /flowcode:plan
 
-- Thin entry point: loads and runs the shared `flowcode:plan` skill at `.claude/skills/flowcode/plan/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:plan` skill — the procedure lives in the skill, not here.
 - **Precondition:** the target plan's `{PREFIX}-design.md` is `status: approved` (and `{PREFIX}-ui-design.md` too, for frontend). If not, the skill stops and points to `/flowcode:design`.
 - Runs `flowcode:planner-agent` (opus): minimal phases, active phase at full depth, later phases stubbed; single plan file; creates `{PREFIX}-log.md` with `[PLAN CREATED]`.
 - Registers the plan `active` / `0/N` in `plan-index.md`, then presents the phase breakdown for review.
@@ -40,7 +40,7 @@ Examples:
 
 You are running a plan session.
 
-Load `.claude/skills/flowcode/plan/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the `{PREFIX}`; if empty, resolve it against `.flowcode/plans/plan-index.md` (ask if ambiguous). Verify `{PREFIX}-design.md` is `status: approved` before planning — if it is `draft` or missing, stop and point to `/flowcode:design`. Dispatch `flowcode:planner-agent`, finalize the `plan-index.md` registration on return, and end at the pre-execution review gate. Do **not** auto-start `/flowcode:execute`.
+Run the `flowcode:plan` skill and execute its procedure. Treat `$ARGUMENTS` as the `{PREFIX}`; if empty, resolve it against `.flowcode/plans/plan-index.md` (ask if ambiguous). Verify `{PREFIX}-design.md` is `status: approved` before planning — if it is `draft` or missing, stop and point to `/flowcode:design`. Dispatch `flowcode:planner-agent`, finalize the `plan-index.md` registration on return, and end at the pre-execution review gate. Do **not** auto-start `/flowcode:execute`.
 
 ## Non-Goals
 

@@ -20,6 +20,6 @@ links: [.flowcode/ui/ui-workflow.md, .flowcode/ui/ui-mockup-discipline.md, .flow
 |------|-----------|---------|
 | `ui-index.md` | on-demand | This file — subsystem router |
 | `ui-design-system.md` | on-demand | **Mandatory ground truth** — token + component digest every mockup obeys; shipped as a starter, harvested per-project by bootstrap |
-| `ui-workflow.md` | on-demand | UI design lifecycle (design → 3-iteration parallel mockups → selection → implementation → phase-close visual parity → plan-close canonical capture) |
-| `ui-mockup-discipline.md` | on-demand | Mockup conventions — flat directory layout, parallel-iteration filenames, test IDs, design tokens, responsive breakpoints, MCP preferences |
+| `ui-workflow.md` | on-demand | UI design lifecycle — source-grounded mockups (snapshot the running UI when the design is implemented, else the plan's UI/UX definitions) → one fidelity anchor + two distinct explorations → selection → implementation → phase-close visual parity → plan-close canonical capture |
+| `ui-mockup-discipline.md` | on-demand | Mockup conventions — flat layout, filenames, test IDs, design tokens, breakpoints, MCP prefs, the **Fidelity discipline** (snapshot the real system) + the **state-switcher output form** |
 | `references/` | on-demand | Visual ground-truth HTML/screenshots — starter `starter-dashboard.html`; per-project harvest adds live-app references |

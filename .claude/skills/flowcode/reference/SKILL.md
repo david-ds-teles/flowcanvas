@@ -3,7 +3,7 @@ name: flowcode:reference
 description: Register existing material (design files, specs, diagrams, examples, prototypes) as a reusable reference — store the raw asset under references/{type}/ and write a distilled, indexed reference card a code agent later consults as ground truth. Both ad-hoc via `/flowcode:reference` and as the intake path for any non-documentation reference. Documentation is gathered by `flowcode:docs`, not here.
 status: active
 tags: [reference, references, material, design, spec, register, index, standalone]
-links: [.claude/commands/flowcode/reference.md, .flowcode/references/references-index.md, .flowcode/templates/reference-template.md, .flowcode/quality-checks/markdown-quality.md]
+links: [.flowcode/references/references-index.md, .flowcode/templates/reference-template.md, .flowcode/quality-checks/markdown-quality.md]
 ---
 
 # Reference Registration Session
@@ -64,7 +64,7 @@ Relay the card path, the type, and the consult condition (when later work should
 
 | File | Use |
 |------|-----|
-| `.claude/commands/flowcode/reference.md` | The thin command surface that invokes this skill |
+| `/flowcode:reference` | The thin command surface that invokes this skill |
 | `.flowcode/references/references-index.md` | Cache index — add/update the row on completion |
 | `.flowcode/references/{type}/{slug}.md` | The reference cards this skill writes; the raw asset sits beside each card |
 | `.flowcode/templates/reference-template.md` | Card structure (What It Is → How to Use It → Source → Update Discipline); read before writing |

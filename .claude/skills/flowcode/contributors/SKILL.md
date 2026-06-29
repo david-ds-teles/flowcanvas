@@ -3,7 +3,7 @@ name: flowcode:contributors
 description: Read-only developer-attribution report — reads the `**Dev:**` field stamped on every plan-log and project-log entry and rolls it up to answer who did what. Use when someone asks who built a feature, what changes a given developer made, or what fixes a developer shipped in some area. Filters by developer / `--me`, feature prefix, type (fix vs feature), and area keyword. Reports only; never writes.
 status: active
 tags: [attribution, contributors, reporting, multi-dev, read-only]
-links: [.claude/commands/flowcode/contributors.md, .flowcode/plans/plan-instructions.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md]
+links: [.flowcode/plans/plan-instructions.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md]
 ---
 
 # Contributors Report

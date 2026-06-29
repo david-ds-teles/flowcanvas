@@ -1,208 +1,23 @@
 {
-  "version": "0.11.0",
+  "version": "0.16.0",
   "installed_at": "2026-06-28T21:28:29Z",
   "source": "flowcode",
   "project_root": ".",
   "files": [
     {
       "category": "flowcode",
-      "path": ".flowcode/README.md",
-      "sha256": "9cfc25baedc814965f708a8c75e13a35542bc87320a6156ea7e0bf12201c60c3"
-    },
-    {
-      "category": "flowcode",
       "path": ".flowcode/changelog.md",
-      "sha256": "253141817a482c4d5d1192fcfbcba5aee2e151a24fcdf0bac288ed11c0f1aba8"
+      "sha256": "2463b79630c97106c0afe6d00588590121daaf99851260357a0ddc10c520d02f"
     },
     {
       "category": "flowcode",
       "path": ".flowcode/flowcode-index.md",
-      "sha256": "af146f325bce1b25d1b2d2dde4a35e6c519f27338d65deb8a4598cefd009edd0"
+      "sha256": "054cf06f33fdcd859e6826dba36c7dc603b6e3d77ca3ed4a31ea8b328ad36529"
     },
     {
       "category": "flowcode",
       "path": ".flowcode/flowcode.yml",
-      "sha256": "eba74b713d21a6d0a4304eed8400632b662c640b19e5a290773a9190e25a4690"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-changelog.md",
-      "sha256": "73de6352d78fa1c549c9329aea98507847792e79da119b4f7694f4b4c6b9c964"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
-      "sha256": "9c4ab77998660c358ebd2d532d183f79b8bfefd99cf4a3224c6209ef11d986e6"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-log.md",
-      "sha256": "2596b895e9f1b4404e7b0718666d94a0275cbe07b286ca8e65150ce1bc0f9470"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-plan.md",
-      "sha256": "8d5c1bd4dbc444cb4d3fc3961428b39192e7fdf7f20af44af50598c8bafd7a1b"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-qa-report.md",
-      "sha256": "66a83f82d1777b96f1e6a620386d71d7f74537e96e1f84428bf0005e6ad1066e"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-technical-overview.md",
-      "sha256": "68e90d2eb1ac9b486e506699b17bfed89f2ad1c17b9697bd71d1e0fec6a8d52b"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-test-notes.md",
-      "sha256": "d4deb4e6e36c61b6bd3e28cd9ff8d103ff35a1f4d9d127a935aadaea7d744227"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-ui-design.md",
-      "sha256": "2a6c8e9cbb796185300e081b87a3569b718615015ae0de91136e79e12eb0d925"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/01-light-editorial.html",
-      "sha256": "bd48d9df406ff915d3fc4b773c39dee65a179df6bd6b4e62b65e68e4b18e2e66"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/02-vibrant-canvas.html",
-      "sha256": "ed10dd481e642ddf070dc1201627719ee58d56c6625ac95f3e2f1b8d9489ce97"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/03-dark-minimal.html",
-      "sha256": "bff19eae2f2cea4eda1475e42a3e704051d2956ddcd0cf91858497a9d62eeb06"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/04-nyx-neon.html",
-      "sha256": "ab2858b6c720d8784dda12d991dc0e2dcb7eaed68abbf83b7dd244220db1c418"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/09-direct-rail.html",
-      "sha256": "b981d6a2dd9fc162c8f398e76c67d51d593a4f997bdb1439c175beb4c72f77b5"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/09-editorial-calm.html",
-      "sha256": "a8890a1bc2062fa35013021017c43c3e51ef134ce582f4543e7de2b6e53dbabf"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/001-initial-architecture/mockups/09-spec-header.html",
-      "sha256": "853cec11eedfec86d8d50b5f912a72a9449f91eb5b15fbcbcefcd0e8774d7b1a"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-changelog.md",
-      "sha256": "bfc08a7f185094f870879004b5f16d44456bdb1f3124cec37f77cfd7b7ef8cd8"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-design.md",
-      "sha256": "969de835dd754bcada46f02c69b30384832a6f543fa049ebcfd219ceb941f727"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-log.md",
-      "sha256": "4c229079e571e2f1ce2eaa74a5ef0691cbd3987499debbb29f758ccc5214c403"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-plan.md",
-      "sha256": "08e8a24137c4538f51944c4769d15edd7bb77a4ca78d10f229a0729106ae456c"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-qa-report.md",
-      "sha256": "9761068e956b0ded8a66ba045c608adf2e2b11402a198b72f446904c4c6c4df7"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-technical-overview.md",
-      "sha256": "726411f26b8faeb93983175598d0c07677347b666f601b22559f678d13c4cbe2"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-test-notes.md",
-      "sha256": "3894419a78b9cd240c0e8c2ed501ed8bb407277041230a566877098a8ee0e9d2"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/002-system-design-studio-ui-design.md",
-      "sha256": "f632d345ec5597989be5978d46e6bb19a265604449f5bd66f18423bf519ba744"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/mockups/01-architecture-canvas.html",
-      "sha256": "81bc3589947140ab5580bb63e07fda9f8a4e529d6f36e86c84db5b3ae43bd9aa"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/mockups/02-studio-workbench.html",
-      "sha256": "68aa4ebe56c2ddb07dabc7329a3a8102cb3e468dbf8e66fbc451384f654c4e97"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/mockups/03-agent-design-loop.html",
-      "sha256": "e9c99cabf6fbf25ff2a6401a79f8c4a2c1a8594a236f09f49bbccd56e13050f5"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/mockups/04-spec-canvas.html",
-      "sha256": "c378a56a208bbf4297d9a5651454a1161fbba3d8c2ff33e833179cd2d5988770"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/002-system-design-studio/mockups/05-studio-canvas.html",
-      "sha256": "ccaec8afdaec6d3deb6c73eee8b76733db95f7ad64d5dd9ef3930f13dc9129ef"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/003-canvas-foundation/003-canvas-foundation-design.md",
-      "sha256": "3d27cac808ec6224053734c721c819b81204fbd22faf09e151124a482130c433"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/003-canvas-foundation/003-canvas-foundation-ui-design.md",
-      "sha256": "bb9f22e273a3d48d9fe973937efd2cdeb4d7881aff0d11cd2092cbd77b291164"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/003-canvas-foundation/mockups/01-nyx-refined.html",
-      "sha256": "855ac37c40d783f0bc510905b5ae6a0feb5b1ae508b758b195f44833ff47733a"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/003-canvas-foundation/mockups/02-blueprint.html",
-      "sha256": "5c79b3340a760c6fca7d0d07484c9ef77a0aa086996d1b662a08d9970e013785"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/003-canvas-foundation/mockups/03-editorial-calm.html",
-      "sha256": "da2bd553082e8d52e183254095eb37f05462d91e2812000f4ba253967303fe90"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/004-generation-loop/004-generation-loop-design.md",
-      "sha256": "695dbff944508d8b22dd2246fa75af0eaa3c124370a9d42d3de4a50a612a3905"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/004-generation-loop/004-generation-loop-ui-design.md",
-      "sha256": "ad42564e90d0a890d066a6b252554c312e1d2e33be0cddf5564f84400ecbe409"
-    },
-    {
-      "category": "flowcode",
-      "path": ".flowcode/plans/004-generation-loop/mockups/01-generation-loop.html",
-      "sha256": "70a15dec8ac7972c0481810056c7496459d321e900631000835617f7c9119511"
+      "sha256": "e3f93af57e4280cd5f8bce8b109edd1966a2f35a8eb6cfc73997be4d22026674"
     },
     {
       "category": "flowcode",
@@ -212,7 +27,7 @@
     {
       "category": "flowcode",
       "path": ".flowcode/plans/plan-instructions.md",
-      "sha256": "a3ec46a25e2eebba739a7b5da713d9e4d401c4995f4a99f29bd0140a8cc13871"
+      "sha256": "13a47e3cf5677e7ea99cc85e7579fa887eb37a9d1a57f8eb0650becc544eb98c"
     },
     {
       "category": "flowcode",
@@ -327,7 +142,7 @@
     {
       "category": "flowcode",
       "path": ".flowcode/templates/changelog-template.md",
-      "sha256": "f420e3b09d637216d321200c58c415a9081eeb0709ebabeeb53c3cf9a11ce14c"
+      "sha256": "017aaef7a17567c099386a9438f55db0d7b367024ab1f4ad9d72430cc9c92490"
     },
     {
       "category": "flowcode",
@@ -352,12 +167,12 @@
     {
       "category": "flowcode",
       "path": ".flowcode/templates/plan-log-template.md",
-      "sha256": "3db0f36b7958dc56df303971215577810d1f4446b226e2426d8246a4eb6600f5"
+      "sha256": "6ea4015e32b341ede22f61cbde1808ccf10a52331fbfa3fb6468b2770a2ae350"
     },
     {
       "category": "flowcode",
       "path": ".flowcode/templates/plan-template.md",
-      "sha256": "3c55b1f292fda8dff4dd4257f6341d6b961d0c26ae5d1420fb4a1addd7d7629d"
+      "sha256": "d4c4990cbe10b0ed7f02b49092b4083273fc906515438ba9d4f90800e4698460"
     },
     {
       "category": "flowcode",
@@ -397,7 +212,7 @@
     {
       "category": "flowcode",
       "path": ".flowcode/templates/templates-index.md",
-      "sha256": "6e962cb652fb76c822f49207b8b2101331351dfaf8566da5ae2bc45b4efba640"
+      "sha256": "c672e65caddf59d5922b3d513760ac57a8d7f7115453d58598c9604af09738fa"
     },
     {
       "category": "flowcode",
@@ -432,17 +247,17 @@
     {
       "category": "flowcode",
       "path": ".flowcode/ui/ui-index.md",
-      "sha256": "74772131ac7c90a45d9567b2193df493e03ad39b3df1b01bcba9630a31fef5c0"
+      "sha256": "f1812d4e868a484b88aeb437085237a14f19f7cb119a9a431bb7ae1236b6ddb1"
     },
     {
       "category": "flowcode",
       "path": ".flowcode/ui/ui-mockup-discipline.md",
-      "sha256": "1dd66a8a61b9e4f9f96ab998fa9a3ab237f8eeda83490fe46f92280ea5732d14"
+      "sha256": "7e7370b88349fc91d69199baaa70ad3d247e60e77e750bbf6dc54a5f840a6ef4"
     },
     {
       "category": "flowcode",
       "path": ".flowcode/ui/ui-workflow.md",
-      "sha256": "1c1a1455e7c3db0800e37fa33dff4678f1a767e82748eb787b8d0147d7bcd3e9"
+      "sha256": "0a09cab1cc0072677fc5c5a1a207688bc1f51bc88c9ef957b5e7451f5bfbdb6e"
     },
     {
       "category": "flowcode",
@@ -462,7 +277,7 @@
     {
       "category": "flowcode",
       "path": ".flowcode/workflow/flowcode-rules.md",
-      "sha256": "1dc86ae4639c96e211dfce9d7d7062cb0f3620b6d77b57f4460b70b966a95f44"
+      "sha256": "a124708c576632892361ed0e1e4c47d647e7250914289dec561f9458a40c1cf8"
     },
     {
       "category": "flowcode",
@@ -472,7 +287,7 @@
     {
       "category": "flowcode",
       "path": ".flowcode/workflow/flowcode-workflow.md",
-      "sha256": "174c925b70e0ee4cfd4162eb30d0733e1d3c65725c02256e51e3297c52d8403e"
+      "sha256": "c3b7016fedf6c194b7df0d5a207b05884b256cee8e10629b43b9400a42c12ec7"
     },
     {
       "category": "flowcode",
@@ -482,22 +297,22 @@
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/artifact-updater-agent.md",
-      "sha256": "b84e52f82136a53bbaa3c63ea6e539f9bdccbac5874fea9958c47e0a147edb6a"
+      "sha256": "781d44a34aa299e13f74beec57e14f62c84d18ea05d988d92a628a31a3635f08"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/bootstrap-agent.md",
-      "sha256": "c69b35b01718c413eaeddb02eda061cc8772b61204511b5019eaab20418911ab"
+      "sha256": "99cf3c4c477c041b32061b7f5e8fd032bffac56fb157695012f1408ce4b90803"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/browser-runner-agent.md",
-      "sha256": "d31b12c056c4416069221bb5e457d9286efb8bd9dff1df6fc88c7d5fab199abb"
+      "sha256": "d8b5944e7cfd508b8f966403c8f6ecca6716208f56a12746d4ce5c9d97fe360a"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/code-explorer-agent.md",
-      "sha256": "5e099a946594dbab2beda27594c597110b282fad8e0e6916a7f6581acced1a80"
+      "sha256": "d633f9de86b032e09684607e4e2138e7de3931e5bfa08ebeef2629ab1d4d449d"
     },
     {
       "category": "claude",
@@ -507,7 +322,7 @@
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/designer-agent.md",
-      "sha256": "7dda2c1b7496f3a01ad8883fe901d2aedbca6e1da406639fdc92cff63ff272c4"
+      "sha256": "191eb99f0bbce7df994836632a190c9652394f59f401d3cb11177f4fad19dfe0"
     },
     {
       "category": "claude",
@@ -517,27 +332,27 @@
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/implementer-agent.md",
-      "sha256": "bea415be629ee1fbfa8aa13c053727a2d059b14e1dd7a756c5f93cf4650ba91a"
+      "sha256": "a76a8cf61072c054a426a7fd560e3d7bd7b0fc2534646429b5ba4f92c673f6cb"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/migrator-agent.md",
-      "sha256": "f936fe6772c3ead57480f13ca2ea22d6668584ab8ab595efd88013edd002ccca"
+      "sha256": "4d1b9ad597b18f9a61ef7a2d4b829bca6fbbcd7aaa7cd1538e25ac8bc87f670b"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/module-explorer-agent.md",
-      "sha256": "6b644b0af099b6247557f4d4a1093283eb342cbe90870b633ce649791b0cba95"
+      "sha256": "01dfd97b4ee11f53d9f1710e8147def319ea9db340a2a53685e6e93fe9f9f6e8"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/planner-agent.md",
-      "sha256": "6f78c4a21c7d4314b09a4e33f2edb21dea18ebe82341f77302320f0f6498d815"
+      "sha256": "e65d586a297b1eaa9499ff59c780fd53e9d08e322e57eaaa4804db5521ee9e74"
     },
     {
       "category": "claude",
       "path": ".claude/agents/flowcode/qa-runner-agent.md",
-      "sha256": "d604072043fece7f5b2a49c5f5524f62d851301fb202de1a905b05b514209d9f"
+      "sha256": "e3ab6099c7cce7ed44ee4f29798c146e5ee8631a3fb003c256ac0abe233b4929"
     },
     {
       "category": "claude",
@@ -547,117 +362,117 @@
     {
       "category": "claude",
       "path": ".claude/hooks/artifact-naming-check.js",
-      "sha256": "fea730dd6714614fd3453dc74b440ebabe12a24508a91d2f404cd3bb2d03dc05"
+      "sha256": "e83ba65ea7c9d38fe7eca7f32618650e989e5693d14008ad05c11065409a20d7"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/feedback-nudge.js",
-      "sha256": "9604ea01786e8e3035da26d201f3b89306e433744bcdd545ba793daf82a73ef9"
+      "sha256": "101450bf8bbbf735e4e20d4a96ff376b8f49888762ce34babf7afc35118b8664"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/frontmatter-summary-check.js",
-      "sha256": "5e4d233f501390c62c1a30e3ba54527ee50a2417dfe69e137535f7a2bc9a3c72"
+      "sha256": "676fcdd0e302d23f9610399952efe11c2b4f6daf8833fba5dcde7b0b5cada099"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/harness-leak-check.js",
-      "sha256": "da46a114ba5b2dc8452c6875d20239f395041d21c362e9d655d39e4f1c8ac511"
+      "sha256": "2bbc5077dc4ad153622fb38e1f09d54fdd78ae622928fbc89c5f691f558a447d"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/markdown-quality-check.js",
-      "sha256": "e01af94d603c079bbd019f5f19a2db6ce2d300750c973bcaed20b75a93089a0f"
+      "sha256": "c1e48899b5dbfd574229af6b21db5aa30c19a5a4afdcfe6204b37c7953a05ee7"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/notify-sound.js",
-      "sha256": "95e87531f9d33c3177f4f4f82476007b1c8a6420cb92cf0e8ae351908002a187"
+      "sha256": "e6fbdd765b4306ac4b7c29a2f15b7a784b00d872296b62230e333f7468b20ba9"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/plan-artifact-index.js",
-      "sha256": "78c816b41ba2f37405d29e4af8de86f8a170f1516b215a5e11b4c323bbe7c415"
+      "sha256": "7ec021653b1bcb7a1c38e3a2da01df3c6ea82ec5a188ca62086e334e637057e3"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/project-log-format-check.js",
-      "sha256": "c2612daeeb7d24ce14ba6202606b6cecc190aa99999569b42bd4a708eecd1703"
+      "sha256": "cfe2f730a100cabc44f361e48c07ebdb543465ccf2d6f9d8a5637ed36479195c"
     },
     {
       "category": "claude",
       "path": ".claude/hooks/qa-probe-gate.js",
-      "sha256": "56972923336cfb0fab98e5e1a7cb409c8c7fcc60b9d44db95631d50859affb8b"
+      "sha256": "232ace5ed5feca7b1ff947e90c1039c8f8b2bd227b8c674bd54ddfe7e27d24fa"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/bootstrap.md",
-      "sha256": "801822709dbb0aeee6a5fe850f0a256b231eb887c1b19fb88ae4fd77a763ff29"
+      "sha256": "b70c72d521381b9f3de63b69964fde2875e0558705c2342efb40757e0cd98f89"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/brainstorm.md",
-      "sha256": "0336eedecda628e05fae3cb6b7cd836501bd8450e8ef18f064bbe6e6701721d5"
+      "sha256": "dafcb1219e5a0e95663b46bc604212b720e19208d519cff8231d9d6f54dac657"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/browser.md",
-      "sha256": "7d192de0d636b6078bb5a812b364403f6bc3f27c269ce8e3c4bccc6a50199aed"
+      "sha256": "cf2d5325c5403d02d09ef3277f2eba84ea093e28a6f355d94b4ce07f369d0b4e"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/contributors.md",
-      "sha256": "066d25a70cf47d04e6281081906beed7752ed8c2f74938d4e895c7c93a0be666"
+      "sha256": "8d5374883f505e9fda98a0dea1895611977958d5f3b87902faf3810c337bb613"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/design.md",
-      "sha256": "59c7993dfc6efdd651e8a637fb4b673ff48451cb6b9145762ec5e9eb5000802a"
+      "sha256": "33d6e35470c2731aa0242b4074a29d538c665b0b84bc6accf99dfd2314339fab"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/docs.md",
-      "sha256": "ff0c641c9e0abdbae7c52fc72ef2c2112a20109b16c4f778fea4107886d728b7"
+      "sha256": "9e156261b64c74703b2689242ee5aec1605dffc110feaa0cbb0b218aab23a98e"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/execute.md",
-      "sha256": "a1a8c9e719eca347448008b0def4773cd9a2e536bc40f128ed02fe994940bfc1"
+      "sha256": "f688c83051ec024a183a3114dad1c7e76ea61d026316a6476fe65f8afa5b8576"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/extend.md",
-      "sha256": "f7fe83bf9bb70efc2be64f220103e4b4e2497d618f258b8c76721c8a535ec9b4"
+      "sha256": "d4bd6fa7d7d92e680dccc2ddc4f73b3d6d8c6e68964ef964cd052b93faac2925"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/feedback.md",
-      "sha256": "da538da0cac291aa2cc202a1b9501e63af4bd2636cb2bdfb4fe6c35b51c0558d"
+      "sha256": "4b7457c2d1cafbcdc89bee0b2f42c8f2946575660f503e929a8f391949300ddc"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/migrate.md",
-      "sha256": "264eda9b38081c86fad1394d7b3458561e07f2100b23453891461ab780db9aea"
+      "sha256": "2ee15299e7bd9720d4768270293059362a749d8fafd70b4112ba2a90886ac986"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/mockup.md",
-      "sha256": "2c088d95f4e7d022799096220d3c3424fd80dc4a5c8500b285e1cace8e8aba87"
+      "sha256": "d7ea76152c3c9df29581b5cdc5e763fa36495650a66859ea5f8834e19cf86493"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/module-doc.md",
-      "sha256": "1359ef3b2672649a07c141070e5b472850bbad42c28128fdf992d1b9fa8b60db"
+      "sha256": "37c31cfcf8b4fcb431bbac70e87898b9df6852d2e9112d5aaa435148bb368e9d"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/plan.md",
-      "sha256": "1eb4855f29ab1d5be808158863307979845bff9ce3edad2920b5523ab15771a3"
+      "sha256": "73f1a659ee4c1b56454a1ee16b16a120de208cf876054cc8a958a045220db0bb"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/reference.md",
-      "sha256": "3f91ece9daffe67f89698fc84f69e0fd2b85ed3c744596813ce466872e0c8e44"
+      "sha256": "6b10922b49a63b86cffc0882a188d5fa96078a81947ad963a8797bdfb7d22d6a"
     },
     {
       "category": "claude",
@@ -667,27 +482,27 @@
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/research.md",
-      "sha256": "8729458a363f6bf80e778c5bfce0f45c21738d1973abbbdbea3d74dac3deaa79"
+      "sha256": "6f97aa239ca8cd84a26cc325f235d49797cffc62976a5432accb0d633e8984c0"
     },
     {
       "category": "claude",
       "path": ".claude/commands/flowcode/review.md",
-      "sha256": "91f0f86133f3e7e56fa0eb738424cb8abd70f2458f22c89e95422b0c1573290e"
+      "sha256": "0ee9509921f7cf873d868e97e32e8d1b41a444095ee3cda16988a59329227f94"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/bootstrap/SKILL.md",
-      "sha256": "8b71928b07bfdb8e386a0ad738954b17cdb7cf20b1ca39e20e61c60d4e578dd8"
+      "sha256": "8caf3a8fbb64a3d9a1d775281dea6de2c9d9769c763a3c4577b51124060cd25f"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/browser/SKILL.md",
-      "sha256": "0d5b6714204887098c769800fd77efb442b18aac71ee96e005fab31f0349cc8b"
+      "sha256": "72eaa564d05eb173385b03b68796147d99b286ef1fc33ba42c71eeeca3aef313"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/browser/references/browser-config.schema.md",
-      "sha256": "54b771ac7cc7bbb820e2890f0bce2bce175bd66a344cc9b43716638d107caaa9"
+      "sha256": "ff29fb7a9cfc11a2231d7c16b466e246e354a31ac4807d9adf64799e7a6ccf20"
     },
     {
       "category": "claude",
@@ -697,32 +512,32 @@
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/browser/references/provisioning.md",
-      "sha256": "73c7b261d3a42307cb75e74cc566429e9639d2d1af754244c341b6330d33e605"
+      "sha256": "1016709f805b4dbb885561f56929aa0c674957add2c09d3d19d0d2e84b0fba66"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/contributors/SKILL.md",
-      "sha256": "6263356eab30660a8fc00bc527a853630fccc777de9f0875cfabf982c4f600d9"
+      "sha256": "c530fed41bbb813c50b22ed8a932e8b4060e0d0aaf9826b57205b8bbe2767949"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/design/SKILL.md",
-      "sha256": "f81219aab9fb30f3407703c776e93e63b6d45c2ac00237207925b3455ff18e49"
+      "sha256": "86e8d60b8c927e1263f9bf6b63308cb4a9b533337f6c81ce557ab9ecc7077b94"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/docs/SKILL.md",
-      "sha256": "12a3dba731bb361b4ad56a5f82a178f8a5204adeccaff9d436d5bb8b07f25627"
+      "sha256": "57816d12dc785638243679106c804908703ca23a5a6d12de5ac0a42382bae876"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/execute/SKILL.md",
-      "sha256": "e9479d54720d3352592a35cdbf1e565f5eb3d683f7e7a76501bb5da4bbd3a021"
+      "sha256": "157265430bdaa23d12b2ece77e276f4f5202250212ed1bd7115ec81be0083b00"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/feedback/SKILL.md",
-      "sha256": "e15f4bc71b01a2bd4f197859530b0a7fb80b2308b0a60b723808430b7c24b9d6"
+      "sha256": "fe602af794cceb673344dada3f5ba497c750fe9e6ae4d85f05ae14abe13df0d3"
     },
     {
       "category": "claude",
@@ -732,32 +547,32 @@
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/module-doc/SKILL.md",
-      "sha256": "4cd1b78ea27be5c65a67fe49e5bd6d69f4b684ac01efb2f4bc0da543fab8dd65"
+      "sha256": "44d14f6830e5fa0c5709ae9bfda254c85a22ae4cb79ba70a1a045ef0b5c23f8c"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/plan/SKILL.md",
-      "sha256": "5560a46e11b1a0d63c6bf3cae35b6a21d26ceb327b7f75650c10f8ac1648253f"
+      "sha256": "f5b74beccbcaa5a37b2c7de49c39b4158de76c2ce6321d66dbc5860d5526ec07"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/reference/SKILL.md",
-      "sha256": "6169faa7ef17ee8a813909c86315afa895a9cf36741e19bc7687ad405a5e0a7e"
+      "sha256": "8983855d161be087fa5f192551030981d5ad21c9024b136ec0f9dfad5a2222e8"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/research/SKILL.md",
-      "sha256": "77389679444e7ad84a53a3cce9bc7090c305da6b1d2c696a5db10091b2f72a85"
+      "sha256": "4b36feba4c4119914a92c63a087076756fdea2608a201e5d95c37d03f068a54b"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/review/SKILL.md",
-      "sha256": "94df7ecedd4b8a0d947d58823cbbc65deb69d3ac6bcbeea8875454e089b7547a"
+      "sha256": "051f5d9b8e5466f8ab601c109f745aae6ff06f4cd95c3a2d48dea62ef643b160"
     },
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/ui-mockups/SKILL.md",
-      "sha256": "ff7753828e0e8ded3beb316aee6cdadf61324ba780ee5bd23665bf70cb96ef29"
+      "sha256": "236576ee8073c88ccdc16c60c827a835746fcf66cb088dbd0ec2527ecdbfec17"
     },
     {
       "category": "claude",
@@ -767,7 +582,7 @@
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/ui-mockups/references/quality-checklist.md",
-      "sha256": "00aae084b4c9c1e41b9e948c436cbcdd8284d30b79b0ad7dca34d06b8481149f"
+      "sha256": "91a10753cd25c802b185a74e32c372c8498986344a53b3ba7bb4fccf4a86aca0"
     },
     {
       "category": "claude",
@@ -977,7 +792,73 @@
     {
       "category": "claude",
       "path": ".claude/skills/flowcode/ui-mockups/references/taste/taste-skills-index.md",
-      "sha256": "f19c286246991a454d99271ecb65797c8bc954198b868992727b0f1018e1ed83"
+      "sha256": "47e96185fb14b4890c04e300bf7e0f3f90bd49024385b416fd033940d37ce242"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/agents/flowcode/evaluator-agent.md",
+      "sha256": "56e803ca405c9e3cfa814558bfed9faafbac7f96de79f2c097b68f0320ef3c4c"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/evaluate.md",
+      "sha256": "3ce444318ff072f5bc6b570d3386e935b5b030924ef3cb059cea9e80cec85e08"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/commands/flowcode/revise.md",
+      "sha256": "eb28eba385aecda772216b81f6409713133b0dd5b275d13c9152e26055929474"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/evaluate/SKILL.md",
+      "sha256": "c570588dd090655988be6f7e1e7fd8dafd282462104df738fe3bb6dbadecac5f"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/revise/SKILL.md",
+      "sha256": "dc97318ad871a159eec7394903ffa8504f179f65c185fb1402de0966fff15269"
+    },
+    {
+      "category": "claude",
+      "path": ".claude/skills/flowcode/ui-mockups/references/state-switcher-exemplar.html",
+      "sha256": "49f9e7498b1a4194534312a94fea0325c0aa15598a36fa819152ae640e298272"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/changelog-archive.md",
+      "sha256": "a9a5f50ee6c5e534e3884527f807c04b50b8751596166ee15275d5abc15a7802"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/eval/eval-artifacts.js",
+      "sha256": "9519fc3751ecb63a6bff1ec743dd5e59e9ad3cbfa9a263ed216231064a0034da"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/eval/eval-hooks-log.js",
+      "sha256": "c0cfed772b7dc0816b5f4c37a2dd7f45edf9f8f89ed0c357da93feeda57a8568"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/eval/eval-index.md",
+      "sha256": "0748101f2056c9a4586391155d1288132d08bc0b6deabb47a9e8a52b59b2bd95"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/eval/flowcode-eval.js",
+      "sha256": "881e826c3ad74077f99bda949289627aef1518046f6f5c6968b2efc71a898b33"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/plans/plan-execution.md",
+      "sha256": "914260d9ecf885675d5d1d726321d08f7242a8aa211de7759e13242ffc163bba"
+    },
+    {
+      "category": "flowcode",
+      "path": ".flowcode/templates/evaluation-report-template.md",
+      "sha256": "f2c2a9bf32d75fa18102a590b33f7f966c0339983afda331bd2c96c1708fd6e4"
     }
-  ]
+  ],
+  "migrated_at": "2026-06-29T21:38:59Z"
 }

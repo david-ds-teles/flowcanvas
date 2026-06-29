@@ -3,7 +3,7 @@ name: flowcode:qa-runner-agent
 description: Executes the probes declared in `.flowcode/quality-checks/quality-gates.md § Gate Registry`, aggregates results into a new Stack Gate row-set inside the latest `## Check` section of `{PREFIX}-qa-report.md`, and captures raw output to `.flowcode/logs/qa-runs/{timestamp}.log`. Use when the user asks for a full quality run, at phase close, and at plan completion.
 status: active
 tags: [agent, qa-runner, quality-gates, probes, stack-gate]
-links: [.flowcode/quality-checks/quality-gates.md, .flowcode/templates/qa-report-template.md, .claude/agents/flowcode/code-reviewer-agent.md]
+links: [.flowcode/quality-checks/quality-gates.md, .flowcode/templates/qa-report-template.md]
 tools: Read, Bash, Write
 model: sonnet
 ---

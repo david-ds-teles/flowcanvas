@@ -3,7 +3,7 @@ name: taste-skills-index
 description: Router for the vendored taste lenses — maps a UI brief's register/intent to the one or two taste references the composer should read before generating.
 status: active
 tags: [ui, taste, mockups, router, index]
-links: [.claude/skills/flowcode/ui-mockups/SKILL.md, .flowcode/ui/ui-design-system.md]
+links: [.flowcode/ui/ui-design-system.md]
 ---
 
 # Taste Lenses Index

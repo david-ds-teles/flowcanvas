@@ -3,7 +3,7 @@ name: quality-checklist
 description: The Step-5 conformance gate for every generated mockup — mirrors the design system's §13. A failure on any line means revise, do not present.
 status: active
 tags: [ui, mockups, checklist, quality-gate, conformance]
-links: [.claude/skills/flowcode/ui-mockups/SKILL.md, .flowcode/ui/ui-design-system.md, .flowcode/ui/ui-mockup-discipline.md]
+links: [.flowcode/ui/ui-design-system.md, .flowcode/ui/ui-mockup-discipline.md]
 ---
 
 # Mockup Conformance Checklist
@@ -33,6 +33,22 @@ links: [.claude/skills/flowcode/ui-mockups/SKILL.md, .flowcode/ui/ui-design-syst
 - [ ] Every **declared state** (empty · loading · success · error · edge cases) is rendered and reachable.
 - [ ] Every **declared breakpoint** is handled (or one provably-fluid layout covers them).
 - [ ] **Real example data** in the markup — no lorem; empty placeholders only where the state is `empty`.
+
+## Fidelity (snapshot the real system)
+
+Derived from `ui-mockup-discipline.md § Fidelity` (the gate, defined there). Its two authoring-process rules — *snapshot first* and *apply all changes at once* — are followed while building, not verified as post-creation checkboxes; the remaining rules are checked here.
+
+- [ ] **Reuses the real render** when the design is implemented — verbatim tokens + component CSS + real board, not abstract HTML invented for a UI that already runs.
+- [ ] **Markdown rendered**, never the raw `##` / `*` / backtick tag shown as text.
+- [ ] **Real data**, not fabricated — fake data only where a state is explicitly `empty`.
+- [ ] **Fidelity bar met** — self-contained, renders every state via the statebar, ~50–110 KB for a full screen (not a ~15 KB abstract sketch).
+- [ ] **Render-verified** — screenshotted and confirmed to render before the user sees it.
+- [ ] **State-switcher form** — one statebar over one complete render (`MOCKUP CONTROLS` → `body[data-state]`), not N duplicated full-board frames.
+
+### Set-level (checked across all three mockups, not per-iteration)
+
+- [ ] **Completeness invariant** — every UI/UX element the design defines (toolbar, chat widget, every menu) is present in **all three** mockups; they differ in fidelity/exploration degree, never in which elements exist.
+- [ ] **Distinctness rule** — no two of the three are recolors or near-duplicates; each reads as a genuinely different composition.
 
 ## Craft (taste lenses)
 

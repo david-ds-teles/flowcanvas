@@ -3,7 +3,7 @@ name: flowcode:migrate
 description: The supported upgrade path — runs the deterministic delta engine (migrate-plan.js) to bring an existing install to the current framework spec by touching only the files that changed, and dispatches flowcode:migrator-agent only when there is judgment work (a host edit to harvest or a non-inferable Migration block).
 status: active
 tags: [migrate, upgrade, delta, manifest, command]
-links: [.claude/agents/flowcode/migrator-agent.md, .flowcode/changelog.md, framework-manifest.json]
+links: [.flowcode/changelog.md, .flowcode/framework-manifest.json]
 argument-hint: "[--source <path>] [--force] [--dry-run]"
 ---
 
@@ -76,7 +76,7 @@ Do **not** spawn a sub-agent. If `--dry-run`, print the plan and stop. Otherwise
 node <source>/migrate-plan.js --root <project-root> --source <source> --apply --merge-hooks --restamp [--force]
 ```
 
-This copies the added/changed framework files, removes any dropped ones, merges new hook registrations into `.claude/settings.json`, and restamps `install-manifest.json` to the new version.
+This copies the added/changed framework files, removes any dropped ones, merges new hook registrations into the harness settings file, and restamps `install-manifest.json` to the new version.
 
 ### Step 4 — Log and report
 
@@ -98,6 +98,6 @@ Then report to the user: the `from → to` version, the added/changed/removed co
 ### Non-Goals
 
 - Do not run for a first-time install — that is `flowcode-install.js`. If `.flowcode/install-manifest.json` is absent, tell the user to install first.
-- Do not modify host source code or anything outside `.flowcode/` and `.claude/`.
+- Do not modify host source code or anything outside `.flowcode/` and the harness agent-tools dir.
 - Do not overwrite or remove a host-edited framework file without first harvesting the edit (the agent path handles this; the no-LLM path only runs when there are no host edits).
 - Do not spawn the sub-agent when the plan says `needsAgent == false` — the script does the whole job.

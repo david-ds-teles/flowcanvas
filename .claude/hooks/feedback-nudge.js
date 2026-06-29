@@ -142,7 +142,15 @@ function logOutcome(outcome) {
       '-',
       outcome,
     ].join('\t') + '\n';
-    fs.appendFileSync(path.join(logDir, 'hooks.log'), line);
+    const logPath = path.join(logDir, 'hooks.log');
+    // Bound runaway growth: at ~2 MB drop the oldest half (keeps the recent telemetry the eval layer reads).
+    try {
+      if (fs.statSync(logPath).size > 2000000) {
+        const kept = fs.readFileSync(logPath, 'utf8');
+        fs.writeFileSync(logPath, kept.slice(Math.floor(kept.length / 2)).replace(/^[^\n]*\n/, ''));
+      }
+    } catch (_) { /* first write / stat miss — ignore */ }
+    fs.appendFileSync(logPath, line);
   } catch (_) {
     // Logging is best-effort; never block a hook on it.
   }

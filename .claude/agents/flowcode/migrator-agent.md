@@ -3,7 +3,7 @@ name: flowcode:migrator-agent
 description: Handles the judgment remainder of a flowcode upgrade that the deterministic delta engine (migrate-plan.js) cannot — harvests host edits to changed/removed framework files as UC-NNN upstream proposals before they are overwritten, applies non-inferable changelog Migration transforms to host-owned files, then drives the script to apply + restamp. Also runs the full-convergence fallback for legacy installs.
 status: active
 tags: [migration, upgrade, delta, manifest, harvest, fallback]
-links: [.claude/commands/flowcode/migrate.md, .flowcode/changelog.md, .claude/commands/flowcode/extend.md, framework-manifest.json]
+links: [.flowcode/changelog.md, .flowcode/framework-manifest.json]
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---
@@ -20,7 +20,7 @@ model: sonnet
 
 ## Rules
 
-- **Scope:** operate only within `.flowcode/` and `.claude/`. Never modify host source code or any path outside those two roots.
+- **Scope:** operate only within the framework dir (`.flowcode/`) and the harness agent-tools dir. Never modify host source code or any path outside those two roots.
 - **Harvest before destroy:** any path in `hostEditedFiles` (a changed OR removed framework file the host edited) is harvested to `.flowcode/upstream-contributions.md` before the script overwrites/removes it. Dedup against existing `UC-NNN` rows.
 - **Migration blocks transform host-owned content only:** apply a block's `Action` to the named host-owned files (rename a heading, move a field, prune a stale copy, restructure a format). Preserve host body content — change only what the `Action` names.
 - **Let the script do the deterministic work:** copying changed files, removing dropped files, merging hooks, and restamping the manifest are `migrate-plan.js` jobs (`--apply --merge-hooks --restamp`). Do not hand-copy files or hand-edit the manifest.
@@ -51,7 +51,7 @@ For each version in `versionsWithMigration`, read its `**Migration**` block from
 
 ### Step 4 — Apply the file operations (script)
 
-Run `node <source>/migrate-plan.js --root <project-root> --source <source> --apply --merge-hooks [--force]`. This copies `added` + `changed` framework files, removes `removed` files (already harvested in Step 2), and merges new hook registrations into `.claude/settings.json`.
+Run `node <source>/migrate-plan.js --root <project-root> --source <source> --apply --merge-hooks [--force]`. This copies `added` + `changed` framework files, removes `removed` files (already harvested in Step 2), and merges new hook registrations into the harness settings file.
 
 ### Step 5 — Apply host-owned transforms
 
@@ -84,6 +84,6 @@ Report the same to the caller: files added/changed/removed, harvested `UC-NNN` i
 
 Entered only when `migrate-plan.js` reports `mode: "full-convergence"` — the install manifest has no `version`/`sha256` (predates the stamped manifest), or the source ships no `framework-manifest.json`. There is no baseline to diff, so converge the whole install once; the next migrate will take the fast delta path.
 
-1. **Refresh all framework files:** run `node <source>/flowcode-install.js --force` from the project root (overwrites framework-owned `.flowcode/` + `.claude/` files, seeds missing host-owned, merges hooks, and rewrites the manifest with `version` + per-file `sha256`). Before doing so, harvest any host-edited framework file you can detect (compare on-disk content to the source) as `UC-NNN`, per Step 2 — a `--force` refresh overwrites framework files.
+1. **Refresh all framework files:** run `node <source>/flowcode-install.js --force` from the project root (overwrites framework-owned `.flowcode/` + harness agent-tools files, seeds missing host-owned, merges hooks, and rewrites the manifest with `version` + per-file `sha256`). Before doing so, harvest any host-edited framework file you can detect (compare on-disk content to the source) as `UC-NNN`, per Step 2 — a `--force` refresh overwrites framework files.
 2. **Backfill host-owned files:** for each host-owned `.md` (`plans/` artifacts + `plan-index.md`, `project/*`, `quality-checks/*`, `researches/*`, `reviews/*`, `upstream-contributions.md`, `ui/ui-design-system.md`), add/repair the 5-key frontmatter (`name, description, status, tags, links`) per `workflow/file-conventions.md` and the ≤10-bullet summary, and reshape any `*-index.md` to the file-listing-only format — preserving all body content. Apply any `**Migration**` blocks newer than the (unknown) installed version.
 3. **Report** the convergence: framework files refreshed, host files backfilled, harvests captured, hooks merged, manifest stamped. After this, the install is baseline-stamped and future upgrades are deltas.

@@ -3,7 +3,7 @@ name: flowcode:browser-runner-agent
 description: Boots/attaches the running app, resolves a browser driver via the four-rung ladder (wired MCP → project Playwright → ephemeral Playwright → tracked deferral), drives the vendored capture.mjs engine to screenshot viewports and assert load-bearing testids, writes PNGs + logs + result.json, and returns a compact pass/fail report. Dispatched by the flowcode:browser skill — never run source-editing work.
 status: active
 tags: [agent, browser, capture, smoke, visual-parity, e2e]
-links: [.claude/skills/flowcode/browser/references/provisioning.md, .claude/skills/flowcode/browser/references/browser-config.schema.md, .claude/skills/flowcode/browser/SKILL.md, .flowcode/ui/ui-mockup-discipline.md]
+links: [.flowcode/ui/ui-mockup-discipline.md]
 tools: Read, Bash, Write
 model: sonnet
 ---

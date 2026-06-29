@@ -4,12 +4,12 @@ description: Fuzzy-idea entry to a design session — turn an unformed idea into
 status: active
 tags: [command, brainstorm, design, scope, ideation]
 argument-hint: "<fuzzy idea or topic>"
-links: [.claude/skills/flowcode/design/SKILL.md, .claude/commands/flowcode/design.md, .flowcode/plans/plan-index.md]
+links: [.flowcode/plans/plan-index.md]
 ---
 
 # /flowcode:brainstorm
 
-- Thin entry point: loads and runs the shared `flowcode:design` skill at `.claude/skills/flowcode/design/SKILL.md` — the same engine `/flowcode:design` runs. This command is the fuzzy-idea framing (the skill's Mode A).
+- Thin entry point: loads and runs the shared `flowcode:design` skill — the same engine `/flowcode:design` runs. This command is the fuzzy-idea framing (the skill's Mode A).
 - Conversational, main-session: silent parallel context-gather, clarifying questions one at a time, section-by-section approval — never a single dumped draft.
 - Turns the idea into an approved scope, writes the upper sections of `{PREFIX}-design.md`, registers the plan, and dispatches `flowcode:designer-agent` (gap-fill) to deepen the technical sections.
 - Hands off to the design final-review gate; the planner is **user-gated and never auto-chained**.
@@ -40,7 +40,7 @@ Examples:
 
 You are running a design session from a fuzzy idea.
 
-Load `.claude/skills/flowcode/design/SKILL.md` and execute its procedure in **Mode A** (fuzzy idea → full clarifying conversation). Treat `$ARGUMENTS` as the topic; if empty, prompt inline. Run in the main session; end at the final review gate; do **not** auto-chain `/flowcode:plan`.
+Run the `flowcode:design` skill and execute its procedure in **Mode A** (fuzzy idea → full clarifying conversation). Treat `$ARGUMENTS` as the topic; if empty, prompt inline. Run in the main session; end at the final review gate; do **not** auto-chain `/flowcode:plan`.
 
 ## Non-Goals
 

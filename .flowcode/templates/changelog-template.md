@@ -42,7 +42,7 @@ links: [.flowcode/plans/{PREFIX}/{PREFIX}-plan.md, .flowcode/plans/{PREFIX}/{PRE
 
 ## Phase N — {Phase Name}
 
-{Append a `## Phase N — {Phase Name}` section at the close of each phase. See `plan-instructions.md § Phase Close Sequence` step 3.}
+{Append a `## Phase N — {Phase Name}` section at the close of each phase. See `plan-execution.md § Phase Close Sequence` step 5.}
 
 ---
 

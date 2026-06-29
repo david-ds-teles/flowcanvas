@@ -4,12 +4,12 @@ description: Standalone slash command to generate high-quality, self-contained H
 status: active
 tags: [command, ui, mockups, screens, standalone, design]
 argument-hint: "<screen/feature description> [--out <dir>] [--states ...] [--breakpoints ...]"
-links: [.claude/skills/flowcode/ui-mockups/SKILL.md, .flowcode/ui/ui-design-system.md, .flowcode/ui/ui-mockup-discipline.md, .flowcode/ui/ui-workflow.md]
+links: [.flowcode/ui/ui-design-system.md, .flowcode/ui/ui-mockup-discipline.md, .flowcode/ui/ui-workflow.md]
 ---
 
 # /flowcode:mockup
 
-- Thin entry point: loads and runs the shared composer skill at `.claude/skills/flowcode/ui-mockups/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:ui-mockups` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — generate or iterate any screen/page/component as self-contained HTML anytime.
 - Always grounded: reads `.flowcode/ui/ui-design-system.md` first; if none exists, offers to harvest/generate one before producing HTML (never ungrounded/subjective output).
 - Produces 3 iterations per `ui-mockup-discipline.md`, each covering every declared state × breakpoint, with `data-testid` on every interactive element.
@@ -49,7 +49,7 @@ Examples:
 
 You are generating UI mockups on demand.
 
-Load `.claude/skills/flowcode/ui-mockups/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the brief: the leading text is the screen/feature description; parse optional `--out`, `--states`, `--breakpoints` flags.
+Run the `flowcode:ui-mockups` skill and execute its procedure. Treat `$ARGUMENTS` as the brief: the leading text is the screen/feature description; parse optional `--out`, `--states`, `--breakpoints` flags.
 
 Resolve the output directory:
 - If `--out` is given, use it.

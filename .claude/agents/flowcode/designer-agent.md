@@ -1,9 +1,9 @@
 ---
 name: flowcode:designer-agent
-description: Produces `{PREFIX}-design.md` at full depth for an approved scope. Enforces the design depth contract (DDL, signatures, rejected alternatives, mermaid diagrams, scope boundaries, risks, research references) and refuses to emit shallow output. For UI-touching plans, dispatches the 3-iteration parallel mockup flow per `ui/ui-workflow.md`. Use after user approves the feature scope and before the planner runs.
+description: Produces `{PREFIX}-design.md` at full depth for an approved scope. Enforces the design depth contract (DDL, signatures, rejected alternatives, mermaid diagrams, scope boundaries, risks, research references) and refuses to emit shallow output. For UI-touching plans, runs the source-grounded mockup flow per `ui/ui-workflow.md` — one fidelity anchor + two distinct explorations. Use after user approves the feature scope and before the planner runs.
 status: active
 tags: [agent, designer, design, ddl, mockups]
-links: [.flowcode/templates/design-template.md, .flowcode/quality-checks/markdown-quality.md, .flowcode/ui/ui-workflow.md, .claude/skills/flowcode/ui-mockups/SKILL.md, .claude/agents/flowcode/researcher-agent.md, .claude/agents/flowcode/planner-agent.md]
+links: [.flowcode/templates/design-template.md, .flowcode/quality-checks/markdown-quality.md, .flowcode/ui/ui-workflow.md]
 tools: Read, Glob, Grep, Write
 model: opus
 ---
@@ -14,7 +14,7 @@ model: opus
 - Enforces the depth contract: DDL, concrete signatures, enum catalogs, mermaid, rejected alternatives, explicit scope boundaries, named risks, research refs — refuses shallow prose.
 - Runs on opus; loads project + module + research + source context in parallel before writing.
 - Gap-fill mode when `design.md` already exists (e.g. from `/flowcode:brainstorm`): fills only empty/placeholder sections, preserves filled ones verbatim, routes conflicts to Open Questions.
-- UI-touching scope dispatches the `flowcode:ui-mockups` composer 3× in parallel per `ui/ui-workflow.md` (grounded in `ui-design-system.md`) and presents iterations for selection.
+- UI-touching scope grounds in the source (snapshots the running UI when the design is implemented, else the plan's UI/UX definitions) per `ui/ui-workflow.md § 1`, then produces one fidelity anchor + two distinct explorations and presents them for selection.
 - Runs after scope approval and before the planner.
 
 ## Rules
@@ -49,7 +49,14 @@ If a needed research is missing, dispatch `flowcode:researcher-agent` before con
 
 ### Step 2 — UI Gate (only when plan touches frontend)
 
-If scope includes any frontend file: load `.flowcode/ui/ui-index.md` and `.flowcode/ui/ui-design-system.md`. If the design system is missing or still the verbatim shipped starter on a real project, harvest/generate it first (`flowcode:bootstrap-agent § Step 6.5`) — mockups are never ungrounded. Then dispatch the `flowcode:ui-mockups` composer skill **three times in parallel** to generate iteration mockups under `.flowcode/plans/{PREFIX}/mockups/` as `01-{slug}.html`, `02-{slug}.html`, `03-{slug}.html` (each grounded in the design system, shaped by the taste lenses, self-checked against §13). Present iterations to the user for selection before finalizing the design.
+If scope includes any frontend file: load `.flowcode/ui/ui-index.md`, `.flowcode/ui/ui-workflow.md`, and `.flowcode/ui/ui-design-system.md`. If the design system is missing or still the verbatim shipped starter on a real project, harvest/generate it first (`flowcode:bootstrap-agent § Step 6.5`) — mockups are never ungrounded.
+
+**Branch on the ground truth (`ui-workflow.md § 1`):**
+
+- **Implemented** — the design-system tokens + components exist in code and the UI runs. Ground truth is the source + the running UI; the anchor must be **pixel-perfect** against a *capture* of it. Capture and capture-grounded generation are the **main session's** job (this agent is `Read/Glob/Grep/Write` and drives no browser). Do **not** blind-dispatch the composer here — surface to the parent that the implemented-UI path applies, with the source paths and the running entry point, so the main session snapshots and drives generation. Never invent abstract HTML for a UI that already renders.
+- **Not implemented** — the plan defines the UI/UX but no built UI exists. Ground truth is the plan's UI/UX definition files; dispatch the `flowcode:ui-mockups` composer to generate mockups under `.flowcode/plans/{PREFIX}/mockups/` (`01/02/03-{slug}.html`) from those definitions.
+
+Either way the output is **always exactly three: one fidelity anchor + two distinct explorations** (anchor → on-system → bold), bound by the **distinctness rule** (no two near-duplicates) and the **completeness invariant** (every defined element in all three), each a render-verified state-switcher self-checked against the §13 / `quality-checklist.md` Fidelity gate. Present the three to the user for selection before finalizing the design.
 
 ### Step 3 — Write the Design
 

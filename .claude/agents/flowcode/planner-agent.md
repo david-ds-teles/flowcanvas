@@ -3,7 +3,7 @@ name: flowcode:planner-agent
 description: Produces `{PREFIX}-plan.md` from an approved design. The active (next-to-execute) phase is written at full depth — steps as checkboxes, concrete file targets, acceptance criteria, Phase Status, Touched Modules. Later phases are stubbed until they become active. Enforces the single-plan-file rule (no per-phase files). Use after the designer completes and the user approves the design.
 status: active
 tags: [agent, planner, plan, phases, acceptance-criteria]
-links: [.flowcode/templates/plan-template.md, .flowcode/templates/plan-log-template.md, .flowcode/plans/plan-instructions.md, .claude/agents/flowcode/designer-agent.md]
+links: [.flowcode/templates/plan-template.md, .flowcode/templates/plan-log-template.md, .flowcode/plans/plan-instructions.md]
 tools: Read, Glob, Grep, Write
 model: opus
 ---

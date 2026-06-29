@@ -3,12 +3,12 @@ name: flowcode:bootstrap
 description: Initialize flowcode for the current project (or re-bootstrap a stale one) by exploring the codebase and generating the knowledge base — project-overview, deep per-module docs, quality gates, project tools, and the UI design system for frontend projects. Runs the `flowcode:bootstrap` skill.
 status: active
 tags: [command, bootstrap, initialization, project-overview]
-links: [.claude/skills/flowcode/bootstrap/SKILL.md, .claude/agents/flowcode/bootstrap-agent.md, .flowcode/project/project-overview.md, .claude/commands/flowcode/design.md]
+links: [.flowcode/project/project-overview.md]
 ---
 
 # /flowcode:bootstrap
 
-- Thin entry point: loads and runs the shared `flowcode:bootstrap` skill at `.claude/skills/flowcode/bootstrap/SKILL.md` — the procedure lives in the skill (which dispatches `flowcode:bootstrap-agent`), not here.
+- Thin entry point: loads and runs the shared `flowcode:bootstrap` skill — the procedure lives in the skill (which dispatches `flowcode:bootstrap-agent`), not here.
 - Produces a fully populated `project-overview.md` with details modules, technology stack, one **deep** `modules/{name}.md` per module (via `flowcode:module-explorer-agent`), 
   detected quality gates, 
   project tools, stack-specific code-quality conventions, and (frontend) the UI design system.
@@ -36,7 +36,7 @@ No arguments. The session guides you if input is needed (e.g. a new project with
 
 You are bootstrapping the project.
 
-Load `.claude/skills/flowcode/bootstrap/SKILL.md` and execute its procedure. It will check whether bootstrap is warranted, dispatch `flowcode:bootstrap-agent` (model **sonnet**) against the project root, surface the greenfield gate if the stack can't be detected, and relay the report. After completion, point the operator at `/flowcode:design` to start the first plan.
+Run the `flowcode:bootstrap` skill and execute its procedure. It will check whether bootstrap is warranted, dispatch `flowcode:bootstrap-agent` (model **sonnet**) against the project root, surface the greenfield gate if the stack can't be detected, and relay the report. After completion, point the operator at `/flowcode:design` to start the first plan.
 
 ## Non-Goals
 

@@ -4,12 +4,12 @@ description: Standalone slash command to execute or resume an active plan — dr
 status: active
 tags: [command, execute, continue-plan, phases, standalone]
 argument-hint: "<PREFIX>"
-links: [.claude/skills/flowcode/execute/SKILL.md, .claude/commands/flowcode/plan.md, .flowcode/plans/plan-instructions.md]
+links: [.flowcode/plans/plan-instructions.md]
 ---
 
 # /flowcode:execute
 
-- Thin entry point: loads and runs the shared `flowcode:execute` skill at `.claude/skills/flowcode/execute/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:execute` skill — the procedure lives in the skill, not here.
 - **Resume-safe:** the same command starts a fresh `active` plan or continues a paused/interrupted one — it reads `{PREFIX}-log.md` + the plan's phase statuses to find exactly where to pick up.
 - Runs each phase through `plan-instructions.md`'s ordered Phase Close Sequence (code review → cleanup → gates → visual parity → changelog → log + status), dispatching `flowcode:code-reviewer-agent`, `flowcode:qa-runner-agent`, and `flowcode:artifact-updater-agent` at the points it names.
 - Stops on any Halt Condition and surfaces options — no autonomous recovery.
@@ -40,7 +40,7 @@ Examples:
 
 You are executing or resuming a plan.
 
-Load `.claude/skills/flowcode/execute/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the `{PREFIX}`; if empty, resolve the active plan from `.flowcode/plans/plan-index.md`. Detect the resume point from `{PREFIX}-log.md` + the plan's phase statuses, then drive phases per `plan-instructions.md` — never skip or reorder the Phase Close Sequence, never flip a phase `done` with unresolved `≥ medium` findings or red gates, and halt-and-surface on any Halt Condition. Run the Post-Execution Pipeline after the final phase closes.
+Run the `flowcode:execute` skill and execute its procedure. Treat `$ARGUMENTS` as the `{PREFIX}`; if empty, resolve the active plan from `.flowcode/plans/plan-index.md`. Detect the resume point from `{PREFIX}-log.md` + the plan's phase statuses, then drive phases per `plan-instructions.md` — never skip or reorder the Phase Close Sequence, never flip a phase `done` with unresolved `≥ medium` findings or red gates, and halt-and-surface on any Halt Condition. Run the Post-Execution Pipeline after the final phase closes.
 
 ## Non-Goals
 

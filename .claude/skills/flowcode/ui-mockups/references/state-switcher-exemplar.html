@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Flowcode state-switcher exemplar — the single concrete reference an agent pattern-matches
+  instead of improvising a mockup output form. Generalized from flowcanvas plan 003's accepted
+  mocks; stack-agnostic; built ONLY on the shipped ui-design-system.md starter tokens (never a
+  host's literal board).
+
+  What it demonstrates (the plan-011 output discipline):
+    1. STATE-SWITCHER FORM — one interactive mockup with a `MOCKUP CONTROLS` bar of
+       data-go="{state}" buttons that flip body[data-state="{state}"]. NOT N duplicated
+       full-board frames concatenated into one giant file (the form that stalled UC-003).
+    2. COMPLETENESS INVARIANT — the SAME complete render in every state: header, sidebar,
+       board, every card, the right detail panel, AND the bottom assistant widget are present
+       in the DOM in all six states. States only DIM / EMPHASIZE / reveal an overlay; they
+       never add or remove which elements exist. Every state is independently validatable
+       against the full feature set.
+    3. RENDERED MARKDOWN, REAL DATA — the detail panel and reader render FORMATTED html
+       (headings, bold, lists, code), never literal `##` / `*` source (UC-002), over realistic
+       content (not lorem).
+    4. The MOCKUP CONTROLS bar is explicitly marked "not part of the product" so it is never
+       mistaken for a real component.
+
+  Self-contained: system fonts, token CSS vars, inline SVG + CSS, no CDN, no external file.
+  Every interactive element carries data-testid. States: overview · select · detail · comment ·
+  command · reader — the constant board held against a varying spotlight (003's exact shape).
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowcode State-Switcher Exemplar — Workspace</title>
+<style>
+  :root{
+    /* §2 primitives (verbatim from ui-design-system.md starter) */
+    --white:#fff; --neutral-50:#f8fafc; --neutral-100:#f1f5f9; --neutral-200:#e2e8f0;
+    --neutral-300:#cbd5e1; --neutral-500:#64748b; --neutral-700:#334155; --neutral-900:#0f172a;
+    --accent-600:#4f46e5; --accent-700:#4338ca; --accent-50:#eef2ff;
+    --success:#16a34a; --success-bg:#dcfce7; --warning:#d97706; --warning-bg:#fef3c7;
+    --error:#dc2626; --error-bg:#fee2e2; --info:#2563eb;
+    /* §2.2 semantic aliases */
+    --bg-app:var(--neutral-50); --bg-surface:var(--white); --bg-subtle:var(--neutral-100);
+    --text-primary:var(--neutral-900); --text-body:var(--neutral-700); --text-muted:var(--neutral-500);
+    --border-default:var(--neutral-200); --border-strong:var(--neutral-300);
+    --accent:var(--accent-600); --accent-hover:var(--accent-700); --focus-ring:var(--accent-600);
+    /* §3 type */ --font-caption:12px; --font-body:14px; --font-base:16px; --font-title:20px; --font-h1:30px;
+    /* §4 spacing */ --space-page:24px; --space-card:16px; --gap:16px; --gap-tight:8px;
+    --field-height:40px; --container-max:1200px;
+    /* §5 radii + elevation */ --radius-sm:6px; --radius:8px; --radius-lg:12px; --radius-pill:999px;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.10);
+    --shadow-md:0 4px 6px rgba(15,23,42,.07),0 2px 4px rgba(15,23,42,.06);
+    --shadow-lg:0 10px 15px rgba(15,23,42,.10),0 4px 6px rgba(15,23,42,.05);
+    /* §10 motion */ --ease-out:cubic-bezier(.23,1,.32,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; height:100%}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:var(--font-body); line-height:1.5; color:var(--text-body); background:var(--bg-app);
+  }
+  a{color:inherit}
+
+  /* ============================================================
+     Layout shell (§7) — header + sidebar + workspace + detail panel
+     ============================================================ */
+  .app{
+    display:grid;
+    grid-template-columns:240px 1fr 340px;
+    grid-template-rows:64px 1fr;
+    height:100vh;
+    transition:opacity 200ms var(--ease-out), filter 200ms var(--ease-out);
+  }
+  .header{
+    grid-column:1 / -1; grid-row:1; display:flex; align-items:center; gap:var(--gap);
+    height:64px; padding:0 var(--space-page); background:var(--bg-surface);
+    border-bottom:1px solid var(--border-default); z-index:30;
+  }
+  .brand{display:flex; align-items:center; gap:var(--gap-tight); font-weight:600; color:var(--text-primary)}
+  .brand .mark{width:28px; height:28px; border-radius:var(--radius-sm); background:var(--accent); display:grid; place-items:center; color:#fff; font-weight:700}
+  .search{
+    margin-left:24px; display:flex; align-items:center; gap:var(--gap-tight);
+    height:36px; padding:0 12px; background:var(--bg-subtle); border:1px solid var(--border-default);
+    border-radius:var(--radius); color:var(--text-muted); min-width:280px; max-width:420px; flex:1;
+  }
+  .search svg{width:18px; height:18px; flex:none}
+  .search input{border:0; background:transparent; outline:none; font:inherit; color:var(--text-body); width:100%}
+  .search kbd{font:inherit; font-size:11px; color:var(--text-muted); background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:1px 6px}
+  .header-actions{margin-left:auto; display:flex; align-items:center; gap:var(--gap-tight)}
+  .icon-btn{width:36px; height:36px; display:grid; place-items:center; border:1px solid transparent; background:transparent; border-radius:var(--radius); color:var(--text-muted); cursor:pointer; position:relative}
+  .icon-btn:hover{background:var(--bg-subtle); color:var(--text-body)}
+  .icon-btn svg{width:18px; height:18px}
+  .icon-btn .dot{position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--error); border:1.5px solid var(--bg-surface)}
+  .avatar{width:32px; height:32px; border-radius:var(--radius-pill); background:var(--accent-50); color:var(--accent); display:grid; place-items:center; font-weight:600; cursor:pointer; border:1px solid var(--border-default)}
+
+  /* ---- Sidebar (§7) ---- */
+  .sidebar{grid-column:1; grid-row:2; background:var(--bg-surface); border-right:1px solid var(--border-default); padding:var(--gap) var(--gap-tight); display:flex; flex-direction:column; gap:var(--gap); overflow:auto}
+  .new-btn{display:flex; align-items:center; justify-content:center; gap:var(--gap-tight); height:var(--field-height); margin:0 8px; border-radius:var(--radius); background:var(--accent); color:#fff; border:none; font:inherit; font-weight:600; cursor:pointer; box-shadow:var(--shadow-sm); transition:background 150ms var(--ease-out)}
+  .new-btn:hover{background:var(--accent-hover)}
+  .new-btn svg{width:16px; height:16px}
+  .nav{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  .nav a{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius); color:var(--text-body); text-decoration:none; font-weight:500; border-left:3px solid transparent; transition:background 150ms var(--ease-out)}
+  .nav a:hover{background:var(--bg-subtle)}
+  .nav a[aria-current="page"]{background:var(--accent-50); color:var(--accent); border-left-color:var(--accent)}
+  .nav svg{width:18px; height:18px; flex:none}
+  .nav .count{margin-left:auto; font-size:11px; color:var(--text-muted); background:var(--bg-subtle); border-radius:var(--radius-pill); padding:1px 8px}
+  .side-foot{margin-top:auto; padding:12px 8px; border-top:1px solid var(--border-default); display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:var(--font-caption)}
+  .side-foot .ring{width:28px; height:28px; border-radius:var(--radius-pill); background:var(--success-bg); color:var(--success); display:grid; place-items:center; font-weight:600}
+
+  /* ============================================================
+     Workspace — page head + filter bar + board of cards
+     ============================================================ */
+  .workspace{grid-column:2; grid-row:2; padding:var(--space-page); overflow:auto; transition:opacity 200ms var(--ease-out)}
+  .page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:var(--gap); margin-bottom:var(--gap)}
+  .page-head h1{margin:0; font-size:var(--font-h1); letter-spacing:-.02em; color:var(--text-primary)}
+  .page-head .crumbs{display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:var(--font-caption); margin-bottom:4px}
+  .page-head .crumbs a{text-decoration:none}
+  .page-head p{margin:4px 0 0; color:var(--text-muted)}
+  .head-actions{display:flex; gap:var(--gap-tight)}
+
+  .btn{height:var(--field-height); padding:0 16px; border-radius:var(--radius); font:inherit; font-weight:600; cursor:pointer; border:1px solid transparent; display:inline-flex; align-items:center; gap:8px; transition:background 150ms var(--ease-out), transform 120ms var(--ease-out)}
+  .btn:active{transform:scale(.98)}
+  .btn svg{width:16px; height:16px}
+  .btn-primary{background:var(--accent); color:#fff; box-shadow:var(--shadow-sm)}
+  .btn-primary:hover{background:var(--accent-hover)}
+  .btn-secondary{background:var(--bg-surface); color:var(--text-body); border-color:var(--border-strong)}
+  .btn-secondary:hover{background:var(--bg-subtle)}
+
+  .filters{display:flex; flex-wrap:wrap; gap:var(--gap-tight); align-items:center; margin-bottom:var(--gap)}
+  .chip{height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border-default); border-radius:var(--radius-pill); background:var(--bg-surface); color:var(--text-body); font-size:var(--font-caption); font-weight:500; cursor:pointer}
+  .chip:hover{background:var(--bg-subtle)}
+  .chip[aria-pressed="true"]{background:var(--accent-50); color:var(--accent); border-color:var(--accent)}
+  .chip svg{width:14px; height:14px}
+  .view-toggle{margin-left:auto; display:flex; border:1px solid var(--border-default); border-radius:var(--radius); overflow:hidden}
+  .view-toggle button{width:34px; height:32px; display:grid; place-items:center; border:none; background:var(--bg-surface); color:var(--text-muted); cursor:pointer}
+  .view-toggle button[aria-pressed="true"]{background:var(--accent-50); color:var(--accent)}
+  .view-toggle svg{width:16px; height:16px}
+
+  /* ---- Board ---- */
+  .board{display:grid; grid-template-columns:repeat(2,1fr); gap:var(--gap); transition:opacity 200ms var(--ease-out)}
+  .col-label{grid-column:1 / -1; display:flex; align-items:center; gap:8px; font-size:var(--font-caption); text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); font-weight:600; margin-top:4px}
+  .col-label .n{background:var(--bg-subtle); border-radius:var(--radius-pill); padding:1px 8px}
+
+  .card{
+    position:relative; background:var(--bg-surface); border:1px solid var(--border-default);
+    border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:var(--space-card);
+    cursor:pointer; transition:box-shadow 150ms var(--ease-out), opacity 200ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+  .card:hover{box-shadow:var(--shadow-md)}
+  .card-top{display:flex; align-items:flex-start; gap:10px; margin-bottom:10px}
+  .card-icon{width:36px; height:36px; flex:none; border-radius:var(--radius); display:grid; place-items:center; color:#fff}
+  .card-icon.i-doc{background:var(--accent)} .card-icon.i-flow{background:var(--info)}
+  .card-icon.i-data{background:var(--success)} .card-icon.i-design{background:var(--warning)}
+  .card-icon svg{width:18px; height:18px}
+  .card-title{margin:0; font-size:var(--font-base); font-weight:600; color:var(--text-primary); line-height:1.3}
+  .card-sub{margin:2px 0 0; color:var(--text-muted); font-size:var(--font-caption)}
+  .card-desc{margin:0 0 12px; color:var(--text-body); font-size:var(--font-caption); line-height:1.55; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .card-foot{display:flex; align-items:center; gap:10px}
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:var(--radius-pill); font-size:var(--font-caption); font-weight:600}
+  .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor}
+  .badge.live{background:var(--success-bg); color:var(--success)}
+  .badge.review{background:var(--warning-bg); color:var(--warning)}
+  .badge.draft{background:var(--neutral-100); color:var(--neutral-500)}
+  .badge.blocked{background:var(--error-bg); color:var(--error)}
+  .card-meta{margin-left:auto; display:flex; align-items:center; gap:12px; color:var(--text-muted); font-size:var(--font-caption)}
+  .meta-i{display:inline-flex; align-items:center; gap:4px}
+  .meta-i svg{width:14px; height:14px}
+  .avatars{display:flex}
+  .avatars span{width:24px; height:24px; border-radius:var(--radius-pill); display:grid; place-items:center; font-size:10px; font-weight:600; color:var(--accent); background:var(--accent-50); border:2px solid var(--bg-surface); margin-left:-8px}
+  .avatars span:first-child{margin-left:0}
+  /* on-card comment badge — pulses in the `comment` state */
+  .comment-badge{position:relative}
+
+  /* inline card toolbar — hidden until a card is selected (revealed in `select`) */
+  .card-toolbar{
+    position:absolute; top:10px; right:10px; display:flex; gap:2px; padding:3px;
+    background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius);
+    box-shadow:var(--shadow-md); opacity:0; transform:translateY(-4px); pointer-events:none;
+    transition:opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+  .card-toolbar button{width:28px; height:28px; display:grid; place-items:center; border:none; background:transparent; border-radius:var(--radius-sm); color:var(--text-muted); cursor:pointer}
+  .card-toolbar button:hover{background:var(--bg-subtle); color:var(--text-body)}
+  .card-toolbar svg{width:15px; height:15px}
+
+  /* ---- Empty state (constant element, revealed only when board is emptied) ---- */
+  .empty{display:none; grid-column:1 / -1; text-align:center; padding:56px 24px; color:var(--text-muted)}
+  .empty svg{width:40px; height:40px}
+  .empty h3{margin:12px 0 4px; color:var(--text-primary)}
+  .empty p{margin:0 0 16px}
+
+  /* ============================================================
+     Right detail panel — constant element; emphasized in detail / comment
+     ============================================================ */
+  .detail{
+    grid-column:3; grid-row:2; background:var(--bg-surface); border-left:1px solid var(--border-default);
+    overflow:auto; display:flex; flex-direction:column;
+    transition:box-shadow 200ms var(--ease-out);
+  }
+  .detail-head{padding:var(--space-card) var(--space-page); border-bottom:1px solid var(--border-default); position:sticky; top:0; background:var(--bg-surface)}
+  .detail-head .row{display:flex; align-items:center; gap:10px}
+  .detail-head h2{margin:0; font-size:var(--font-title); color:var(--text-primary); letter-spacing:-.01em}
+  .detail-head .sub{margin:6px 0 0; color:var(--text-muted); font-size:var(--font-caption)}
+  .tabs{display:flex; gap:4px; padding:0 var(--space-page); border-bottom:1px solid var(--border-default); background:var(--bg-surface); position:sticky; top:73px; z-index:1}
+  .tabs button{appearance:none; border:none; background:transparent; font:inherit; font-weight:600; color:var(--text-muted); padding:12px 4px; margin-right:12px; cursor:pointer; border-bottom:2px solid transparent}
+  .tabs button[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent)}
+  .detail-body{padding:var(--space-page); display:flex; flex-direction:column; gap:var(--space-page)}
+
+  /* Rendered markdown — formatted html, NEVER raw `##` / `*` source (UC-002) */
+  .md{color:var(--text-body); font-size:var(--font-body)}
+  .md h3{margin:0 0 8px; font-size:var(--font-base); color:var(--text-primary)}
+  .md h4{margin:16px 0 6px; font-size:var(--font-body); color:var(--text-primary)}
+  .md p{margin:0 0 10px; line-height:1.6}
+  .md ul{margin:0 0 10px; padding-left:18px} .md li{margin:3px 0}
+  .md strong{color:var(--text-primary); font-weight:600}
+  .md code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12px; background:var(--bg-subtle); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:1px 5px}
+  .md a{color:var(--accent); text-decoration:none} .md a:hover{text-decoration:underline}
+
+  .props{border:1px solid var(--border-default); border-radius:var(--radius); overflow:hidden; transition:box-shadow 200ms var(--ease-out)}
+  .prop{display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid var(--border-default); font-size:var(--font-caption)}
+  .prop:first-child{border-top:none}
+  .prop .k{color:var(--text-muted); width:96px; flex:none}
+  .prop .v{color:var(--text-body); font-weight:500; display:flex; align-items:center; gap:6px}
+
+  /* Comments thread — constant element; ring-emphasized in the `comment` state */
+  .comments{border:1px solid var(--border-default); border-radius:var(--radius); padding:var(--space-card); transition:box-shadow 200ms var(--ease-out)}
+  .comments h4{margin:0 0 12px; font-size:var(--font-body); color:var(--text-primary); display:flex; align-items:center; gap:8px}
+  .comments h4 .n{font-size:11px; color:var(--text-muted); background:var(--bg-subtle); border-radius:var(--radius-pill); padding:1px 8px}
+  .cmt{display:flex; gap:10px; margin-bottom:14px}
+  .cmt .av{width:28px; height:28px; flex:none; border-radius:var(--radius-pill); background:var(--accent-50); color:var(--accent); display:grid; place-items:center; font-size:11px; font-weight:600}
+  .cmt .body b{color:var(--text-primary); font-size:var(--font-caption)}
+  .cmt .body .t{color:var(--text-muted); font-size:11px; margin-left:6px}
+  .cmt .body p{margin:3px 0 0; font-size:var(--font-caption); line-height:1.5}
+  .cmt-input{display:flex; gap:8px; margin-top:4px}
+  .cmt-input input{flex:1; height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius); font:inherit; outline:none}
+  .cmt-input input:focus{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--focus-ring) 30%,transparent)}
+
+  /* ============================================================
+     Bottom assistant widget — constant element, present in every state
+     ============================================================ */
+  .assistant{
+    position:fixed; right:360px; bottom:18px; width:320px; background:var(--bg-surface);
+    border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
+    overflow:hidden; z-index:40; display:flex; flex-direction:column; max-height:340px;
+  }
+  .assistant-head{display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border-default)}
+  .assistant-head .dot{width:8px; height:8px; border-radius:50%; background:var(--success)}
+  .assistant-head b{font-size:var(--font-caption); color:var(--text-primary)}
+  .assistant-head .icon-btn{margin-left:auto; width:28px; height:28px}
+  .assistant-body{padding:12px 14px; overflow:auto; display:flex; flex-direction:column; gap:10px}
+  .msg{max-width:88%; font-size:var(--font-caption); line-height:1.5; padding:8px 11px; border-radius:var(--radius)}
+  .msg.bot{background:var(--bg-subtle); color:var(--text-body); align-self:flex-start; border-bottom-left-radius:var(--radius-sm)}
+  .msg.me{background:var(--accent-50); color:var(--accent-700); align-self:flex-end; border-bottom-right-radius:var(--radius-sm)}
+  .assistant-input{display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border-default)}
+  .assistant-input input{flex:1; height:34px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-pill); font:inherit; outline:none}
+  .assistant-input input:focus{border-color:var(--accent)}
+  .assistant-input button{width:34px; height:34px; border:none; border-radius:var(--radius-pill); background:var(--accent); color:#fff; cursor:pointer; display:grid; place-items:center}
+  .assistant-input svg{width:15px; height:15px}
+
+  /* ============================================================
+     Command palette overlay — constant element, shown in `command`
+     ============================================================ */
+  .scrim{position:fixed; inset:0; background:rgba(15,23,42,.4); z-index:45; display:none}
+  .palette{
+    position:fixed; left:50%; top:96px; transform:translateX(-50%); width:min(560px,92vw); z-index:50;
+    background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-lg); overflow:hidden; display:none;
+  }
+  .palette-input{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border-default)}
+  .palette-input svg{width:18px; height:18px; color:var(--text-muted)}
+  .palette-input input{flex:1; border:none; outline:none; font:inherit; font-size:var(--font-base); color:var(--text-body)}
+  .palette-list{max-height:320px; overflow:auto; padding:6px}
+  .palette-list .grp{font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); padding:8px 12px 4px}
+  .palette-item{display:flex; align-items:center; gap:12px; padding:9px 12px; border-radius:var(--radius); cursor:pointer; color:var(--text-body)}
+  .palette-item:hover,.palette-item[aria-selected="true"]{background:var(--accent-50); color:var(--accent)}
+  .palette-item svg{width:16px; height:16px; flex:none}
+  .palette-item .k{margin-left:auto; font-size:11px; color:var(--text-muted)}
+  .palette-item:hover .k{color:var(--accent)}
+
+  /* ============================================================
+     Reader overlay — constant element, shown in `reader` (focused read)
+     ============================================================ */
+  .reader{
+    position:fixed; inset:0; z-index:48; background:var(--bg-app); display:none; overflow:auto;
+  }
+  .reader-bar{position:sticky; top:0; display:flex; align-items:center; gap:12px; height:56px; padding:0 var(--space-page); background:var(--bg-surface); border-bottom:1px solid var(--border-default)}
+  .reader-bar b{color:var(--text-primary)}
+  .reader-bar .btn-secondary{margin-left:auto}
+  .reader-doc{max-width:720px; margin:0 auto; padding:48px 24px 96px}
+  .reader-doc h1{font-size:36px; letter-spacing:-.02em; color:var(--text-primary); margin:0 0 8px}
+  .reader-doc .lede{color:var(--text-muted); margin:0 0 32px; font-size:var(--font-base)}
+  .reader-doc .md p{font-size:var(--font-base); line-height:1.7}
+  .reader-doc .md h3{font-size:var(--font-title)} .reader-doc .md h4{font-size:var(--font-base)}
+
+  /* ============================================================
+     PER-STATE EMPHASIS — the spotlight. Same DOM throughout; only opacity /
+     ring / overlay visibility change. This is the completeness invariant in CSS.
+     ============================================================ */
+  /* overview — calm baseline, nothing emphasized (default) */
+
+  /* select — spotlight the selected card + reveal its inline toolbar; dim the rest */
+  body[data-state="select"] .card:not(.is-selected){opacity:.45}
+  body[data-state="select"] .card.is-selected{box-shadow:0 0 0 2px var(--accent),var(--shadow-md)}
+  body[data-state="select"] .card.is-selected .card-toolbar{opacity:1; transform:translateY(0); pointer-events:auto}
+
+  /* detail — spotlight the right panel; dim the board behind it */
+  body[data-state="detail"] .board{opacity:.5}
+  body[data-state="detail"] .detail{box-shadow:inset 3px 0 0 var(--accent)}
+  body[data-state="detail"] .card.is-selected{box-shadow:0 0 0 2px var(--accent),var(--shadow-md)}
+
+  /* comment — spotlight the comment thread + pulse the on-card comment badge */
+  body[data-state="comment"] .board{opacity:.5}
+  body[data-state="comment"] .props{opacity:.5}
+  body[data-state="comment"] .comments{box-shadow:0 0 0 2px var(--accent)}
+  body[data-state="comment"] .card.is-selected .comment-badge{color:var(--accent); animation:pulse 1.4s var(--ease-out) infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+  /* command — reveal the palette + scrim, dim the app behind */
+  body[data-state="command"] .app{opacity:.6}
+  body[data-state="command"] .scrim{display:block}
+  body[data-state="command"] .palette{display:block}
+
+  /* reader — reveal the focused reader overlay over everything */
+  body[data-state="reader"] .reader{display:block}
+
+  /* ============================================================
+     MOCKUP CONTROLS — NOT PART OF THE PRODUCT. A mockup-only statebar that
+     flips body[data-state]. Strip this block (and the JS) when translating to code.
+     ============================================================ */
+  .mockup-controls{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:80;
+    display:flex; align-items:center; gap:4px; padding:6px; background:var(--neutral-900);
+    border-radius:var(--radius-pill); box-shadow:var(--shadow-lg);
+  }
+  .mockup-controls .lbl{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; padding:0 10px 0 8px; font-weight:700}
+  .mockup-controls button{appearance:none; border:none; background:transparent; color:#cbd5e1; font:inherit; font-size:var(--font-caption); font-weight:600; padding:6px 14px; border-radius:var(--radius-pill); cursor:pointer; transition:background 120ms var(--ease-out)}
+  .mockup-controls button:hover{background:rgba(255,255,255,.1); color:#fff}
+  .mockup-controls button[aria-current="true"]{background:var(--accent); color:#fff}
+
+  /* ---- Responsive (§6) ---- */
+  @media (max-width:1100px){
+    .app{grid-template-columns:64px 1fr; grid-template-rows:64px 1fr}
+    .detail{display:none}
+    .nav a span,.new-btn span,.side-foot span{display:none}
+    .assistant{right:18px}
+    .board{grid-template-columns:1fr}
+  }
+  @media (max-width:640px){
+    .app{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .workspace{grid-column:1}
+    .search{display:none}
+    .assistant{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+</style>
+</head>
+<body data-state="overview">
+
+<!-- ============================================================
+     MOCKUP CONTROLS — NOT PART OF THE PRODUCT. Mockup-only statebar.
+     ============================================================ -->
+<nav class="mockup-controls" role="tablist" aria-label="Mockup states (not part of the product)">
+  <span class="lbl">State</span>
+  <button data-go="overview" aria-current="true" data-testid="state-overview">Overview</button>
+  <button data-go="select" aria-current="false" data-testid="state-select">Select</button>
+  <button data-go="detail" aria-current="false" data-testid="state-detail">Detail</button>
+  <button data-go="comment" aria-current="false" data-testid="state-comment">Comment</button>
+  <button data-go="command" aria-current="false" data-testid="state-command">Command</button>
+  <button data-go="reader" aria-current="false" data-testid="state-reader">Reader</button>
+</nav>
+
+<div class="app">
+  <!-- ---- Header (constant) ---- -->
+  <header class="header">
+    <div class="brand"><span class="mark" aria-hidden="true">F</span> Flowcode Studio</div>
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="Search the workspace…" data-testid="global-search" aria-label="Search the workspace">
+      <kbd>⌘K</kbd>
+    </label>
+    <div class="header-actions">
+      <button class="icon-btn" data-testid="notifications" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="dot" aria-hidden="true"></span>
+      </button>
+      <button class="icon-btn" data-testid="help" aria-label="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </button>
+      <div class="avatar" data-testid="user-menu" title="Your account" role="button" tabindex="0">DT</div>
+    </div>
+  </header>
+
+  <!-- ---- Sidebar (constant) ---- -->
+  <nav class="sidebar" aria-label="Primary">
+    <button class="new-btn" data-testid="new-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>New item</span></button>
+    <ul class="nav">
+      <li><a href="#" aria-current="page" data-testid="nav-boards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg><span>Boards</span><span class="count">8</span></a></li>
+      <li><a href="#" data-testid="nav-library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Library</span><span class="count">42</span></a></li>
+      <li><a href="#" data-testid="nav-insights"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg><span>Insights</span></a></li>
+      <li><a href="#" data-testid="nav-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a></li>
+    </ul>
+    <div class="side-foot"><span class="ring" aria-hidden="true">DT</span><span>David Teles · Pro plan</span></div>
+  </nav>
+
+  <!-- ---- Workspace (constant) ---- -->
+  <main class="workspace">
+    <div class="page-head">
+      <div>
+        <div class="crumbs"><a href="#" data-testid="crumb-boards">Boards</a> / <span>Q3 Launch</span></div>
+        <h1>Q3 Launch</h1>
+        <p>14 items · updated 6 minutes ago by Sara Dale</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-secondary" data-testid="share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg> Share</button>
+        <button class="btn btn-primary" data-testid="add-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add item</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="chip" aria-pressed="true" data-testid="filter-all">All</button>
+      <button class="chip" aria-pressed="false" data-testid="filter-mine">Assigned to me</button>
+      <button class="chip" aria-pressed="false" data-testid="filter-status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></svg> Status</button>
+      <button class="chip" aria-pressed="false" data-testid="filter-sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/></svg> Recent</button>
+      <div class="view-toggle" role="group" aria-label="View">
+        <button aria-pressed="true" data-testid="view-grid" aria-label="Grid view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+        <button aria-pressed="false" data-testid="view-list" aria-label="List view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+      </div>
+    </div>
+
+    <div class="board" data-testid="board">
+      <div class="col-label">In progress <span class="n">3</span></div>
+
+      <!-- card 1 -->
+      <article class="card" data-testid="card-1" tabindex="0">
+        <div class="card-toolbar" role="toolbar" aria-label="Item actions">
+          <button data-testid="card-1-edit" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button data-testid="card-1-comment" aria-label="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          <button data-testid="card-1-more" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+        <div class="card-top">
+          <span class="card-icon i-flow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/></svg></span>
+          <div><h3 class="card-title">Onboarding flow rework</h3><p class="card-sub">Flow · 7 screens</p></div>
+        </div>
+        <p class="card-desc">Collapse the 4-step wizard into a single progressive form; carry the invite-teammate step into an optional drawer.</p>
+        <div class="card-foot">
+          <span class="badge review">In review</span>
+          <span class="card-meta">
+            <span class="meta-i comment-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 3</span>
+            <span class="avatars"><span>AR</span><span>JM</span></span>
+          </span>
+        </div>
+      </article>
+
+      <!-- card 2 — the selected item (drives the detail panel + reader) -->
+      <article class="card is-selected" data-testid="card-2" tabindex="0" aria-current="true">
+        <div class="card-toolbar" role="toolbar" aria-label="Item actions">
+          <button data-testid="card-2-edit" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button data-testid="card-2-comment" aria-label="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          <button data-testid="card-2-more" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+        <div class="card-top">
+          <span class="card-icon i-doc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+          <div><h3 class="card-title">Pricing page rewrite</h3><p class="card-sub">Document · 3 sections</p></div>
+        </div>
+        <p class="card-desc">New three-tier table, annual toggle, and an FAQ block. Copy approved; needs the comparison grid wired to the plan matrix.</p>
+        <div class="card-foot">
+          <span class="badge live">On track</span>
+          <span class="card-meta">
+            <span class="meta-i comment-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 2</span>
+            <span class="avatars"><span>SD</span><span>TK</span><span>DT</span></span>
+          </span>
+        </div>
+      </article>
+
+      <!-- card 3 -->
+      <article class="card" data-testid="card-3" tabindex="0">
+        <div class="card-toolbar" role="toolbar" aria-label="Item actions">
+          <button data-testid="card-3-edit" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button data-testid="card-3-comment" aria-label="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          <button data-testid="card-3-more" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+        <div class="card-top">
+          <span class="card-icon i-data" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></span>
+          <div><h3 class="card-title">Usage metering pipeline</h3><p class="card-sub">Dataset · ingestion</p></div>
+        </div>
+        <p class="card-desc">Backfill blocked on the events schema migration; metering can't close until the rollup job ships.</p>
+        <div class="card-foot">
+          <span class="badge blocked">Blocked</span>
+          <span class="card-meta">
+            <span class="meta-i comment-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 6</span>
+            <span class="avatars"><span>JM</span></span>
+          </span>
+        </div>
+      </article>
+
+      <div class="col-label">Up next <span class="n">1</span></div>
+
+      <!-- card 4 -->
+      <article class="card" data-testid="card-4" tabindex="0">
+        <div class="card-toolbar" role="toolbar" aria-label="Item actions">
+          <button data-testid="card-4-edit" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button data-testid="card-4-comment" aria-label="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          <button data-testid="card-4-more" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+        <div class="card-top">
+          <span class="card-icon i-design" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17" cy="15" r="2.5"/><circle cx="9" cy="18.5" r="2.5"/></svg></span>
+          <div><h3 class="card-title">Empty-state illustrations</h3><p class="card-sub">Design · 5 assets</p></div>
+        </div>
+        <p class="card-desc">Commission the four empty states and the error illustration; reuse the new accent ramp.</p>
+        <div class="card-foot">
+          <span class="badge draft">Draft</span>
+          <span class="card-meta">
+            <span class="meta-i comment-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 0</span>
+            <span class="avatars"><span>SD</span></span>
+          </span>
+        </div>
+      </article>
+
+      <!-- empty state — a constant element revealed only when the board is emptied -->
+      <div class="empty" id="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
+        <h3>No items on this board yet</h3>
+        <p>Add your first item to start tracking Q3 launch work.</p>
+        <button class="btn btn-primary" data-testid="empty-add">Add item</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ---- Right detail panel (constant) ---- -->
+  <aside class="detail" aria-label="Item details">
+    <div class="detail-head">
+      <div class="row">
+        <span class="card-icon i-doc" aria-hidden="true" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <h2>Pricing page rewrite</h2>
+      </div>
+      <p class="sub">In “Q3 Launch” · created Jun 21 · owner Sara Dale</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-testid="tab-details">Details</button>
+      <button role="tab" aria-selected="false" data-testid="tab-activity">Activity</button>
+    </div>
+    <div class="detail-body">
+      <!-- Rendered markdown — formatted html, NEVER raw `##`/`*` source (UC-002 lesson) -->
+      <div class="md" data-testid="detail-description">
+        <h3>Summary</h3>
+        <p>Replace the legacy two-column pricing layout with a <strong>three-tier comparison table</strong>, an annual/monthly toggle, and a short FAQ. Copy is approved; the remaining work is wiring the grid to the live plan matrix.</p>
+        <h4>Acceptance</h4>
+        <ul>
+          <li>Annual toggle recomputes every cell without a reload</li>
+          <li>Feature rows source from <code>plans.matrix.json</code></li>
+          <li>FAQ collapses on mobile; passes the §11 contrast floor</li>
+        </ul>
+        <p>See the <a href="#" data-testid="link-spec">linked spec</a> for the full rationale and the rejected single-tier alternative.</p>
+      </div>
+
+      <div class="props" data-testid="detail-props">
+        <div class="prop"><span class="k">Status</span><span class="v"><span class="badge live">On track</span></span></div>
+        <div class="prop"><span class="k">Assignee</span><span class="v"><span class="avatars"><span>SD</span></span> Sara Dale</span></div>
+        <div class="prop"><span class="k">Due</span><span class="v">Jul 12</span></div>
+        <div class="prop"><span class="k">Priority</span><span class="v">High</span></div>
+        <div class="prop"><span class="k">Labels</span><span class="v">marketing · revenue</span></div>
+      </div>
+
+      <div class="comments" data-testid="detail-comments">
+        <h4>Comments <span class="n">2</span></h4>
+        <div class="cmt">
+          <span class="av">TK</span>
+          <div class="body"><b>Tomas Klein</b><span class="t">2h ago</span><p>The annual toggle math is off for the team tier — it should apply the 2-month discount, not 20% flat.</p></div>
+        </div>
+        <div class="cmt">
+          <span class="av">SD</span>
+          <div class="body"><b>Sara Dale</b><span class="t">41m ago</span><p>Good catch — fixed in the matrix. Re-rendering now; can you re-check the comparison grid?</p></div>
+        </div>
+        <div class="cmt-input">
+          <input placeholder="Write a comment…" data-testid="comment-input" aria-label="Write a comment">
+          <button class="btn btn-primary" data-testid="comment-send" aria-label="Send comment"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ---- Bottom assistant widget (constant — present in every state) ---- -->
+<section class="assistant" aria-label="Assistant" data-testid="assistant">
+  <div class="assistant-head">
+    <span class="dot" aria-hidden="true"></span><b>Studio assistant</b>
+    <button class="icon-btn" data-testid="assistant-collapse" aria-label="Collapse assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+  </div>
+  <div class="assistant-body">
+    <div class="msg bot">I drafted the comparison grid from <code>plans.matrix.json</code>. Want me to wire the annual toggle next?</div>
+    <div class="msg me">Yes — and double-check the team-tier discount.</div>
+    <div class="msg bot">On it. The team tier now applies the 2-month annual discount. I’ll flag Sara on the comment thread.</div>
+  </div>
+  <div class="assistant-input">
+    <input placeholder="Ask the assistant…" data-testid="assistant-input" aria-label="Ask the assistant">
+    <button data-testid="assistant-send" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/></svg></button>
+  </div>
+</section>
+
+<!-- ---- Command palette overlay (constant — shown in `command`) ---- -->
+<div class="scrim" data-testid="scrim" aria-hidden="true"></div>
+<div class="palette" role="dialog" aria-label="Command palette" data-testid="palette">
+  <div class="palette-input">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input placeholder="Type a command or search…" data-testid="palette-input" aria-label="Command palette">
+  </div>
+  <div class="palette-list">
+    <div class="grp">Actions</div>
+    <div class="palette-item" aria-selected="true" data-testid="cmd-new-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> New item<span class="k">N</span></div>
+    <div class="palette-item" data-testid="cmd-invite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg> Invite teammate<span class="k">I</span></div>
+    <div class="grp">Jump to</div>
+    <div class="palette-item" data-testid="cmd-pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Pricing page rewrite<span class="k">↵</span></div>
+    <div class="palette-item" data-testid="cmd-onboarding"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/></svg> Onboarding flow rework</div>
+  </div>
+</div>
+
+<!-- ---- Reader overlay (constant — shown in `reader`, focused reading) ---- -->
+<div class="reader" role="dialog" aria-label="Reader" data-testid="reader">
+  <div class="reader-bar">
+    <button class="icon-btn" data-go="overview" data-testid="reader-close" aria-label="Close reader"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <b>Pricing page rewrite</b>
+    <button class="btn btn-secondary" data-testid="reader-edit"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit</button>
+  </div>
+  <article class="reader-doc">
+    <h1>Pricing page rewrite</h1>
+    <p class="lede">A focused read of the same item — the reader is the same content rendered for distraction-free review, not a different document.</p>
+    <div class="md">
+      <h3>Summary</h3>
+      <p>Replace the legacy two-column pricing layout with a <strong>three-tier comparison table</strong>, an annual/monthly toggle, and a short FAQ. Copy is approved; the remaining work is wiring the grid to the live plan matrix.</p>
+      <h4>Why now</h4>
+      <p>The current page converts poorly on mobile and can’t express the new usage-based team tier. The rewrite unblocks the Q3 launch messaging and the metering rollout.</p>
+      <h4>Acceptance</h4>
+      <ul>
+        <li>Annual toggle recomputes every cell without a reload</li>
+        <li>Feature rows source from <code>plans.matrix.json</code> — no hand-kept copy</li>
+        <li>FAQ collapses on mobile and passes the §11 contrast floor</li>
+      </ul>
+      <h4>Rejected alternative</h4>
+      <p>A single “contact us” tier was rejected — it hid pricing and tested worse in the pricing survey. The three-tier grid keeps every plan legible at a glance.</p>
+    </div>
+  </article>
+</div>
+
+<script>
+  // MOCKUP-ONLY — drives the statebar. NOT part of the product; strip on translation to code.
+  (function () {
+    var body = document.body;
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-go]'));
+    function go(state) {
+      body.setAttribute('data-state', state);
+      document.querySelectorAll('.mockup-controls [data-go]').forEach(function (b) {
+        b.setAttribute('aria-current', b.getAttribute('data-go') === state ? 'true' : 'false');
+      });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () { go(b.getAttribute('data-go')); });
+    });
+  })();
+</script>
+</body>
+</html>

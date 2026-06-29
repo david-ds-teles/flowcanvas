@@ -10,7 +10,7 @@ links: [.flowcode/flowcode-index.md, .flowcode/workflow/file-conventions.md]
 
 - Lists every artifact template in `flowcode/templates/`; each is **on-demand** — loaded only when its artifact is about to be written (Tier 3).
 - Use the tables below to find the template for an artifact type, who writes it, and the trigger; read that template before generating the artifact.
-- Authoritative index is `.flowcode/flowcode-index.md § Templates`; this file mirrors it for local discovery.
+- **This file is the authoritative template catalog** — `.flowcode/flowcode-index.md § Templates` points here rather than duplicating the list. Keep it current when a template is added or removed.
 - Every template scaffolds frontmatter + summary so generated artifacts conform to `file-conventions.md` by construction.
 
 ---
@@ -65,3 +65,9 @@ links: [.flowcode/flowcode-index.md, .flowcode/workflow/file-conventions.md]
 | Template | Used By | Trigger |
 |----------|---------|---------|
 | `review-report-template.md` | `flowcode:code-reviewer-agent` | Before a standalone `/flowcode:review` writes a new `{slug}-review.md` to `.flowcode/reviews/` (plan-bound reviews use `qa-report-template.md`) |
+
+## Evaluation Templates
+
+| Template | Used By | Trigger |
+|----------|---------|---------|
+| `evaluation-report-template.md` | `flowcode:evaluator-agent` | Before writing the Layer 3 judge report `logs/eval/{PREFIX}.json` (+ the `trend.jsonl` history line) |

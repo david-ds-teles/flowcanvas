@@ -92,7 +92,7 @@ links: [.flowcode/plans/{PREFIX}/{PREFIX}-design.md, .flowcode/plans/{PREFIX}/{P
 
 > **Active-phase depth:** Phase 1 is the active phase — it must meet `plan-instructions.md § Active-Phase Completeness Bar` (junior-executable: production-ready snippets, worked examples, a flow diagram where non-trivial, named quality checks). Later phases stay stubs until they become active.
 
-> **Quality gate:** code-review sub-agent runs. See `plan-instructions.md § Phase Close Sequence` for the four-step close. Phase-end `[PHASE]` entry is appended to `{PREFIX}-log.md`, not here.
+> **Quality gate:** code-review sub-agent runs. See `plan-execution.md § Phase Close Sequence` for the ordered close. Phase-end `[PHASE]` entry is appended to `{PREFIX}-log.md`, not here.
 
 ---
 
@@ -123,7 +123,7 @@ links: [.flowcode/plans/{PREFIX}/{PREFIX}-design.md, .flowcode/plans/{PREFIX}/{P
 **Acceptance criteria:**
 - [ ] {criterion}
 
-> **Quality gate:** code-review sub-agent runs. See `plan-instructions.md § Phase Close Sequence`.
+> **Quality gate:** code-review sub-agent runs. See `plan-execution.md § Phase Close Sequence`.
 
 ---
 
@@ -131,13 +131,13 @@ links: [.flowcode/plans/{PREFIX}/{PREFIX}-design.md, .flowcode/plans/{PREFIX}/{P
 
 {Repeat the phase structure above — goal, **Phase Status**, **Evaluation**, **Depends On**, files, steps (checkboxes), acceptance criteria, quality gate — for each phase. `Phase Status` moves `pending → in-progress → quality-check → done` per `plan-instructions.md § Phase Status`. `Depends On` lists the earlier phases that must be `done` first (`[none]` for a root phase) — set it honestly: it is what lets the executor run independent phases in parallel waves. Later phases stay stubs (name, goal, rough file set) until they become active; when a phase becomes active, expand it to Phase 1's full structure and meet `plan-instructions.md § Active-Phase Completeness Bar` (production-ready snippets, worked examples, a flow diagram where non-trivial, named quality checks). Do not add free-form execution narrative here; that belongs in `{PREFIX}-log.md`.}
 
-> **Within-phase parallelism:** the `create` rows in a phase's `Files to create / modify:` table that are mutually independent (no row imports another) are the unit of within-phase fan-out — the executor may implement them with parallel `flowcode:implementer-agent` workers, while shared/`modify` rows (files many others import) stay in the main session. List files at that granularity so the split is visible (`plan-instructions.md § Phase Execution`).
+> **Within-phase parallelism:** the `create` rows in a phase's `Files to create / modify:` table that are mutually independent (no row imports another) are the unit of within-phase fan-out — the executor may implement them with parallel `flowcode:implementer-agent` workers, while shared/`modify` rows (files many others import) stay in the main session. List files at that granularity so the split is visible (`plan-execution.md § Phase Execution`).
 
 ---
 
 ## Post-Execution Artifacts
 
-After all phases complete, run the two-phase pipeline (see `flowcode/workflow/flowcode-workflow.md § Generate Artifacts Workflow` and `plan-instructions.md § Post-Execution Pipeline`):
+After all phases complete, run the two-phase pipeline (see `flowcode/workflow/flowcode-workflow.md § Generate Artifacts Workflow` and `plan-execution.md § Post-Execution Pipeline`):
 
 **Sequential — audit and authoritative source:**
 1. Code Explorer sub-agent (sonnet) audits implementation against plan (`code-explorer-agent.md`)

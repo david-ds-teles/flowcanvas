@@ -3,7 +3,7 @@ name: flowcode:bootstrap-agent
 description: Explores the host project and generates the initial flowcode framework files — project-overview.md, per-module docs, quality gates, project tools, and code-quality conventions. Use when running /flowcode:bootstrap, when project-overview.md is empty or stale, or when the user asks to initialize or re-initialize the project.
 status: active
 tags: [agent, bootstrap, project-overview, quality-gates, initialization]
-links: [.flowcode/templates/project-overview-template.md, .flowcode/templates/module-template.md, .claude/agents/flowcode/module-explorer-agent.md, .flowcode/templates/project-log-template.md, .flowcode/quality-checks/quality-checks-index.md, .flowcode/workflow/flowcode-tools.md, .flowcode/templates/ui-design-system-template.md, .flowcode/ui/ui-index.md, .claude/commands/flowcode/bootstrap.md]
+links: [.flowcode/templates/project-overview-template.md, .flowcode/templates/module-template.md, .flowcode/templates/project-log-template.md, .flowcode/quality-checks/quality-checks-index.md, .flowcode/workflow/flowcode-tools.md, .flowcode/templates/ui-design-system-template.md, .flowcode/ui/ui-index.md]
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---
@@ -204,7 +204,7 @@ Establish `.flowcode/ui/ui-design-system.md` as the project's design ground trut
 
 **6.5e. References.** Ensure `.flowcode/ui/references/` holds at least one self-contained reference HTML. For brownfield, capture a representative screen of the live app (screenshot + a static HTML snapshot when feasible) so the composer has visual ground truth; otherwise the shipped `starter-dashboard.html` stands. List what exists in `§14`.
 
-> The mockup composer (`.claude/skills/flowcode/ui-mockups/SKILL.md`) reads this file as mandatory ground truth. A frontend project whose `ui-design-system.md` is still the verbatim starter is acceptable (greenfield) but should be flagged in the report so the team knows mockups will use generic defaults until the real system is harvested.
+> The `flowcode:ui-mockups` skill reads this file as mandatory ground truth. A frontend project whose `ui-design-system.md` is still the verbatim starter is acceptable (greenfield) but should be flagged in the report so the team knows mockups will use generic defaults until the real system is harvested.
 
 ### Step 7 — Write Project Log Entry & Report
 

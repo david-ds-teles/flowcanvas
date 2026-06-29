@@ -3,7 +3,7 @@ name: browser-provisioning
 description: The four-rung driver-resolution ladder for flowcode:browser as an executable reference — detection probes, the exact ephemeral-provision commands, the boot/attach/teardown poll, and the rung-4 deferral contract.
 status: active
 tags: [browser, provisioning, driver-ladder, playwright, deferral]
-links: [.claude/agents/flowcode/browser-runner-agent.md, .claude/skills/flowcode/browser/SKILL.md, .claude/skills/flowcode/browser/references/browser-config.schema.md]
+links: []
 ---
 
 # Browser Driver Provisioning Ladder

@@ -4,12 +4,12 @@ description: Slash command that runs the contributors skill in the main session 
 status: active
 tags: [command, attribution, contributors, reporting, multi-dev]
 argument-hint: "[dev] [--me] [--feature <prefix>] [--type fix|feature] [--area <keyword>]"
-links: [.claude/skills/flowcode/contributors/SKILL.md, .flowcode/plans/plan-instructions.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md]
+links: [.flowcode/plans/plan-instructions.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md]
 ---
 
 # /flowcode:contributors
 
-- Thin entry point: it loads and runs the contributors skill at `.claude/skills/flowcode/contributors/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: it loads and runs the `flowcode:contributors` skill — the procedure lives in the skill, not here.
 - Read-only attribution report: rolls up the `**Dev:**` field that every log entry carries (plan-logs + `project-log.md`) to answer who designed, executed, or fixed what.
 - Filters compose: a developer name/handle, `--me` (the current identity), `--feature <prefix>`, `--type fix|feature`, and `--area <keyword>` narrow the rollup.
 - Reads only — it never writes, never edits source, never touches the logs it reports on.
@@ -33,7 +33,7 @@ Filters combine: `<dev>` / `--me` (who), `--feature <prefix>` (which plan), `--t
 
 ## What This Does
 
-1. Loads the contributors skill (`.claude/skills/flowcode/contributors/SKILL.md`) and runs its read-only rollup in the main session.
+1. Loads the `flowcode:contributors` skill and runs its read-only rollup in the main session.
 2. Gathers every `**Dev:**`-stamped entry from `.flowcode/plans/*/*-log.md` and `.flowcode/project/project-log.md`.
 3. Parses each entry into `{dev, type, feature, date, title, files}` and applies the requested filters.
 4. Presents a grouped report — by developer, by feature, or a flat fix list — depending on the query.
@@ -44,7 +44,7 @@ Filters combine: `<dev>` / `--me` (who), `--feature <prefix>` (which plan), `--t
 
 You are running the contributors attribution report.
 
-Load `.claude/skills/flowcode/contributors/SKILL.md` and execute its procedure in the **main session**. Parse `$ARGUMENTS` for the optional developer name/handle, `--me`, `--feature <prefix>`, `--type fix|feature`, and `--area <keyword>` filters; with no arguments, report all developers grouped by identity. This is a read-only report — gather and present, write nothing.
+Run the `flowcode:contributors` skill and execute its procedure in the **main session**. Parse `$ARGUMENTS` for the optional developer name/handle, `--me`, `--feature <prefix>`, `--type fix|feature`, and `--area <keyword>` filters; with no arguments, report all developers grouped by identity. This is a read-only report — gather and present, write nothing.
 
 ---
 

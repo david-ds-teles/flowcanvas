@@ -3,7 +3,7 @@ name: flowcode:feedback
 description: End-of-session feedback loop — analyze the whole session (file changes anywhere + decisions/rules/conventions/gates/memories stated in conversation), extract candidates, classify host-local vs upstream, and present an operator-gated proposal table where each item is applied (made binding) or logged (recorded only). Use whenever a flowcode session wraps up, when the Stop-hook nudges, or when the operator runs /flowcode:feedback — including sessions that changed no files but settled decisions or conventions in conversation.
 status: active
 tags: [feedback-loop, session-end, knowledge-capture, decisions, extend, upstream, operator-gated]
-links: [.claude/commands/flowcode/feedback.md, .claude/commands/flowcode/extend.md, .flowcode/upstream-contributions.md, .flowcode/templates/project-log-template.md, .flowcode/templates/upstream-contribution-template.md]
+links: [.flowcode/upstream-contributions.md, .flowcode/templates/project-log-template.md, .flowcode/templates/upstream-contribution-template.md]
 ---
 
 # Feedback Loop
@@ -60,7 +60,7 @@ One observation = one candidate; omit anything already recorded. Don't pad.
 
 For each candidate:
 
-- **Target** — run it through the `/flowcode:extend` routing table (`.claude/commands/flowcode/extend.md § Step 2 — Classify`); do not reinvent it. Host customization → the matching `.flowcode/` file (rules, persona, tools, project-overview, modules, backlog, quality-checks, naming-conventions, git-workflow, workflow, plan-instructions, research). Framework-level → `.flowcode/upstream-contributions.md` as a `UC-NNN`, per `.flowcode/templates/upstream-contribution-template.md`.
+- **Target** — run it through the `/flowcode:extend` routing table (`/flowcode:extend § Step 2 — Classify`); do not reinvent it. Host customization → the matching `.flowcode/` file (rules, persona, tools, project-overview, modules, backlog, quality-checks, naming-conventions, git-workflow, workflow, plan-instructions, research). Framework-level → `.flowcode/upstream-contributions.md` as a `UC-NNN`, per `.flowcode/templates/upstream-contribution-template.md`.
 - **Suggested disposition** — `apply` when the item is a clear, durable constraint/fact ready to be binding; `log` when it's a decision/context worth recording but not (yet) a binding rule. The operator overrides this in Step 5.
 
 A single observation may split (a host rule + an upstream note on why it was needed) — emit one candidate per target.

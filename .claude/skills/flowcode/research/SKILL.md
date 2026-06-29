@@ -3,7 +3,7 @@ name: flowcode:research
 description: Run a standalone research-and-exploration session — resolve one or more scoped questions against authoritative external sources, cache-first, and produce/update `{slug}-research.md` artifacts. Use whenever a decision needs facts the repo doesn't already hold (a library API, protocol, version/compatibility matrix, config option, best practice) — both ad-hoc via `/flowcode:research` and as the silent context-gather other phases lean on.
 status: active
 tags: [research, exploration, web-fetch, cache, sources, standalone]
-links: [.claude/agents/flowcode/researcher-agent.md, .flowcode/researches/researches-index.md, .flowcode/templates/research-template.md, .claude/commands/flowcode/research.md, .flowcode/quality-checks/markdown-quality.md]
+links: [.flowcode/researches/researches-index.md, .flowcode/templates/research-template.md, .flowcode/quality-checks/markdown-quality.md]
 ---
 
 # Research Session
@@ -56,7 +56,7 @@ Collect each researcher's report (`Mode / Status / Key finding / File / Open que
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/researcher-agent.md` | The worker — scoped fetch + cache-first write/update of one `{slug}-research.md`; haiku |
+| `flowcode:researcher-agent` | The worker — scoped fetch + cache-first write/update of one `{slug}-research.md`; haiku |
 | `.flowcode/researches/researches-index.md` | Cache index — read before every dispatch; the researcher updates the row on completion |
 | `.flowcode/researches/{slug}-research.md` | Individual cached findings — read a fresh `complete` hit instead of re-fetching |
 | `.flowcode/templates/research-template.md` | Artifact structure (Summary → Findings → Conclusions → Caveats → Raw Sources); the researcher reads it before writing |

@@ -3,7 +3,7 @@ name: flowcode:plan
 description: Turn an approved design into an execution-ready `{PREFIX}-plan.md` — phased, with checkbox steps, concrete file targets, acceptance criteria, Phase Status, and Touched Modules. Runs the `flowcode:planner-agent` agent (opus), registers the plan, and gates on the operator before execution. Use after a design is approved, when the operator says "plan it" / "break this into phases."
 status: active
 tags: [plan, planning, phases, acceptance-criteria, touched-modules]
-links: [.claude/agents/flowcode/planner-agent.md, .flowcode/templates/plan-template.md, .flowcode/templates/plan-log-template.md, .flowcode/plans/plan-instructions.md, .flowcode/plans/plan-index.md, .claude/skills/flowcode/design/SKILL.md, .claude/commands/flowcode/plan.md]
+links: [.flowcode/templates/plan-template.md, .flowcode/templates/plan-log-template.md, .flowcode/plans/plan-instructions.md, .flowcode/plans/plan-index.md]
 ---
 
 # Plan Session
@@ -59,14 +59,14 @@ Present the phase breakdown to the operator: the phase list, each phase's goal a
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/planner-agent.md` | The worker (opus) — decomposes the design and writes `{PREFIX}-plan.md` + initial log |
+| `flowcode:planner-agent` | The worker (opus) — decomposes the design and writes `{PREFIX}-plan.md` + initial log |
 | `.flowcode/templates/plan-template.md` | Plan artifact shape — phases, statuses, checkbox steps, acceptance criteria |
 | `.flowcode/templates/plan-log-template.md` | `[PLAN CREATED]` entry the planner writes on first run |
 | `.flowcode/plans/plan-instructions.md` | Authoritative lifecycle rules — phase status, **Active-Phase Completeness Bar**, phase-close minimum, halt conditions, artifact naming, UI gate |
 | `.flowcode/quality-checks/quality-gates.md` | Concrete gate registry — the planner names this phase's `build`/`test`/`lint`/`e2e` gates from here |
 | `.flowcode/plans/plan-index.md` | Receives the `active` / `0/N` registration update |
-| `.claude/skills/flowcode/design/SKILL.md` | The predecessor — produces and approves the design this skill consumes |
-| `.claude/commands/flowcode/execute.md` | The successor — runs the phases (user-gated) |
+| `flowcode:design` | The predecessor — produces and approves the design this skill consumes |
+| `/flowcode:execute` | The successor — runs the phases (user-gated) |
 
 ## Non-Goals
 

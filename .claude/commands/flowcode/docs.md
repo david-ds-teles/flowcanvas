@@ -4,12 +4,12 @@ description: Standalone slash command to run a documentation-reference session �
 status: active
 tags: [command, docs, references, documentation, cache, standalone]
 argument-hint: "[technology] [; another technology]"
-links: [.claude/skills/flowcode/docs/SKILL.md, .flowcode/references/references-index.md, .flowcode/templates/doc-reference-template.md, .flowcode/project/project-overview.md]
+links: [.flowcode/references/references-index.md, .flowcode/templates/doc-reference-template.md, .flowcode/project/project-overview.md]
 ---
 
 # /flowcode:docs
 
-- Thin entry point: loads and runs the shared `flowcode:docs` skill at `.claude/skills/flowcode/docs/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:docs` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — gather distilled references for the stack on demand; each reference is cached for every later phase (and the consult-every-time rule) to reuse.
 - **Cache-first:** reads `.flowcode/references/references-index.md` before any fetch; a fresh `current` reference at the in-scope version is returned as-is, never re-gathered.
 - **No args** → reads `project-overview.md § Technology Stack` and fans out one `flowcode:docs-researcher-agent` (sonnet) per technology, in parallel. **`<tech>`** → gathers/refreshes one.
@@ -41,7 +41,7 @@ Examples:
 
 You are running a documentation-reference session on demand.
 
-Load `.claude/skills/flowcode/docs/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the request: with no arguments, read `.flowcode/project/project-overview.md § Technology Stack` and gather a reference per technology; otherwise split `$ARGUMENTS` into independent technologies (a `;` marks a split). Check `.flowcode/references/references-index.md` before any fetch, dispatch `flowcode:docs-researcher-agent` for each technology that needs gathering (parallel when independent), and relay the consolidated references. Do not re-gather a fresh `current` cache hit.
+Run the `flowcode:docs` skill and execute its procedure. Treat `$ARGUMENTS` as the request: with no arguments, read `.flowcode/project/project-overview.md § Technology Stack` and gather a reference per technology; otherwise split `$ARGUMENTS` into independent technologies (a `;` marks a split). Check `.flowcode/references/references-index.md` before any fetch, dispatch `flowcode:docs-researcher-agent` for each technology that needs gathering (parallel when independent), and relay the consolidated references. Do not re-gather a fresh `current` cache hit.
 
 ## Non-Goals
 

@@ -4,12 +4,12 @@ description: Standalone slash command to run a flowcode-grounded code review ove
 status: active
 tags: [command, review, code-review, quality, standalone]
 argument-hint: "[ | staged | <refA>..<refB> | <branch> | <path…> ] [PREFIX=<X>]"
-links: [.claude/skills/flowcode/review/SKILL.md, .flowcode/reviews/reviews-index.md, .flowcode/templates/review-report-template.md]
+links: [.flowcode/reviews/reviews-index.md, .flowcode/templates/review-report-template.md]
 ---
 
 # /flowcode:review
 
-- Thin entry point: loads and runs the shared `flowcode:review` skill at `.claude/skills/flowcode/review/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:review` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — review any diff on demand; findings persist for later reference.
 - **Grounded:** every run checks the change against `project-overview.md`, the touched `modules/{name}.md` contracts, the declared quality gates, and the code conventions — divergence is a first-class finding.
 - **Plan-aware:** if a `{PREFIX}` resolves (explicit, branch, or active plan), the plan's acceptance criteria join the check and findings land in `{PREFIX}-qa-report.md`; otherwise they land in `.flowcode/reviews/{slug}-review.md`.
@@ -43,7 +43,7 @@ Examples:
 
 You are running a standalone code review on demand.
 
-Load `.claude/skills/flowcode/review/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the scope: empty → the uncommitted working tree; `staged` → staged changes; a `<refA>..<refB>` or branch → that range vs its base; one or more paths → those files/dirs. A `PREFIX=<X>` token binds the review to that plan for acceptance-criteria context; otherwise detect a plan from the branch or the active plan touching the changed files, and if none clearly applies, review baseline-only. Dispatch `flowcode:code-reviewer-agent` once over the resolved scope and relay the gate outcome, baseline-conformance status, finding counts, and the artifact path. Do not apply fixes.
+Run the `flowcode:review` skill and execute its procedure. Treat `$ARGUMENTS` as the scope: empty → the uncommitted working tree; `staged` → staged changes; a `<refA>..<refB>` or branch → that range vs its base; one or more paths → those files/dirs. A `PREFIX=<X>` token binds the review to that plan for acceptance-criteria context; otherwise detect a plan from the branch or the active plan touching the changed files, and if none clearly applies, review baseline-only. Dispatch `flowcode:code-reviewer-agent` once over the resolved scope and relay the gate outcome, baseline-conformance status, finding counts, and the artifact path. Do not apply fixes.
 
 ## Non-Goals
 

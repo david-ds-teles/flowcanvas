@@ -44,7 +44,7 @@ Any framework file `X.md` may have a host-authored sibling `X.local.md` in the s
 | File | Load Type | Purpose |
 |------|-----------|---------|
 | `.flowcode/flowcode-index.md` | eager | This file — authoritative map of every framework file with its load type |
-| `.flowcode/workflow/flowcode-workflow.md` | eager | Tier loading rules, Read Depth protocol, available workflows, model routing, parallelism rules, sub-agent dispatch table |
+| `.flowcode/workflow/flowcode-workflow.md` | eager | Tier loading rules, Read Depth protocol, available workflows, parallelism rules, sub-agent dispatch table |
 | `.flowcode/workflow/file-conventions.md` | context | The frontmatter + summary standard and the full Read Depth protocol; load when authoring or validating a managed `.md`. The operational Read Depth ladder is inline in `flowcode-workflow.md` |
 | `.flowcode/workflow/flowcode-persona.md` | eager | Agent communication style and identity |
 | `.flowcode/workflow/flowcode-rules.md` | eager | All mandatory behavioral rules — every rule must be followed without exception |
@@ -52,6 +52,7 @@ Any framework file `X.md` may have a host-authored sibling `X.local.md` in the s
 | `.flowcode/project/project-overview.md` | eager | Living project knowledge base — architecture, stack, modules, quality gates |
 | `.flowcode/project/project-log.md` | eager | Reverse-chronological project-level event log (`[PLAN COMPLETE]`, `[BOOTSTRAP]`, `[BUGFIX]`, `[QUICKFIX]`) |
 | `.flowcode/plans/plan-instructions.md` | eager | Mandatory phase lifecycle rules, phase statuses, halt conditions, phase-close minimum |
+| `.flowcode/plans/plan-execution.md` | on-demand | The execution procedure — per-phase implementation, Phase Close Sequence, Post-Execution Pipeline. Load when running, resuming, or closing a plan |
 
 ---
 
@@ -94,28 +95,7 @@ Any framework file `X.md` may have a host-authored sibling `X.local.md` in the s
 
 | File | Load Type | Purpose |
 |------|-----------|---------|
-| `.flowcode/templates/templates-index.md` | on-demand | Local index of all templates — mirrors this section for discovery inside `templates/` |
-| `.flowcode/templates/agent-instructions.md` | on-demand | The `<flowcode-instructions>` block injected into host project CLAUDE.md by `flowcode-install.js` |
-| `.flowcode/templates/design-template.md` | on-demand | Template for design artifacts — load immediately before writing a design file |
-| `.flowcode/templates/plan-template.md` | on-demand | Template for plan artifacts — load immediately before writing a plan file |
-| `.flowcode/templates/plan-log-template.md` | on-demand | Template for `{PREFIX}-log.md` per-plan log — contains 3 entry templates in one file (`[PLAN CREATED]`, `[PHASE]`, `[PLAN COMPLETE]`). Load when creating a plan folder, appending a `[PHASE]` entry, or writing `[PLAN COMPLETE]` |
-| `.flowcode/templates/research-template.md` | on-demand | Template for research artifacts — load before a research agent writes its findings |
-| `.flowcode/templates/doc-reference-template.md` | on-demand | Template for the `docs`-type technology documentation reference — load before `flowcode:docs-researcher-agent` writes a `references/docs/{tech-slug}.md` |
-| `.flowcode/templates/reference-template.md` | on-demand | Template for a general reference card (registered material — design, spec, example, …) — load before `/flowcode:reference` writes a `references/{type}/{slug}.md` card |
-| `.flowcode/templates/qa-report-template.md` | on-demand | Template for QA reports — load before generating the QA report |
-| `.flowcode/templates/review-report-template.md` | on-demand | Template for standalone `{slug}-review.md` reports — load before a `/flowcode:review` writes a new ad-hoc review report |
-| `.flowcode/templates/technical-overview-template.md` | on-demand | Template for technical overviews — load before post-execution artifact generation |
-| `.flowcode/templates/changelog-template.md` | on-demand | Template for changelogs — load at each phase close (per-phase append) and during post-exec reconciliation |
-| `.flowcode/templates/test-notes-template.md` | on-demand | Template for test notes — load during post-execution parallel artifact generation |
-| `.flowcode/templates/ui-design-template.md` | on-demand | Template for UI design artifacts — load before generating `{PREFIX}-ui-design.md` |
-| `.flowcode/templates/ui-design-system-template.md` | on-demand | Template for the per-project `ui-design-system.md` digest — load before harvesting/generating the design system |
-| `.flowcode/templates/html-deliverable-template.html` | on-demand | House-style dark-theme HTML deliverable shell — load when rendering an artifact via `/flowcode:render-html` |
-| `.flowcode/templates/backlog-entry-template.md` | on-demand | Template for new `BL-NNN` rows in `.flowcode/project/backlog.md` — load before adding a backlog entry |
-| `.flowcode/templates/upstream-contribution-template.md` | on-demand | Template for new `UC-NNN` rows in `.flowcode/upstream-contributions.md` — load before `/flowcode:extend` appends an upstream-contribution entry |
-| `.flowcode/templates/project-overview-template.md` | on-demand | Template for the project overview — load when bootstrap regenerates `project-overview.md` |
-| `.flowcode/templates/project-log-template.md` | on-demand | Templates for `[PLAN COMPLETE]`, `[BOOTSTRAP]`, `[BUGFIX]`, `[QUICKFIX]` entries in `.flowcode/project/project-log.md` — project-level events only. `[PHASE]` entries go in `{PREFIX}-log.md`, not here |
-| `.flowcode/templates/agents-structure-template.md` | on-demand | Template for agent files — load immediately before authoring any new flowcode sub-agent (wired into the harness as a `flowcode:` sub-agent) |
-| `.flowcode/templates/module-template.md` | on-demand | Template for per-module detail files — load immediately before writing any file under `.flowcode/project/modules/` |
+| `.flowcode/templates/templates-index.md` | on-demand | **Authoritative** catalog of every artifact template (one row each, with used-by + trigger). Load before writing any artifact to find and read its template (Template First) |
 
 ---
 
@@ -125,8 +105,8 @@ Any framework file `X.md` may have a host-authored sibling `X.local.md` in the s
 |------|-----------|---------|
 | `.flowcode/ui/ui-index.md` | on-demand | Subsystem router — load first when a plan touches frontend |
 | `.flowcode/ui/ui-design-system.md` | on-demand | Mandatory design ground truth — token + component digest every mockup obeys; ships as a starter, harvested per-project by bootstrap (host-owned) |
-| `.flowcode/ui/ui-workflow.md` | on-demand | UI design lifecycle — 3-iteration parallel mockups (via `flowcode:ui-mockups`), selection, implementation, phase-close visual parity, plan-close canonical capture |
-| `.flowcode/ui/ui-mockup-discipline.md` | on-demand | Mockup conventions — flat directory, parallel-iteration filenames, test IDs, design tokens, breakpoints, MCP preferences |
+| `.flowcode/ui/ui-workflow.md` | on-demand | UI design lifecycle — source-grounded mockups (snapshot the running UI when implemented, else the plan's UI/UX definitions): one fidelity anchor + two distinct explorations, selection, implementation, phase-close visual parity, plan-close capture |
+| `.flowcode/ui/ui-mockup-discipline.md` | on-demand | Mockup conventions — flat directory, filenames, test IDs, design tokens, breakpoints, MCP prefs, the Fidelity discipline + state-switcher output form |
 | `.flowcode/ui/references/` | on-demand | Visual ground-truth HTML/screenshots — starter `starter-dashboard.html`; per-project harvest adds live-app references |
 
 ---
@@ -175,69 +155,86 @@ Any framework file `X.md` may have a host-authored sibling `X.local.md` in the s
 
 ---
 
+## Evaluation
+
+| File | Load Type | Purpose |
+|------|-----------|---------|
+| `.flowcode/eval/eval-index.md` | on-demand | Router for the evaluation subsystem — lists the 3 eval scripts and the `logs/eval/` output convention. Load when running `/flowcode:evaluate` or wiring evaluation |
+| `.flowcode/eval/flowcode-eval.js` | on-demand | Orchestrator — runs Layer 1 + Layer 2 inline (dependency-free Node), prints the Layer 3 dispatch, writes `logs/eval/summary-{date}.md`. Invoked by the `flowcode:evaluate` skill |
+| `.flowcode/eval/eval-hooks-log.js` | on-demand | Layer 1 — aggregates `logs/hooks.log` into per-hook outcome counts + high-block flags |
+| `.flowcode/eval/eval-artifacts.js` | on-demand | Layer 2 — structural rubric scorer over `plans/{PREFIX}/` artifacts |
+| `.flowcode/logs/eval/` | reference | Host-runtime output sink for all evaluation reports (`hooks-{date}`, `static-{date}`, `summary-{date}`, `{PREFIX}.json`, `trend.jsonl`). Auto-created on first run; never shipped |
+
+---
+
 ## Agent Tools (wired into the active harness by the installer — see `flowcode.yml` `install_paths.agent_tools`)
 
-These are invoked by their wired name, not read by path — there is no `agent-tools/` directory in a host install (the installer routes them into the harness). Reference a sub-agent as `flowcode:<name>`, a skill as `flowcode:<name>`, a command as `/flowcode:<name>`; hooks fire automatically.
+These are invoked by their wired name, not read by path — there is no `agent-tools/` directory in a host install (the installer routes them into the harness). Reference a sub-agent as `flowcode:<name>`, a skill as `flowcode:<name>`, a command as `/flowcode:<name>`; hooks fire automatically. This is the discovery roster — each capability's full behavior lives in its own file, loaded on dispatch. All are **on-demand** by name except rows marked `automatic` (hooks — fire by themselves) or `reference` (runtime/installer artifacts, not invoked).
 
-| Capability | Load Type | Purpose |
-|------|-----------|---------|
-| `flowcode:bootstrap-agent` | on-demand | Bootstrap sub-agent (sonnet). Loaded and executed when `/flowcode:bootstrap` runs — explores the project and writes the knowledge base; dispatches `flowcode:module-explorer-agent` per module for deep per-module docs |
-| `flowcode:module-explorer-agent` | on-demand | Module-explorer sub-agent (sonnet). Deeply explores ONE module's source and writes a self-contained `modules/{name}.md` (real signatures, usage example, config/env, traced deps, conventions). Dispatched per-module by bootstrap Step 3.5 or standalone via `flowcode:module-doc`; merge-mode |
-| `flowcode:code-explorer-agent` | on-demand | Code-explorer sub-agent. Dispatched in the Post-Execution Pipeline before technical-overview generation — audits implementation vs spec, produces divergence report |
-| `flowcode:researcher-agent` | on-demand | Researcher sub-agent (haiku). Resolves one scoped research question; checks the researches cache first, writes `{slug}-research.md` new or as `## Update` append |
-| `flowcode:docs-researcher-agent` | on-demand | Doc-researcher sub-agent (sonnet). Explores a technology's official documentation and distills a token-efficient `references/docs/{tech-slug}.md`; cache-first against `references-index.md`, append-only `## Update`, version-pinned. Dispatched by `flowcode:docs` |
-| `flowcode:designer-agent` | on-demand | Designer sub-agent (opus). Produces `{PREFIX}-design.md` at full depth — DDL, signatures, rejected alternatives, mermaid, scope boundaries, risks, research refs. Dispatches 3-iteration mockup flow for UI plans |
-| `flowcode:planner-agent` | on-demand | Planner sub-agent (opus). Produces `{PREFIX}-plan.md` from approved design; active phase full depth, later phases stubbed; annotates each phase's `Depends On`; creates `{PREFIX}-log.md` with `[PLAN CREATED]` |
-| `flowcode:implementer-agent` | on-demand | Implementer sub-agent (sonnet). Dispatched by `flowcode:execute` for within-phase fan-out — implements ONE exclusively-owned, file-disjoint slice of a phase from the design slice + module contracts, never touching shared/wiring files, returning a compact exports/deviations report for the main session to integrate. Leaf agent; advisory (sequential fallback always valid) |
-| `flowcode:code-reviewer-agent` | on-demand | Code-reviewer sub-agent (sonnet). Three modes — phase, plan, and standalone (`/flowcode:review`, plan-optional). Checks baseline conformance (project-overview, module contracts, gates, conventions) as a first-class finding. Prepends a `## Check` section (newest on top) to `{PREFIX}-qa-report.md` (phase/plan) or `.flowcode/reviews/{slug}-review.md` (standalone) in finding-as-section format |
-| `flowcode:qa-runner-agent` | on-demand | QA-runner sub-agent (sonnet). Executes declared quality gates; fills Stack Gate table in the latest `## Check` section; captures raw logs to `logs/qa-runs/` |
-| `flowcode:artifact-updater-agent` | on-demand | Artifact-updater sub-agent (sonnet). Phase close: appends changelog + log + refreshes module docs. Plan close: technical-overview + test-notes + project-overview sync + `[PLAN COMPLETE]` logs |
-| `flowcode:migrator-agent` | on-demand | Migrator sub-agent (sonnet). Dispatched by `/flowcode:migrate` **only** for the judgment remainder of a delta upgrade — harvests host edits to changed/removed framework files as `UC-NNN` before overwrite, applies non-inferable `**Migration**` transforms, then drives `migrate-plan.js` to apply/restamp. Also runs the full-convergence fallback for legacy installs |
-| `flowcode:browser-runner-agent` | on-demand | Browser-runner sub-agent (sonnet). Dispatched by the `flowcode:browser` skill — resolves a driver via the four-rung ladder (wired MCP → project Playwright → ephemeral Playwright → tracked `[deferred]`), boots/attaches the app, drives the vendored `capture.mjs` engine to screenshot viewports + assert load-bearing testids, writes PNGs + `result.json` + raw logs under `logs/browser/`, returns a compact report. Never edits source |
-| `artifact-naming-check` | automatic | PreToolUse hook (Write/Edit/MultiEdit) — validates plan/research artifact naming. Banned-name reject list + structural rules. Writes outcome to `.flowcode/logs/hooks.log` |
-| `frontmatter-summary-check` | automatic | PreToolUse hook (Write/Edit/MultiEdit) — blocks any flowcode-managed `.md` written without valid frontmatter (5 keys) or a 1–10 bullet summary. Enforces `workflow/file-conventions.md` |
-| `harness-leak-check` | automatic | PreToolUse hook (Write/Edit/MultiEdit) — blocks a write that would put a harness directory or a non-resolvable agent-tools path into a `.flowcode/` framework `.md` doc; keeps framework docs harness-agnostic (reference agent-tools capabilities by their wired name — `flowcode:` skill/sub-agent, `/flowcode:` command, hook name). Excludes the agent-tools source tree and `changelog.md`. Writes outcome to `.flowcode/logs/hooks.log` |
-| `markdown-quality-check` | automatic | PostToolUse render-lint over every flowcode-managed `.md` — render-breaking defects (broken mermaid, unclosed fence, Unicode arrows) block (exit 2, must-fix); style issues (heading/table/fence-language) warn. Writes outcome (pass/warn/error) to `.flowcode/logs/hooks.log` |
-| `project-log-format-check` | automatic | PreToolUse hook — blocks writes to `project-log.md` that introduce tags other than `[PLAN COMPLETE]`, `[BOOTSTRAP]`, `[BUGFIX]`, `[QUICKFIX]`, `[MIGRATION]`, `[FEEDBACK]`, or that omit the `**Dev:**` attribution line on an entry. Catches the common `[PHASE]`-in-project-log mistake; new-writes-only, legacy entries tolerated |
-| `qa-probe-gate` | automatic | PreToolUse hook (matcher Bash) — blocks `git commit` / `gh pr create` / `gh pr merge` when the latest QA report shows `Gate outcome: FAIL` or unresolved finding of severity ≥ medium |
-| `plan-artifact-index` | automatic | SessionStart hook — emits a compact summary to stdout so the agent has session context without scanning: the acting developer identity (`Acting as Dev:`, resolved from `FLOWCODE_DEV` / `git config user.name`+`user.email`, for stamping the `Dev:` log field), active plans (with active `## Phase N`), and the last 5 project-log entries |
-| `notify-sound` | automatic | Stop + Notification hook that plays a sound when the agent finishes a turn or asks for user input — cross-platform (macOS/Linux/Windows). Writes outcome to `.flowcode/logs/hooks.log` |
-| `feedback-nudge` | automatic | Stop hook — when the session changed anything in the repo (`git status`), surfaces a one-line reminder (stdout `systemMessage`) to run `/flowcode:feedback`, once per session. Never blocks; never runs the loop; guards `stop_hook_active` |
-| `/flowcode:bootstrap` | on-demand | `/flowcode:bootstrap` slash command — thin entry that runs the `flowcode:bootstrap` skill (which dispatches `flowcode:bootstrap-agent`) to initialize or re-bootstrap the project |
-| `/flowcode:module-doc` | on-demand | `/flowcode:module-doc` slash command — thin entry that runs the `flowcode:module-doc` skill (dispatches `flowcode:module-explorer-agent`); (re)generates one module's deep doc in merge-mode without a full re-bootstrap |
-| `/flowcode:extend` | on-demand | `/flowcode:extend` slash command definition — extends/customizes the framework from a natural-language statement; classifies intent against this index, previews edits, applies on approval |
-| `/flowcode:brainstorm` | on-demand | `/flowcode:brainstorm` slash command — fuzzy-idea entry; thin alias into the `flowcode:design` skill (Mode A, conversational). Same engine as `/flowcode:design` |
-| `/flowcode:feedback` | on-demand | `/flowcode:feedback` slash command — runs the feedback-loop skill in the main session (extract → stage → operator-approve → apply session knowledge) |
-| `/flowcode:migrate` | on-demand | `/flowcode:migrate` slash command — runs `migrate-plan.js` to compute + apply the upgrade delta, dispatching `flowcode:migrator-agent` **only** when there is judgment work (a host edit to harvest or a `**Migration**` block). A clean upgrade spends no sub-agent tokens. Args: `--source`, `--force`, `--dry-run` |
-| `/flowcode:mockup` | on-demand | `/flowcode:mockup` slash command — standalone trigger for the `flowcode:ui-mockups` composer; generates grounded HTML mockups/screens with no plan required |
-| `/flowcode:render-html` | on-demand | `/flowcode:render-html` slash command — renders an artifact (design/plan/technical-overview, or `architecture`/`flow`) into a self-contained house-style HTML deliverable |
-| `/flowcode:research` | on-demand | `/flowcode:research` slash command — thin entry that runs the `flowcode:research` skill (dispatches `flowcode:researcher-agent`); standalone, cache-first research session |
-| `/flowcode:docs` | on-demand | `/flowcode:docs` slash command — thin entry that runs the `flowcode:docs` skill (dispatches `flowcode:docs-researcher-agent`); gathers/consults distilled tech-doc references (no-arg = whole stack in parallel, `<tech>` = one) |
-| `/flowcode:review` | on-demand | `/flowcode:review` slash command — thin entry that runs the `flowcode:review` skill (dispatches `flowcode:code-reviewer-agent`); standalone, plan-optional code review over an arbitrary diff |
-| `/flowcode:design` | on-demand | `/flowcode:design` slash command — thin entry that runs the `flowcode:design` skill (scope → `flowcode:designer-agent` depth); canonical design surface (`/flowcode:brainstorm` is the fuzzy-idea alias) |
-| `/flowcode:plan` | on-demand | `/flowcode:plan` slash command — thin entry that runs the `flowcode:plan` skill (dispatches `flowcode:planner-agent`); turns an approved design into `{PREFIX}-plan.md` |
-| `/flowcode:execute` | on-demand | `/flowcode:execute` slash command — thin entry that runs the `flowcode:execute` skill; executes/resumes an active plan through the phase-close sequence + post-execution pipeline |
-| `/flowcode:browser` | on-demand | `/flowcode:browser` slash command — thin entry that runs the `flowcode:browser` skill (dispatches `flowcode:browser-runner-agent`); standalone viewport-capture + app-smoke against the running app, no plan required. Modes `capture` / `smoke` / `all` |
-| `/flowcode:contributors` | on-demand | `/flowcode:contributors` slash command — thin entry that runs the `flowcode:contributors` skill; read-only attribution report over the `Dev:` log fields, filtered by developer / `--me` / `--feature` / `--type` / `--area` |
-| `flowcode:contributors` | on-demand | Contributors report skill — read-only rollup of the `**Dev:**` field across `plans/*/*-log.md` + `project-log.md`; answers who built a feature, what a developer changed, what fixes they shipped. Run by `/flowcode:contributors` |
-| `flowcode:feedback` | on-demand | Feedback-loop skill — the single shared extract→stage→approve→apply procedure run by `/flowcode:feedback` and pointed to by the Stop-hook nudge |
-| `flowcode:feedback` → `scripts/analyze-session.sh` | on-demand | Bundled read-only evidence gatherer for the feedback skill's Step 1 — prints a digest of whole-repo `git status`/`--stat`, recent `hooks.log` block/warn lines, and plan/project-log heads. Writes nothing |
-| `flowcode:ui-mockups` | on-demand | Mockup composer skill — grounds in `ui-design-system.md`, composes vendored taste lenses (`references/taste/`) + optional live engines, emits 3 self-checked HTML iterations. Dispatched by the UI gate and by `/flowcode:mockup` |
-| `flowcode:ui-mockups` → `references/` | on-demand | Composer reference bundle — `house-style.css`, `quality-checklist.md`, and `taste/` (vendored taste-skill lenses + `taste-skills-index.md` router) |
-| `flowcode:research` | on-demand | Research-session skill — cache-first scoped research; dispatches `flowcode:researcher-agent` (parallel for independent questions). Run by `/flowcode:research`; also the silent context-gather inside the design session |
-| `flowcode:docs` | on-demand | Documentation-reference skill — cache-first; reads the stack from `project-overview.md` and fans out `flowcode:docs-researcher-agent` per technology (parallel), or gathers one. Run by `/flowcode:docs`; also the lazy first-touch gather behind the consult-every-time rule |
-| `flowcode:review` | on-demand | Review-session skill — resolves scope (working tree / staged / ref range / paths), detects an optional plan `{PREFIX}`, dispatches `flowcode:code-reviewer-agent`, routes findings to `{PREFIX}-qa-report.md` or `.flowcode/reviews/{slug}-review.md`. Run by `/flowcode:review` |
-| `flowcode:design` | on-demand | Design-session skill — conversational scope (fuzzy-idea or approved-scope entry) then `flowcode:designer-agent` depth; ends at a review gate, hands to `flowcode:plan`. Run by `/flowcode:design` and `/flowcode:brainstorm` |
-| `flowcode:plan` | on-demand | Plan-session skill — verifies the design is approved, dispatches `flowcode:planner-agent`, registers the plan `active`, gates before execution. Run by `/flowcode:plan` |
-| `flowcode:execute` | on-demand | Execute/continue-plan skill — resume detection + per-phase Phase Close Sequence + Post-Execution Pipeline; orchestrates the review/QA/audit/artifact agents. Run by `/flowcode:execute` |
-| `flowcode:browser` | on-demand | Browser/app-check skill — resolves mode (capture/smoke/all) + scope (plan ui-design viewports + mockup, or standalone routes) + the App-Run recipe, dispatches `flowcode:browser-runner-agent`, routes findings (capture → visual-parity drift; smoke → e2e) to `{PREFIX}-qa-report.md` or relays advisory. Run by `/flowcode:browser`; also dispatched by the UI gate + `flowcode:execute` close |
-| `flowcode:browser` → `references/` | on-demand | Harness reference bundle — `capture.mjs` (vendored Playwright engine), `provisioning.md` (driver ladder + commands), `browser-config.schema.md` (config/result contract) |
-| `flowcode:bootstrap` | on-demand | Bootstrap-session skill — the when-to-bootstrap decision + greenfield gate around `flowcode:bootstrap-agent`. Run by `/flowcode:bootstrap` |
-| `flowcode:module-doc` | on-demand | Module-doc skill — the which-module/when decision around `flowcode:module-explorer-agent`; (re)generates one stale/missing `modules/{name}.md` at depth in merge-mode, no full re-bootstrap. Run by `/flowcode:module-doc` |
-| harness settings template | reference | The installer merges its hook registrations into the active harness's settings on install (not a runtime-loaded file) |
-| `.flowcode/logs/hooks.log` | reference | TSV sink for every hook fire (`timestamp\thook\ttool\tpath\toutcome`). Auto-created on first hook execution |
-| `.flowcode/install-manifest.json` | reference | Manifest of every installed file (with `version` + per-file `sha256`) and CLAUDE.md block written by `flowcode-install.js`. Consumed by `flowcode-uninstall.js` (removal) and by `migrate-plan.js` (diffed against `framework-manifest.json` to compute the upgrade delta) |
-| `.flowcode/framework-manifest.json` | reference | Per-version checksum manifest of framework-owned files (installed-path form), generated + self-checked by `bundle.js` and shipped with the framework. The machine source of truth `migrate-plan.js` diffs against the install manifest to decide which files an upgrade touches |
+| Capability | Purpose |
+|------|------|
+| `flowcode:bootstrap-agent` | Explores the project, writes the knowledge base; dispatches `module-explorer` per module (sonnet) |
+| `flowcode:module-explorer-agent` | Deeply explores ONE module → self-contained `modules/{name}.md`, merge-mode (sonnet) |
+| `flowcode:code-explorer-agent` | Post-execution audit of implementation vs spec → divergence report (sonnet) |
+| `flowcode:researcher-agent` | Resolves one scoped research question → `{slug}-research.md`, cache-first (haiku) |
+| `flowcode:docs-researcher-agent` | Distills a technology's official docs → `references/docs/{tech-slug}.md`, cache-first (sonnet) |
+| `flowcode:designer-agent` | Produces `{PREFIX}-design.md` at full depth; runs the mockup flow for UI plans (opus) |
+| `flowcode:planner-agent` | Produces `{PREFIX}-plan.md` + `{PREFIX}-log.md` from the approved design (opus) |
+| `flowcode:implementer-agent` | Implements one file-disjoint phase slice → exports/deviations report; advisory fan-out (sonnet) |
+| `flowcode:code-reviewer-agent` | Reviews changed files → `## Check` prepend; phase/plan/standalone modes (sonnet) |
+| `flowcode:qa-runner-agent` | Runs declared quality gates → Stack Gate table + raw logs (sonnet) |
+| `flowcode:artifact-updater-agent` | Phase/plan close: changelog, logs, module docs, technical-overview, test-notes, syncs (sonnet) |
+| `flowcode:migrator-agent` | Delta-upgrade judgment remainder — harvest host edits, apply `**Migration**` blocks (sonnet) |
+| `flowcode:evaluator-agent` | Layer 3 judge — scores one plan's artifacts 0–4 → `logs/eval/{PREFIX}.json` + trend; advisory (sonnet) |
+| `flowcode:browser-runner-agent` | Drives `capture.mjs` → screenshots + testid asserts + `result.json`; driver ladder (sonnet) |
+| `artifact-naming-check` | automatic — PreToolUse: validates plan/research artifact naming |
+| `frontmatter-summary-check` | automatic — PreToolUse: blocks managed `.md` lacking frontmatter (5 keys) or summary |
+| `harness-leak-check` | automatic — PreToolUse: blocks harness dirs / non-resolvable agent-tools paths in framework docs |
+| `markdown-quality-check` | automatic — PostToolUse render-lint: render-breaking defects block, style issues warn |
+| `project-log-format-check` | automatic — PreToolUse: enforces project-log tags + the `**Dev:**` line |
+| `qa-probe-gate` | automatic — PreToolUse(Bash): blocks commit/PR on FAIL or unresolved `≥ medium` finding |
+| `plan-artifact-index` | automatic — SessionStart: emits dev identity, active plans, last 5 project-log entries |
+| `notify-sound` | automatic — Stop/Notification: plays a cross-platform sound |
+| `feedback-nudge` | automatic — Stop: nudges `/flowcode:feedback` once per session when the repo changed |
+| `/flowcode:bootstrap` | Runs the `flowcode:bootstrap` skill to initialize or re-bootstrap the project |
+| `/flowcode:module-doc` | Runs `flowcode:module-doc` — (re)generate one module's deep doc, merge-mode |
+| `/flowcode:extend` | Extends/customizes the framework from a natural-language statement; previews then applies |
+| `/flowcode:brainstorm` | Fuzzy-idea entry — alias into the `flowcode:design` skill (Mode A) |
+| `/flowcode:feedback` | Runs the feedback-loop skill (extract → stage → approve → apply) |
+| `/flowcode:migrate` | Runs `migrate-plan.js` to compute/apply the upgrade delta. Args: `--source`, `--force`, `--dry-run` |
+| `/flowcode:mockup` | Standalone `flowcode:ui-mockups` — grounded HTML mockups, no plan |
+| `/flowcode:render-html` | Renders an artifact into a self-contained house-style HTML deliverable |
+| `/flowcode:research` | Runs `flowcode:research` — standalone cache-first research session |
+| `/flowcode:docs` | Runs `flowcode:docs` — gather/consult distilled tech-doc references (no-arg = whole stack) |
+| `/flowcode:review` | Runs `flowcode:review` — standalone, plan-optional code review over a diff |
+| `/flowcode:evaluate` | Runs `flowcode:evaluate` — 3-layer plan-artifact evaluation; advisory, `PREFIX` optional |
+| `/flowcode:revise` | Runs `flowcode:revise` — post-execution polish loop + completion trigger |
+| `/flowcode:design` | Runs `flowcode:design` — canonical design surface (`/flowcode:brainstorm` is the alias) |
+| `/flowcode:plan` | Runs `flowcode:plan` — turns an approved design into `{PREFIX}-plan.md` |
+| `/flowcode:execute` | Runs `flowcode:execute` — execute/resume an active plan through close + pipeline |
+| `/flowcode:browser` | Runs `flowcode:browser` — viewport capture + app smoke (`capture`/`smoke`/`all`) |
+| `/flowcode:contributors` | Runs `flowcode:contributors` — attribution report over `Dev:` log fields |
+| `flowcode:contributors` | Read-only `**Dev:**`-field rollup across plan + project logs — who built/changed/fixed what |
+| `flowcode:feedback` | The shared extract→stage→approve→apply session-knowledge loop |
+| `flowcode:feedback` → `scripts/analyze-session.sh` | Read-only evidence gatherer for the feedback skill's Step 1 |
+| `flowcode:ui-mockups` | Source-grounded mockup composer — anchor + two distinct explorations, self-checked |
+| `flowcode:ui-mockups` → `references/` | Composer bundle — `house-style.css`, checklist, exemplar, vendored taste lenses |
+| `flowcode:research` | Cache-first scoped research; dispatches `flowcode:researcher-agent` (parallel) |
+| `flowcode:docs` | Cache-first docs gather; fans out `flowcode:docs-researcher-agent` per technology (parallel) |
+| `flowcode:review` | Resolves scope, dispatches code-reviewer, routes findings to qa-report / reviews |
+| `flowcode:evaluate` | Runs the L1–2 orchestrator + dispatches the L3 judge per plan; advisory |
+| `flowcode:revise` | Revise-stage loop (fix/adjust/amend); records `[REVISE]`; triggers completion on sign-off |
+| `flowcode:design` | Conversational scope → `flowcode:designer-agent` depth; ends at a review gate |
+| `flowcode:plan` | Verifies design approved, dispatches planner, registers plan `active`, gates |
+| `flowcode:execute` | Resume detection + per-phase close + post-execution pipeline orchestration |
+| `flowcode:browser` | Resolves mode/scope/driver, dispatches browser-runner, routes findings |
+| `flowcode:browser` → `references/` | Harness bundle — `capture.mjs`, `provisioning.md`, config schema |
+| `flowcode:bootstrap` | When-to-bootstrap decision + greenfield gate around `flowcode:bootstrap-agent` |
+| `flowcode:module-doc` | Which-module/when decision around `flowcode:module-explorer-agent`, merge-mode |
+| harness settings template | reference — installer merges hook registrations into the harness settings on install |
+| `.flowcode/logs/hooks.log` | reference — TSV sink for every hook fire (`timestamp\thook\ttool\tpath\toutcome`); auto-created; size-capped ~2 MB (keep-last-half) by the writing hooks |
+| `.flowcode/install-manifest.json` | reference — manifest of installed files (version + sha256); consumed by uninstall + migrate |
+| `.flowcode/framework-manifest.json` | reference — per-version checksum manifest `migrate-plan.js` diffs against the install manifest |
 
 ---
 
@@ -245,10 +242,10 @@ These are invoked by their wired name, not read by path — there is no `agent-t
 
 | File | Load Type | Purpose |
 |------|-----------|---------|
-| `flowcode/flowcode.yml` | reference | Framework metadata (name, version, spec_version, requirements, install paths). `version` is stamped into `install-manifest.json` at install and read by `migrate-plan.js` to scope the changelog version range |
-| `.flowcode/changelog.md` | on-demand | Version-keyed flowcode changelog — a human summary plus an auto-generated `Added/Changed/Removed` file list (`files:auto`, written + verified by `bundle.js`) per version, and for non-inferable host-owned changes a migrator-executable `**Migration**` block. `migrate-plan.js` reads only the Migration blocks; the file delta comes from `framework-manifest.json` |
-| `flowcode/migrate-plan.js` | on-demand | Deterministic delta engine behind `/flowcode:migrate` — diffs `install-manifest.json` against the source `framework-manifest.json` (framework-owned only), and `--apply` (copy changed/added, harvest-then-remove dropped) / `--merge-hooks` / `--restamp`. Does all the per-file work outside any LLM turn; `mode: full-convergence` for legacy installs |
-| `flowcode-install.js` | on-demand | Installer engine — cross-platform Node, no deps (`flowcode.sh`/`flowcode.cmd` are thin launchers). Copies the `flowcode/` kernel to `.flowcode/`, wires agent-tools into the active harness (`flowcode.yml` `install_paths.agent_tools`), injects the flowcode block into the harness's root instructions file, writes `install-manifest.json` (version + sha256), and merges the hook registrations into the harness settings. First-install by default; refuses a silent re-run over an existing install (upgrade via `/flowcode:migrate`). `--force` refreshes framework files while preserving host-owned content; `--dry-run` previews |
-| `flowcode-uninstall.js` | on-demand | Uninstaller engine (`.sh`/`.cmd` launchers) — reads `install-manifest.json` and removes only listed paths; preserves host-owned content (per `install-lib.js`) unless `--purge-artifacts` is passed. Supports `--dry-run` |
-| `flowcode/install-lib.js` | reference | Single source of truth for the ownership split (`FLOWCODE_HOST_OWNED` + `isHostOwned`), the dev-only top-level set, the installed-path mapper (`installedPathFor`), and the idempotent hook-registration merge (`mergeHookRegistrations`). Required by `flowcode-install.js`, `flowcode-uninstall.js`, `link_project.js`, `bundle.js`, and `migrate-plan.js` so ownership / path-mapping / hook-merge stay consistent |
-| `flowcode/install-fs.js` | reference | Cross-platform filesystem helpers (sha256, recursive copy/walk/remove) shared by the install / uninstall / link / bundle / migrate scripts — the dependency-free Node replacements for rsync / find / shasum |
+| `flowcode/flowcode.yml` | reference | Framework metadata (name, version, spec_version, requirements, install paths). `version` stamps the install manifest; `migrate-plan.js` scopes the changelog range from it |
+| `.flowcode/changelog.md` | on-demand | Version-keyed changelog — human summary + auto `Added/Changed/Removed` file list (`files:auto`, by `bundle.js`) + migrator `**Migration**` blocks (the only part `/flowcode:migrate` reads; file delta comes from `framework-manifest.json`) |
+| `flowcode/migrate-plan.js` | on-demand | Deterministic delta engine behind `/flowcode:migrate` — diffs install vs source `framework-manifest.json`; `--apply` / `--merge-hooks` / `--restamp`; `full-convergence` for legacy installs. All per-file work outside any LLM turn |
+| `flowcode-install.js` | on-demand | Installer engine (cross-platform Node, no deps). Copies the kernel to `.flowcode/`, wires agent-tools into the harness, injects the CLAUDE.md block, writes `install-manifest.json`, merges hook registrations. First-install only; `--force` / `--dry-run` |
+| `flowcode-uninstall.js` | on-demand | Uninstaller engine — reads `install-manifest.json`, removes only listed paths, preserves host-owned content unless `--purge-artifacts`. `--dry-run` |
+| `flowcode/install-lib.js` | reference | Single source of truth for the ownership split, dev-only set, installed-path mapper, and hook-registration merge. Required by install/uninstall/link/bundle/migrate |
+| `flowcode/install-fs.js` | reference | Cross-platform fs helpers (sha256, recursive copy/walk/remove) shared by install/uninstall/link/bundle/migrate — dependency-free |

@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
 status: active
 tags: [agent, module, knowledge-base, public-api, exploration, bootstrap]
-links: [.flowcode/templates/module-template.md, .claude/agents/flowcode/bootstrap-agent.md, .flowcode/project/project-overview.md, .flowcode/project/modules/README.md, .flowcode/quality-checks/markdown-quality.md]
+links: [.flowcode/templates/module-template.md, .flowcode/project/project-overview.md, .flowcode/project/modules/README.md, .flowcode/quality-checks/markdown-quality.md]
 ---
 
 # Module Explorer Agent

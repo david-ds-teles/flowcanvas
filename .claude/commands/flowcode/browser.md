@@ -4,12 +4,12 @@ description: Standalone slash command to drive a real browser against the runnin
 status: active
 tags: [command, browser, capture, smoke, e2e, standalone]
 argument-hint: "[capture | smoke | all] [route… | PREFIX=<X>]"
-links: [.claude/skills/flowcode/browser/SKILL.md, .flowcode/ui/ui-workflow.md, .flowcode/plans/plan-instructions.md]
+links: [.flowcode/ui/ui-workflow.md, .flowcode/plans/plan-instructions.md]
 ---
 
 # /flowcode:browser
 
-- Thin entry point: loads and runs the shared `flowcode:browser` skill at `.claude/skills/flowcode/browser/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:browser` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — "run the browser test" executes on demand, the App-Run recipe resolved live.
 - **Three modes:** `capture` (PNGs for visual parity) · `smoke` (testids + clean console for e2e) · `all`. Default standalone mode is `all`.
 - **Honest, never silent:** a missing driver yields a tracked `[deferred]` finding with a repro command, never a skipped check; a real regression / missing testid / console error is a first-class finding.
@@ -44,7 +44,7 @@ Examples:
 
 You are running a standalone browser check on demand.
 
-Load `.claude/skills/flowcode/browser/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as: a leading `capture` / `smoke` / `all` token sets the mode (default `all`); a `PREFIX=<X>` token binds to that plan for its ui-design viewports + selected mockup; bare paths are routes to walk. Resolve the App-Run recipe live (explicit → `project-overview.md § App Run` → auto-detect → ask) so the check always runs. Dispatch `flowcode:browser-runner-agent` once over the resolved scope and relay the driver used, captures written, smoke pass/fail, any `≥ medium` regression, and any `[deferred]` finding with its repro command. Do not apply fixes.
+Run the `flowcode:browser` skill and execute its procedure. Treat `$ARGUMENTS` as: a leading `capture` / `smoke` / `all` token sets the mode (default `all`); a `PREFIX=<X>` token binds to that plan for its ui-design viewports + selected mockup; bare paths are routes to walk. Resolve the App-Run recipe live (explicit → `project-overview.md § App Run` → auto-detect → ask) so the check always runs. Dispatch `flowcode:browser-runner-agent` once over the resolved scope and relay the driver used, captures written, smoke pass/fail, any `≥ medium` regression, and any `[deferred]` finding with its repro command. Do not apply fixes.
 
 ## Non-Goals
 

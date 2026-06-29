@@ -4,12 +4,12 @@ description: Standalone slash command to run a design session — turn a fuzzy i
 status: active
 tags: [command, design, brainstorm, scope, session]
 argument-hint: "<feature, change, or idea to design>"
-links: [.claude/skills/flowcode/design/SKILL.md, .claude/commands/flowcode/brainstorm.md, .claude/commands/flowcode/plan.md, .flowcode/plans/plan-index.md]
+links: [.flowcode/plans/plan-index.md]
 ---
 
 # /flowcode:design
 
-- Thin entry point: loads and runs the shared `flowcode:design` skill at `.claude/skills/flowcode/design/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:design` skill — the procedure lives in the skill, not here.
 - **Canonical design surface.** `/flowcode:brainstorm` is an alias into the same skill for the fuzzy-idea entry; this command is the general one (fuzzy idea *or* an already-approved scope).
 - Conversational, main-session: clarifying questions one at a time, silent parallel context-gather first, section-by-section approval — never a single dumped draft.
 - Produces `.flowcode/plans/{PREFIX}/{PREFIX}-design.md` and registers a `draft` plan row; the `flowcode:designer-agent` fills DDL, signatures, mermaid, risks, and (for UI scope) runs the mockup gate.
@@ -40,7 +40,7 @@ Examples:
 
 You are running a design session.
 
-Load `.claude/skills/flowcode/design/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the topic; if empty, prompt inline for it. Pick the entry mode from what the operator gives you — a fuzzy direction runs the full clarifying conversation (Mode A); a crisp, already-approved problem + scope goes straight to designer deepening after a quick confirmation (Mode B). This runs in the main session (the conversation cannot be delegated to a sub-agent). End at the final review gate; do **not** auto-chain `/flowcode:plan`.
+Run the `flowcode:design` skill and execute its procedure. Treat `$ARGUMENTS` as the topic; if empty, prompt inline for it. Pick the entry mode from what the operator gives you — a fuzzy direction runs the full clarifying conversation (Mode A); a crisp, already-approved problem + scope goes straight to designer deepening after a quick confirmation (Mode B). This runs in the main session (the conversation cannot be delegated to a sub-agent). End at the final review gate; do **not** auto-chain `/flowcode:plan`.
 
 ## Non-Goals
 

@@ -3,7 +3,7 @@ name: flowcode:docs
 description: Run a documentation-reference session — explore a technology's official documentation and distill token-efficient `references/docs/{tech-slug}.md` references a code agent learns from, cache-first. Use to gather the whole project stack (no args), one technology (`<tech>`), or lazily the first time work touches a stack technology with no cached reference. Both ad-hoc via `/flowcode:docs` and as the silent reference-gather the consult-every-time rule leans on.
 status: active
 tags: [docs, references, documentation, distill, cache, stack, standalone]
-links: [.claude/agents/flowcode/docs-researcher-agent.md, .flowcode/references/references-index.md, .flowcode/templates/doc-reference-template.md, .claude/commands/flowcode/docs.md, .flowcode/project/project-overview.md, .flowcode/quality-checks/markdown-quality.md]
+links: [.flowcode/references/references-index.md, .flowcode/templates/doc-reference-template.md, .flowcode/project/project-overview.md, .flowcode/quality-checks/markdown-quality.md]
 ---
 
 # Documentation Reference Session
@@ -61,7 +61,7 @@ Collect each researcher's report (`Mode / Status / Version / Key idioms / File /
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/docs-researcher-agent.md` | The worker — official-docs distill + cache-first write/update of one `references/docs/{tech-slug}.md`; sonnet |
+| `flowcode:docs-researcher-agent` | The worker — official-docs distill + cache-first write/update of one `references/docs/{tech-slug}.md`; sonnet |
 | `.flowcode/references/references-index.md` | Cache index — read before every dispatch; the researcher updates the row on completion |
 | `.flowcode/references/docs/{tech-slug}.md` | Individual distilled references — read a fresh `current` hit instead of re-gathering |
 | `.flowcode/templates/doc-reference-template.md` | Reference structure (Setup → Core Concepts → Idioms → Anti-Patterns → Project-Relevant API → Version Notes → Sources); the researcher reads it before writing |

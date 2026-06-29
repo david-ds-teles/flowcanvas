@@ -3,7 +3,7 @@ name: flowcode:code-explorer-agent
 description: Audits a completed plan's implementation against its spec. Dispatched in the Post-Execution Pipeline before technical-overview generation. Produces a code map + divergence report that feeds the technical-overview as its authoritative source. Use when a plan reaches its final phase and the post-exec pipeline needs a code-verified audit before artifact generation.
 status: active
 tags: [agent, code-explorer, audit, divergence, post-execution]
-links: [.flowcode/plans/plan-instructions.md, .flowcode/workflow/flowcode-workflow.md, .claude/agents/flowcode/artifact-updater-agent.md]
+links: [.flowcode/plans/plan-instructions.md, .flowcode/workflow/flowcode-workflow.md]
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

@@ -14,6 +14,17 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [MIGRATION] 0.11.0 → 0.16.0 — 2026-06-29
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Overwritten:** 78 framework files written (13 added — `eval/` subsystem, `/flowcode:evaluate` + `/flowcode:revise` commands/skills, `evaluator-agent`, `plans/plan-execution.md`, `changelog-archive.md`, `evaluation-report-template.md`, `state-switcher-exemplar.html`; 65 changed — agents, commands, skills, hooks, workflow, rules, ui, templates). Mode: delta, no-LLM path.
+**Backfilled:** 0 host files
+**Harvested:** none — the 4 host-edited plan files (003/004 design + ui-design) were preserved in place, not harvested
+**Hooks merged:** none (new registrations already present — idempotent merge)
+**Follow-ups:** Pre-apply, the stock delta wanted to **delete 37 entries** — 36 real `001`–`004` plan artifacts + the stale `.flowcode/README.md` — because the v0.11.0 install recorded host plan folders as `category: flowcode` and the ownership model (`install-lib.js:32`) only treats `plans/plan-index.md` as host-owned. De-classified all 37 from `install-manifest.json` (left on disk, no longer framework-tracked) so nothing of value was deleted and future migrates won't target them. Upstream gap to report: `.flowcode/plans/{PREFIX}/` should be host-owned in `install-lib.js`. Backup of pre-edit manifest in session scratchpad.
+
+---
+
 ## [PLAN COMPLETE] 004-generation-loop — Markdown-Core Generation Loop — 2026-06-29
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>

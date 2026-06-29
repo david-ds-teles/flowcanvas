@@ -4,12 +4,12 @@ description: Standalone slash command to register existing material (design file
 status: active
 tags: [command, reference, references, material, design, index, standalone]
 argument-hint: "[path or description of material] [as <type>]"
-links: [.claude/skills/flowcode/reference/SKILL.md, .flowcode/references/references-index.md, .flowcode/templates/reference-template.md]
+links: [.flowcode/references/references-index.md, .flowcode/templates/reference-template.md]
 ---
 
 # /flowcode:reference
 
-- Thin entry point: loads and runs the shared `flowcode:reference` skill at `.claude/skills/flowcode/reference/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:reference` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — register material you already have so every later phase (and the Consult References rule) can reuse it as ground truth.
 - Resolves the material (a path, or a file already dropped under `references/`) and its **type** (`design`, `spec`, `example`, `diagram`, … — infers; asks only if ambiguous).
 - Stores the raw asset under `references/{type}/{slug}.{ext}` (leaves it in place if already there) and writes a reference card `references/{type}/{slug}.md` from `reference-template.md`, then adds its row to `references-index.md`.
@@ -41,7 +41,7 @@ Examples:
 
 You are running a reference-registration session on demand.
 
-Load `.claude/skills/flowcode/reference/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the material to register (a path and optional `as <type>`); if empty, ask which file/material and its type and wait. Store the asset under `.flowcode/references/{type}/`, write a distilled reference card from `.flowcode/templates/reference-template.md`, and update `.flowcode/references/references-index.md`. Never fetch from the web (that is `/flowcode:docs`), never write source code, and write only under `.flowcode/references/`.
+Run the `flowcode:reference` skill and execute its procedure. Treat `$ARGUMENTS` as the material to register (a path and optional `as <type>`); if empty, ask which file/material and its type and wait. Store the asset under `.flowcode/references/{type}/`, write a distilled reference card from `.flowcode/templates/reference-template.md`, and update `.flowcode/references/references-index.md`. Never fetch from the web (that is `/flowcode:docs`), never write source code, and write only under `.flowcode/references/`.
 
 ## Non-Goals
 

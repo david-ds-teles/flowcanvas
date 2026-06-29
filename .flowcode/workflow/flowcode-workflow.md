@@ -1,8 +1,8 @@
 ---
 name: flowcode-workflow
-description: The agent operating manual — tier loading sequence, read-depth protocol, workflow catalog, sub-agent dispatch, and model routing.
+description: The agent operating manual — tier loading sequence, read-depth protocol, workflow catalog, and sub-agent dispatch.
 status: active
-tags: [workflow, load-scope, read-depth, dispatch, model-routing]
+tags: [workflow, load-scope, read-depth, dispatch, parallelism]
 links: [.flowcode/workflow/flowcode-rules.md, .flowcode/workflow/file-conventions.md, .flowcode/workflow/git-workflow.md, .flowcode/flowcode-index.md, .flowcode/plans/plan-instructions.md]
 ---
 
@@ -12,8 +12,7 @@ links: [.flowcode/workflow/flowcode-rules.md, .flowcode/workflow/file-convention
 - **Load Scope** governs which files load and when — Tier 1 (mandatory startup), Tier 2 (context-aware), Tier 3 (task-step triggered); Tier 1 must complete before responding to the user.
 - **Read Depth** governs how much of a chosen file to read — index→frontmatter→summary→full; orthogonal to Load Scope. Full spec: file-conventions.md.
 - Workflow catalog carries per-workflow steps and model: bootstrap, brainstorm, new-feature, continue-plan, bugfix, quick-fix, research, docs, plan-update, generate-artifacts, ui-design.
-- Sub-Agent Dispatch Table maps trigger to agent, output, and model; dispatch is allowed, not mandatory.
-- Model Routing: opus only for main orchestration and brainstorm/design sessions; sonnet or haiku for everything else.
+- Sub-Agent Dispatch Table maps trigger → agent, output, and model; dispatch is allowed, not mandatory — opus only for main orchestration + brainstorm/design, sonnet/haiku otherwise.
 - Parallelism is mandatory wherever work is independent — running parallelizable operations sequentially is a framework breach.
 
 ---
@@ -82,7 +81,10 @@ Task-dependent files are loaded **only when a specific workflow step is actively
 | Workflow Step | Load / Dispatch | Trigger |
 |--------------|-------------|---------|
 | Running a phase session | the matching `flowcode:{phase}` skill (`design`, `plan`, `execute`, `research`, `bootstrap`) | User runs the phase's slash command — `/flowcode:design` / `/flowcode:brainstorm`, `/flowcode:plan`, `/flowcode:execute`, `/flowcode:research`, `/flowcode:bootstrap` — or asks to run that phase |
+| Running / closing a phase, or the post-exec pipeline | `.flowcode/plans/plan-execution.md` | `flowcode:execute` enters phase implementation, the Phase Close Sequence, or (on sign-off) the Post-Execution Pipeline |
 | Running a review session | `flowcode:review` | User runs `/flowcode:review` (or asks for an ad-hoc code review outside the phase-close lifecycle) |
+| Running an evaluate session | `flowcode:evaluate` | User runs `/flowcode:evaluate`, or the Post-Execution Pipeline Step 6 dispatches the L3 judge at plan completion (non-blocking) |
+| Running a revise session | `flowcode:revise` | User runs `/flowcode:revise`, or `flowcode:execute` announces the revise stage and hands off — any post-execution polish or closed-plan amendment |
 | Running a browser / app check | `flowcode:browser` | User runs `/flowcode:browser`, or a UI/app phase close runs the visual-parity / smoke check |
 | Creating a design artifact | `.flowcode/templates/design-template.md` | Design stage begins; brainstorm hands off, or user says "design" / "new feature" directly with an already-approved scope |
 | Creating a plan artifact | `.flowcode/templates/plan-template.md` | Plan generation begins; design is approved and plan writing starts |
@@ -120,7 +122,7 @@ Task-dependent files are loaded **only when a specific workflow step is actively
 
 ## Read Depth
 
-The Tier rules above are the **Load Scope** axis (which files, when). **Read Depth** is the orthogonal axis — how much of a chosen file to read: **index → frontmatter → summary → full**, stopping as soon as you have enough. Frontmatter + the ≤10-line summary at the top of every file make the shallow tiers cheap, and a file's `links:` let you jump to related files without re-deriving paths from the index. Full protocol (frontmatter schema, status values, `links` navigation): `.flowcode/workflow/file-conventions.md`.
+**Read Depth** is the axis orthogonal to the Tier rules above — *how much* of a chosen file to read: **index → frontmatter → summary → full**, stopping as soon as you have enough. Full protocol (frontmatter schema, status values, `links` navigation): `.flowcode/workflow/file-conventions.md § Read Depth Protocol`.
 
 ---
 
@@ -135,13 +137,15 @@ Every phase of the lifecycle is an independently invocable **skill** paired with
 | **Documentation** | `flowcode:docs` skill · `/flowcode:docs` | Gather/consult distilled official-docs references (the `docs` reference type) for stack technologies — before coding against a technology |
 | **Reference** | `flowcode:reference` skill · `/flowcode:reference` | Register existing material (design files, specs, diagrams, examples) as a reusable reference card under `references/` — consulted thereafter like any reference |
 | **Review** | `flowcode:review` skill · `/flowcode:review` | Code-review an arbitrary diff against the knowledge base (project-overview, module contracts, gates, conventions) — standalone, plan-optional, review-only |
+| **Evaluate** | `flowcode:evaluate` skill · `/flowcode:evaluate` | Assess plan-artifact quality (3-layer: hooks-log + static rubric + LLM judge) — advisory, never gates; standalone or non-blocking at plan completion |
 | **Browser / App Check** | `flowcode:browser` skill · `/flowcode:browser` | Capture viewports (visual parity) + smoke-test the running app (testids/console, e2e) — standalone or at a UI/app phase close; the driver resolves via its ladder, unattended when Node is present |
 | **Design** | `flowcode:design` skill · `/flowcode:design`, `/flowcode:brainstorm` | Turn a fuzzy idea or approved scope into a complete `{PREFIX}-design.md` |
 | **Plan** | `flowcode:plan` skill · `/flowcode:plan` | Turn an approved design into a phased `{PREFIX}-plan.md` |
-| **Execute / Continue Plan** | `flowcode:execute` skill · `/flowcode:execute` | Implement a fresh active plan or resume a paused/interrupted one through to completion |
-| **Generate Artifacts** | tail of `flowcode:execute` (Post-Execution Pipeline) | Post-execution artifacts for a completed plan (technical-overview, changelog, test-notes, qa-report) |
-| **New Feature** | the chain `/flowcode:design` → `/flowcode:plan` → `/flowcode:execute` | Full lifecycle: design → (ui-design if frontend) → plan → implement → quality → artifacts → PR |
-| **Plan Update** | `flowcode:plan` (merge re-run); `/flowcode:design` for scope changes | Modify an existing plan or design after new information |
+| **Execute / Continue Plan** | `flowcode:execute` skill · `/flowcode:execute` | Implement a fresh active plan or resume a paused/interrupted one; ends at the revise stage (announce + stop) — not at `complete` |
+| **Revise** | `flowcode:revise` skill · `/flowcode:revise` | Polish a just-executed plan to done (fix/adjust/amend loop); amend a closed one. Each pass records `[REVISE]`; completion fires on user sign-off |
+| **Generate Artifacts** | tail of `flowcode:revise` / `flowcode:execute` sign-off (Post-Execution Pipeline) | Post-execution artifacts for a completed plan (technical-overview, changelog, test-notes, qa-report) — runs on user sign-off after the revise stage, not automatically at last phase |
+| **New Feature** | the chain `/flowcode:design` → `/flowcode:plan` → `/flowcode:execute` → `/flowcode:revise` | Full lifecycle: design → (ui-design if frontend) → plan → implement → revise (polish) → quality → artifacts → PR |
+| **Plan Update** | `flowcode:plan` (merge re-run); `/flowcode:design` for scope changes; `/flowcode:revise` for scoped post-execution spec corrections | Modify an existing plan or design after new information. Use `/flowcode:revise` for small spec corrections after execution; escalate to `/flowcode:plan` when a new phase is needed |
 | **Bug Fix** | inline workflow (no skill) — see § Bugfix Workflow | Diagnosing and fixing a specific defect — no design/plan cycle needed |
 | **Quick Fix** | inline workflow (no skill) — see § Quick Fix Workflow | Small scoped change, may or may not relate to an active plan |
 
@@ -149,56 +153,29 @@ Every phase of the lifecycle is an independently invocable **skill** paired with
 
 ## Design Session
 
-The standalone design phase — turns a fuzzy idea (or an already-approved scope) into a complete `{PREFIX}-design.md`. **Run via `/flowcode:design` (canonical) or `/flowcode:brainstorm` (the fuzzy-idea alias); the full procedure lives in the `flowcode:design` skill** — load it when the phase runs rather than duplicating its steps here.
-
-- Conversational, **main session** — clarifying questions one at a time; a sub-agent can't host the loop (no return channel mid-run). `flowcode:designer-agent` is dispatched as a sub-agent; the conversation is not.
-- Silent parallel context-gather first (`flowcode:code-explorer-agent`, `flowcode:research` when a tech is unknown, Tier-2 reads) — never ask what the repo already answers.
-- Decomposition gate for multi-subsystem topics; per-question visual-companion offer for UI topics (`ui/ui-workflow.md § 1`).
-- Section-by-section approval (Problem → Success Criteria → In/Out Scope → Considered Alternatives → Recommended Approach) → PREFIX assignment → write upper sections + register the `draft` plan row → dispatch `flowcode:designer-agent` (gap-fill) for DDL, signatures, mermaid, risks, research refs.
-- Ends at a final review gate; the planner (`flowcode:plan`) is **user-gated, never auto-chained**.
-
-**Model:** opus (design sessions use opus).
+The standalone design phase turns a fuzzy idea (or an already-approved scope) into a complete `{PREFIX}-design.md`. **Run via `/flowcode:design` (canonical) or `/flowcode:brainstorm` (the fuzzy-idea alias); the full procedure lives in the `flowcode:design` skill** — a conversational main-session loop (a sub-agent can't host it), silent parallel context-gather first, section-by-section approval, then `flowcode:designer-agent` gap-fill (DDL, signatures, mermaid, risks). Ends at a review gate; the planner is **user-gated, never auto-chained**. **Model:** opus.
 
 ---
 
 ## Bugfix Workflow
 
-Bugfixes do not require design or plan artifacts. They follow a tight investigate-fix-log loop.
+A tight investigate-fix-log loop — no design/plan artifacts; logged in `project-log.md` only. **Model:** sonnet.
 
-**Steps:**
-
-1. Read `.flowcode/project/project-log.md` last 10 entries to understand recent project changes
-2. Load Tier 2 files related to the issue if they exist — get module and file context before touching code
-3. Diagnose root cause (never guess — verify by reading code, logs, and recent changes)
-4. Apply the minimal correct fix. Do not refactor or improve surrounding code
-5. Run all tests and quality gates — all must pass
-6. Add a `[BUGFIX]` entry at the **top** of `.flowcode/project/project-log.md` using `.flowcode/templates/project-log-template.md` — 3 lines max: root cause + fix + affected component
-7. Commit — clean, no AI attribution
-
-**No artifacts generated.** Bugfixes are logged in `project-log.md`, not as plan artifacts.
-
-**Model:** sonnet.
+1. Read the last ~10 `.flowcode/project/project-log.md` entries + load Tier-2 files for the affected module/files.
+2. Diagnose the root cause — verify by reading code, logs, and recent changes; never guess.
+3. Apply the minimal correct fix (no surrounding refactor); run all tests + quality gates — all must pass.
+4. Add a `[BUGFIX]` entry to the **top** of `project-log.md` (`project-log-template.md` — 3 lines: root cause + fix + affected component), then commit clean (no AI attribution).
 
 ---
 
 ## Quick Fix Workflow
 
-A quickfix is a small, scoped change that doesn't justify a full design/plan cycle. It may relate to an existing plan or be a standalone project change.
+A small scoped change (1–3 files, < 1 day) that doesn't justify a design/plan cycle — standalone or related to a plan; if it grows, escalate to a plan. Logged in `project-log.md` only. **Model:** sonnet.
 
-**Steps:**
-
-1. Read `.flowcode/project/project-log.md` last 10 entries to understand recent project changes
-2. Confirm scope is truly small (1–3 files, < 1 day). If it grows, escalate to a plan
-3. Load Tier 2 files related to the change — get module and file context
-4. Plan the solution, assess impacts and side-effects, **show the plan to the user for approval before applying**
-5. Apply the approved change
-6. Run relevant quality gates
-7. Add a `[QUICKFIX]` entry at the **top** of `.flowcode/project/project-log.md` using `.flowcode/templates/project-log-template.md` — 5 lines max, include the plan PREFIX if related to one
-8. Commit — clean, no AI attribution
-
-**No artifacts generated.** Quickfixes are logged in `project-log.md` only.
-
-**Model:** sonnet.
+1. Read the last ~10 `.flowcode/project/project-log.md` entries + load Tier-2 files for context.
+2. Plan the change, assess impacts/side-effects, **show the plan to the user for approval before applying**.
+3. Apply the approved change; run the relevant quality gates.
+4. Add a `[QUICKFIX]` entry to the **top** of `project-log.md` (`project-log-template.md` — ≤5 lines, include the plan PREFIX if related), then commit clean (no AI attribution).
 
 ---
 
@@ -214,26 +191,7 @@ Gating rule and phase-close visual parity requirements: `.flowcode/plans/plan-in
 
 ## Generate Artifacts Workflow
 
-Produces post-execution artifacts for a completed plan: `technical-overview`, `changelog` reconciliation, `test-notes`, `qa-report`.
-
-**Run via:** the tail of `flowcode:execute` — it runs automatically when the final phase closes, not as a separate operator command.
-
-**Trigger:** All phases done, quality gates pass.
-
-**Pipeline:** Sequential gates + audit + authoritative artifacts, then parallel finalization. Full specification in `.flowcode/plans/plan-instructions.md § Post-Execution Pipeline`.
-
-**Sequential — gates, audit, authoritative artifacts:**
-1. Quality gates (tests, lint, typecheck, coverage) — all must pass
-2. Code Explorer (sonnet) — audits code vs spec, produces divergence report via `flowcode:code-explorer-agent` agent (main agent already holds plan/design/log context from the normal Tier 2 sweep)
-3. Main agent — generates `{PREFIX}-technical-overview.md` using the audit report as authoritative source
-4. Code-review agent (sonnet) — generates `{PREFIX}-qa-report.md`; all findings fixed before the parallel step
-
-**Audit fallback:** If step 2 fails (agent error, empty output, or explicit `skipped` status), do **not** block the pipeline. Proceed to step 3 without the divergence report and prepend `> **Audit skipped:** {reason}` to the top of `{PREFIX}-technical-overview.md`. Downstream artifacts in the parallel step inherit the same caveat.
-
-**Parallel — finalization:**
-Dispatch 2 sonnet sub-agents simultaneously: changelog reconciliation + test-notes generation.
-
-**Model:** sonnet for all sub-agents. Main agent (orchestration) is opus.
+Post-execution artifacts for a completed plan (technical-overview, changelog reconciliation, test-notes, qa-report). **Runs on user sign-off** after the revise stage — via the tail of `flowcode:revise` or the sign-off step of `flowcode:execute`, never automatically when the last phase closes. Sequential gates → audit → authoritative artifacts, then parallel finalization. Full procedure: `.flowcode/plans/plan-execution.md § Post-Execution Pipeline`. **Model:** sonnet sub-agents; opus orchestration.
 
 ---
 
@@ -253,71 +211,35 @@ Dispatch 2 sonnet sub-agents simultaneously: changelog reconciliation + test-not
 | `flowcode:browser-runner-agent` | UI/app phase close (visual parity + smoke); standalone `/flowcode:browser` | PNGs + `result.json` under `captures/` (or a logs path) + raw logs in `logs/browser/`; compact report | sonnet |
 | `flowcode:code-explorer-agent` | Post-Execution Pipeline Step 2 | Code Explorer divergence report (transient, feeds `artifact-updater`) | sonnet |
 | `flowcode:artifact-updater-agent` | Phase Close Sequence Step 5-6; Post-Execution Pipeline Steps 4-5 | `{PREFIX}-changelog.md`, `{PREFIX}-log.md`, `modules/*.md`, `{PREFIX}-technical-overview.md`, `{PREFIX}-test-notes.md`, `project-overview.md`, `project-log.md` | sonnet |
+| `flowcode:evaluator-agent` | `/flowcode:evaluate` (per plan); Post-Execution Pipeline Step 6 (non-blocking) | `logs/eval/{PREFIX}.json` + appended `logs/eval/trend.jsonl` (Layer 3 judge scores) | sonnet |
 
 Rules:
 
 - Dispatch is **allowed, not mandatory.** Trivial bugfixes and one-file quickfixes may bypass the agent roster entirely — the main agent handles them inline. The dispatch rule kicks in whenever the artifact being produced is registered in `flowcode-index.md` and the corresponding specialized agent exists.
 - Agents that produce artifacts follow Template First — each reads its target template before writing.
 - The main agent orchestrates; specialized agents do not dispatch each other unless their own file declares it (e.g. `designer` may dispatch `researcher`; `bootstrap` dispatches one `module-explorer` per module). A dispatched agent is itself a leaf — `module-explorer` never dispatches further.
-
----
-
-## Model Routing
-
-Subagents MUST use the specified model. Using opus for file-reading or templated writing wastes tokens.
-
-| Subagent task | Model | Rationale |
-|---------------|-------|-----------|
-| Context loading (reading files on startup) | **haiku** | Pure file I/O, no reasoning needed |
-| Code exploration (codebase audit, grep, read) | **sonnet** | Search + read + summarize |
-| Code review (pre-phase and pre-PR QA) | **sonnet** | Pattern matching against conventions |
-| Fix subagent (applying review findings) | **sonnet** | Directed fixes from explicit findings |
-| Implementer (`flowcode:implementer-agent` — writing a phase's owned file slice) | **sonnet** | Directed coding from design + module contracts |
-| Code explorer (plan-vs-code audit) | **sonnet** | Spec comparison + divergence report |
-| Artifact generation (changelog, test-notes, technical-overview) | **sonnet** | Structured writing from templates |
-| Research agent (`flowcode:researcher-agent` — scoped fetch + append to cache) | **haiku** | Directed web-fetch + structured write; no novel reasoning |
-| Docs researcher (`flowcode:docs-researcher-agent` — official-docs distill into a reference) | **sonnet** | Synthesis of documentation into idioms/gotchas/API surface — more than a directed fetch |
-| Bootstrap agent (project exploration + overview generation) | **sonnet** | Structured exploration and writing |
-| Browser runner (`flowcode:browser-runner-agent` — capture/smoke against the running app) | **sonnet** | Drive a browser, assert, report — directed execution, no novel reasoning |
-| Planning, design, main orchestration | **opus** | Novel reasoning, architecture decisions |
-
-**Rule:** Only the main orchestration agent and brainstorm/design sessions use opus. Everything else uses sonnet or haiku.
-
+- **Model.** Each dispatched agent uses the model named in its row above (sonnet or haiku) — set in its own `model:` frontmatter. Only the main orchestration agent and brainstorm/design sessions use opus; using opus for file-reading or templated writing wastes tokens.
 
 ---
 
 ## Parallelism Rules
 
-**Core principle:** Never do sequentially what can be done in parallel. Sequential execution of parallelizable operations is a framework breach.
+**Core principle:** Never do sequentially what can be done in parallel. Sequential execution of parallelizable operations is a framework breach. Each scenario's full detail lives in its owning surface (named below) — this is the index.
 
-### 1. Bug Investigation
+**Mandatory-parallel scenarios:**
 
-Dispatch parallel reads: technical-overview + changelog + git blame/log of relevant files. Merge results before forming hypothesis.
+1. **Bug investigation** — dispatch parallel reads (technical-overview + changelog + git blame/log), merge before forming a hypothesis.
+2. **Design + research** — dispatch independent research questions concurrently; the `flowcode:research` skill owns scoping + parallel dispatch.
+3. **Post-execution artifacts** — changelog reconciliation ∥ test-notes as 2 sonnet agents (`plan-execution.md § Post-Execution Pipeline § Step 4`).
+4. **Bootstrap module exploration** — one `flowcode:module-explorer-agent` per module, batches of ~6 (`flowcode:bootstrap-agent`); same for `/flowcode:module-doc` over many targets.
+5. **Stack documentation gather** — one `flowcode:docs-researcher-agent` per technology, batches of ~6 (`flowcode:docs` skill).
 
-### 2. Design + Research Sessions
-
-Dispatch multiple research sub-agents in parallel when multiple independent topics need investigation. Each saves its output to `.flowcode/researches/`. Main agent synthesizes into the design artifact after all complete.
-
-### 3. Post-Execution Artifact Generation
-
-After the sequential pipeline (gates → audit → technical-overview → QA report) completes, dispatch 2 sonnet sub-agents in parallel for the changelog reconciliation and test-notes generation.
-
-### 4. Bootstrap Module Exploration
-
-In bootstrap Step 3.5, dispatch one `flowcode:module-explorer-agent` per detected module **in parallel** (batches of ~6 for large module counts). Modules are independent — exploring them sequentially is a parallelism breach. The same applies to `/flowcode:module-doc` over multiple targets.
-
-### 5. Stack Documentation Gather
-
-When `/flowcode:docs` (no args) gathers references for the whole stack, dispatch one `flowcode:docs-researcher-agent` per technology **in parallel** (batches of ~6 for large stacks). Technologies are independent — gathering them sequentially is a parallelism breach.
-
-### 6. Phase Execution (advisory — not mandatory)
-
-Unlike rules 1–5, plan-execution parallelism is a **judgment call, never a breach to skip** (decided per `plan-instructions.md § Phase Dependencies & Waves`). When safe, `flowcode:execute` may: (a) run dependency-free, file-disjoint phases as concurrent **waves**; (b) fan a phase's mutually-independent `create` files out to parallel `flowcode:implementer-agent` workers while shared/wiring files stay in the main session; and (c) overlap the read-only close steps (code review ∥ gates) after the cleanup sweep. The executor falls back to strict sequential execution whenever files are not cleanly disjoint, context is tight, or confidence is low — running a plan one phase at a time is always valid.
+**Advisory — judgment call, never a breach to skip:** plan-execution parallelism (concurrent file-disjoint waves, within-phase implementer fan-out, read-only review ∥ gates overlap) is decided per `plan-instructions.md § Phase Dependencies & Waves`. Running a plan one phase at a time, all in the main session, is always valid.
 
 ### When NOT to Parallelize
 
 - Single file reads
 - Sequential dependencies (one output feeds the next input)
 - User interactions (always sequential — never parallel with other work)
-- The implement → review → fix cycle **for a given file** (sequential by definition) — but disjoint new files within a phase MAY be created concurrently by `flowcode:implementer-agent` workers (advisory; rule 6)
+- The implement → review → fix cycle **for a given file** (sequential by definition) — but disjoint new files within a phase MAY be created concurrently by `flowcode:implementer-agent` workers (advisory)
 - Browser capture/smoke — a `flowcode:browser` run walks all routes × viewports inside **one** `flowcode:browser-runner-agent` dispatch (the engine loops internally); never fan out one agent per viewport, so the image-heavy capture work stays in the worker and off the main context

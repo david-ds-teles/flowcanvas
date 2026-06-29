@@ -13,7 +13,7 @@ links: [.flowcode/flowcode-index.md, .flowcode/workflow/flowcode-rules.md, .flow
 - Upstream contribution → investigates the named framework artifact end-to-end and composes a `UC-NNN` entry in `upstream-contributions.md` with `file:line` evidence.
 - Reads every target file before composing a preview that shows exact final-format lines plus any required index updates.
 - Always waits for explicit approval (approve / revise / cancel) before applying edits; updates parent indexes and `flowcode-index.md` in the same turn.
-- Never edits `.claude/`, root `CLAUDE.md`, or anything outside `.flowcode/`; agent-behavior changes route through the `.local.md` overrides of the workflow files agents read at runtime.
+- Never edits the harness agent-tools dir, root `CLAUDE.md`, or anything outside `.flowcode/`; agent-behavior changes route through the `.local.md` overrides of the workflow files agents read at runtime.
 
 ## Usage
 
@@ -86,7 +86,7 @@ Use `.flowcode/flowcode-index.md` as the source of truth for host-customization 
 | UI mockup convention — tokens, breakpoints, filenames, test IDs | `.flowcode/ui/ui-mockup-discipline.local.md` | Append/edit the matching section; scaffold if absent |
 | UI workflow change — iteration count, selection flow, phase-close parity | `.flowcode/ui/ui-workflow.local.md` | Append/edit the matching section; scaffold if absent |
 | Reusable research finding | `.flowcode/researches/{slug}-research.md` via `research-template.md` | Create or append; update `researches-index.md` |
-| Agent-behavior change — how a sub-agent works | `.flowcode/workflow/flowcode-rules.local.md` / `flowcode-tools.local.md` / `flowcode-persona.local.md` (not `.claude/`) | Agent files under `.claude/agents/flowcode/*.md` read the base workflow files at runtime and the `.local` sibling layers on top, so the rule lands in `.local` and trickles down. Editing the agent file directly is a non-goal because it drifts per-install |
+| Agent-behavior change — how a sub-agent works | `.flowcode/workflow/flowcode-rules.local.md` / `flowcode-tools.local.md` / `flowcode-persona.local.md` (not the harness agent-tools dir) | The `flowcode:*` sub-agents read the base workflow files at runtime and the `.local` sibling layers on top, so the rule lands in `.local` and trickles down. Editing a sub-agent file directly is a non-goal because it drifts per-install |
 | Anything else | Pick the closest target from `flowcode-index.md`; if it is framework-owned, write its `.local.md` sibling | Match that file's existing format |
 
 **Bundled statements can hit multiple targets.** A statement like *"use script X for git; git must never be invoked another way"* writes a tool row in `flowcode-tools.local.md` AND a rule in `flowcode-rules.local.md`. Produce the full set in a single preview.
@@ -102,12 +102,12 @@ Sub-steps:
 
 **i. Identify target framework artifact(s).** Consult `.flowcode/flowcode-index.md` to resolve the user's statement to concrete framework files. Examples:
 
-- naming complaint → `.claude/hooks/artifact-naming-check.js`
+- naming complaint → the `artifact-naming-check` hook
 - missing template → `.flowcode/templates/*`
 - phase lifecycle surprise → `.flowcode/plans/plan-instructions.md`
 - persona rough edge → `.flowcode/workflow/flowcode-persona.md`
-- command bug → `.claude/commands/flowcode/*.md`
-- sub-agent gap → `.claude/agents/flowcode/*.md`
+- command bug → a `/flowcode:*` command
+- sub-agent gap → a `flowcode:*` sub-agent
 - rule contradiction → `.flowcode/workflow/flowcode-rules.md`
 - quality gate / convention gap → `.flowcode/quality-checks/*`
 
@@ -170,6 +170,6 @@ On cancel, leave disk untouched and confirm to the user: *"Cancelled — no file
 
 ### Non-goals
 
-- Do not edit `.claude/`, root `CLAUDE.md`, or anything outside `.flowcode/`. Agent-behavior statements route through the `.local.md` overrides of `flowcode-rules.md` / `flowcode-tools.md` / `flowcode-persona.md` — the agents read those base files at runtime and the `.local` sibling layers on top, so the rule lands there and survives upgrades.
+- Do not edit the harness agent-tools dir, root `CLAUDE.md`, or anything outside `.flowcode/`. Agent-behavior statements route through the `.local.md` overrides of `flowcode-rules.md` / `flowcode-tools.md` / `flowcode-persona.md` — the agents read those base files at runtime and the `.local` sibling layers on top, so the rule lands there and survives upgrades.
 - Do not invent new template files unless the Step 2 mapping specifically calls for one and Rule 2 (Template First) applies.
 - Do not classify without reading the target file first.

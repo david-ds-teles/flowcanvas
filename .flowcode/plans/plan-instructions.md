@@ -1,22 +1,22 @@
 ---
 name: plan-instructions
-description: The non-overridable rules governing every plan — lifecycle, phase status, gates, halt conditions, artifacts, and the post-execution pipeline.
+description: The non-overridable rules governing every plan — lifecycle, phase status, gates, halt conditions, artifacts, and the revise stage. The execution procedure lives in plan-execution.md.
 status: active
-tags: [plans, lifecycle, phases, gates, execution]
-links: [.flowcode/plans/plan-index.md, .flowcode/workflow/flowcode-workflow.md, .flowcode/quality-checks/quality-gates.md, .flowcode/ui/ui-workflow.md, .flowcode/templates/plan-template.md]
+tags: [plans, lifecycle, phases, gates, execution, revise]
+links: [.flowcode/plans/plan-index.md, .flowcode/plans/plan-execution.md, .flowcode/workflow/flowcode-workflow.md, .flowcode/quality-checks/quality-gates.md, .flowcode/ui/ui-workflow.md, .flowcode/templates/plan-template.md]
 ---
 
 # Plan Instructions
 
 - The non-overridable rule set for every plan; individual plan files cannot override these.
-- Plan lifecycle `draft → active → complete` (with `paused`); update `plan-index.md` on every transition.
+- Plan lifecycle `draft → active → complete` (with `paused`), update `plan-index.md` on every transition; `complete` is set only on user sign-off after the **revise stage**, never auto-chained from execution.
 - Phase status `pending → in-progress → quality-check → done` is an orthogonal axis — never skip a state.
 - Each phase declares `Depends On`; the executor runs dependency-free, file-disjoint phases as parallel **waves** and may fan out disjoint files within a phase — advisory, with a sequential fallback that is never a breach.
 - The active (full-depth) phase must meet the **Active-Phase Completeness Bar** — a junior engineer finishes it without asking, via production-ready snippets, worked examples, a flow diagram where non-trivial, explicit steps, and named quality checks.
 - Phase-Close Minimum gates (build, tests, lint, boot, e2e) must be green before a phase flips to `done`.
 - Halt conditions stop autopilot and surface to the user — critical findings, out-of-scope probe failures, scope breaches.
 - Plan artifacts follow `{PREFIX}-{type}.md` inside a `{PREFIX}/` folder; `{PREFIX}-log.md` is mandatory.
-- Every phase declares Touched Modules; the post-execution pipeline produces technical-overview, changelog, test-notes, and qa-report.
+- Every phase declares Touched Modules; the post-execution pipeline produces technical-overview, changelog, test-notes, and qa-report — the execution sequence + pipeline procedure live in `plan-execution.md` (on-demand).
 - Frontend-touching plans pass the UI Design Gate via `../ui/ui-workflow.md`.
 
 ---
@@ -25,16 +25,38 @@ links: [.flowcode/plans/plan-index.md, .flowcode/workflow/flowcode-workflow.md, 
 
 A plan moves through exactly these statuses — never skip, never reverse.
 
-`draft` → `active` → `complete`
+`draft` → `active` → **[revise stage]** → `complete`
 
 | Status | When to set |
 |--------|-------------|
 | `draft` | Design or plan file not yet complete |
-| `active` | First phase begins execution |
+| `active` | First phase begins execution; remains `active` through the revise stage |
 | `paused` | Work stopped; can be resumed |
-| `complete` | All phases done, all artifacts generated, merged |
+| `complete` | All phases done, all artifacts generated, merged — **only on explicit user sign-off** |
+
+The **revise stage** is not a separate status value — it is the structural state "all phases `done` + `Status: active`". When `plan-index.md` shows `Progress N/N` and the plan is still `active`, the plan is in the revise stage. The executor announces this explicitly on entering it; the next session detects it from the plan file without inference. `complete` is never set autonomously — only on explicit user sign-off (through `flowcode:revise` or direct confirmation). See `§ Revise Stage` for the full procedure.
 
 Update `.flowcode/plans/plan-index.md` on every status transition.
+
+---
+
+## Revise Stage
+
+The named interval between "all phases implemented" and "plan complete" — a plan out of execution is *implemented*, not *done*. It is the safe loop to fix issues, gaps, and build-vs-spec drift before the post-execution pipeline runs and the plan closes.
+
+**Entry signal.** When the final phase flips to `done`, the executor surfaces a completion summary (phases done, rolled-up `Deviations` as build-vs-spec divergences, artifacts pending) and **stops**. The plan stays `Status: active` with `Progress N/N` — that combination *is* the revise-stage signal; no new status value.
+
+**Scope guard — not a backdoor re-plan.** Each pass is ≈ 1–5 files, no new phases, no architecture shifts. `flowcode:revise` classifies the ask first: **in-envelope** (small fix / adjust / spec-rewrite) → apply inline; **out-of-envelope** (new phase, cross-module contract change, undecided design question) → **halt and escalate** to `/flowcode:design` or `/flowcode:plan`. Revise never silently grows into a re-plan.
+
+**Two contexts, one primitive** — `flowcode:revise` covers both: **post-execution polish** (plan `active`, all phases `done`; each pass keeps it `active`; user "done" triggers completion) and **post-completion amendment** (plan `complete`; apply + record, stays `complete` — closed plans are history, not a contract).
+
+**Three jobs, one pass** — fix what's broken, adjust what's needed, amend the plan/design spec when the change is lasting (the same rule as `plan-execution.md § Phase Execution § Implementation` step 2, extended past phase close).
+
+**Recording — `[REVISE]` into the plan's own artifacts** (never `project-log.md` — that is the quickfix/bugfix lane). Two writes per pass: a `[REVISE]` entry at the **top** of `{PREFIX}-log.md` (`plan-log-template.md § [REVISE]`, all fields mandatory), and a dated note under a `## Revisions` section in `{PREFIX}-changelog.md` (created on first revise).
+
+**Completion — user-gated.** On sign-off ("done", "complete it", "ship it"), `flowcode:revise` (or `flowcode:execute` on a direct "just complete") runs `plan-execution.md § Post-Execution Pipeline` end to end, including finalize (§ Step 5). Artifacts generate against the polished state, not the raw implementation. The executor never runs the pipeline or flips `Status: complete` autonomously.
+
+**Sub-agents reused — no new agent:** `flowcode:implementer-agent`, `flowcode:code-reviewer-agent`, `flowcode:artifact-updater-agent`. **Dual surface:** entered automatically by `flowcode:execute`; its loop is driven by `flowcode:revise` / `/flowcode:revise` (see `flowcode-workflow.md § Available Workflows`).
 
 ---
 
@@ -227,7 +249,7 @@ Phases carry a `**Depends On:**` field — the earlier phases that must be `done
 
 A single-phase wave is the common case and behaves exactly as a lone phase always has. When a wave holds multiple phases, they run concurrently:
 
-- All wave phases flip `pending → in-progress` together; their implementation runs concurrently (and each phase may itself fan out internally — see `§ Phase Execution`).
+- All wave phases flip `pending → in-progress` together; their implementation runs concurrently (and each phase may itself fan out internally — see `plan-execution.md § Phase Execution`).
 - The Phase Close Sequence runs **once for the wave**: code review covers the union of changed files; the Phase-Close Minimum gates run **once** on the integrated tree (integration correctness is the goal). The QA report `## Check` heading may name the wave's phases (e.g. `— Phase 1+2`); `qa-probe-gate.js` is unaffected (it reads the latest `## Check`).
 - **Per-phase bookkeeping is preserved:** each phase in the wave still gets its own `## Phase N` changelog section, its own `[PHASE]` log entry, its own `Phase Status → done` flip, and its own `plan-index.md` Progress increment. Revertibility holds because wave phases are file-disjoint by construction.
 
@@ -235,74 +257,9 @@ A single-phase wave is the common case and behaves exactly as a lone phase alway
 
 ---
 
-## Phase Execution
+## Execution Procedure
 
-Each phase follows this sequence — automatic, no user interaction. Do not stop, do not ask the user. When the active wave holds more than one phase, apply this sequence at wave granularity per `§ Phase Dependencies & Waves` (implement all wave phases, then one combined close, with per-phase bookkeeping).
-
-**Precondition:** `{PREFIX}-log.md` exists in the plan folder with a `[PLAN CREATED]` entry. If it is missing, create it from `plan-log-template.md` and write the `[PLAN CREATED]` entry before continuing.
-
-### Implementation
-
-1. Execute all implementation steps for the phase. Each step is a GitHub-flavored checkbox (`- [ ]`) in the plan file; check it (`- [x]`) the moment the underlying work finishes — never batch. A step that cannot be executed this phase carries an inline annotation: `(deferred: reason)` or `(N/A: reason)`. A phase cannot close with unchecked boxes lacking an annotation — framework breach.
-2. If implementation diverges from the plan spec (file path changed, step reordered, approach adjusted), update `{PREFIX}-plan.md` **in the same edit** so the plan file never contradicts the code. One-off deviations are also recorded in the phase log entry's `Deviations` field; lasting changes rewrite the plan spec itself.
-
-**Within-phase fan-out (advisory).** When a phase's `Files to create / modify:` table holds several mutually-independent `create` rows (no row imports another), the executor MAY implement them concurrently by dispatching one `flowcode:implementer-agent` per disjoint slice, partitioning the files so no two workers share a path. **Shared / wiring files** (existing files imported by many — store, shell, barrels, route tables; typically `modify` rows) stay in the main session and are written **after** the workers return, in an **integration pass** that wires the slices together using each worker's reported exported symbols. The close-sequence code review is the safety net for cross-slice coherence. Fall back to writing everything in the main session whenever the slices are not cleanly disjoint or context is tight — this is never a breach (`§ Phase Dependencies & Waves`).
-
-### Phase Close Sequence
-
-After implementation steps complete, execute these six steps in order. Never skip, never reorder.
-
-1. **Code Review (prepend to QA report)** — Dispatch `code-reviewer-agent` (sonnet) — or an inline code-review sub-agent when the agent roster is unavailable — over all changed files in the phase scope. The reviewer **prepends** a new `## Check YYYY-MM-DD HH:MM — Phase N` section to `{PREFIX}-qa-report.md` directly below the file header (newest on top), following `qa-report-template.md`. Stack Gate as a ≤ 3-col table, findings in finding-as-section format, severity `critical`/`high`/`medium`/`low`/`info`.
-   - `[critical]` / `[high]` findings → dispatch fix sub-agent (sonnet) → re-review (prepend a new `## Check` section) → repeat until clean.
-   - `[medium]` findings → must reach `**Resolution:**` (fixed, or `deferred — BL-NNN`) before `Phase Status` flips to `done`. `qa-probe-gate.js` enforces this for commits/PRs.
-   - `[low]` / `[info]` → fold into the phase log entry's `Deviations` field, continue.
-2. **Cleanup Sweep** — No dead code, unused imports, debug output, or stray files. Lint and type checks must pass.
-3. **Phase-Close Minimum gates** — Verify every applicable gate per `plan-instructions.md § Phase-Close Minimum` is green. Skipped gates require an annotation in the `[PHASE]` entry's `Gates` field.
-4. **Visual Parity + App Smoke** (UI- / app-touching phases) — the executor dispatches `flowcode:browser`. UI-touching phases run `ui/ui-workflow.md § Phase Close` (`flowcode:browser capture` → drift classified Expected / Acceptable / Regression; a `≥ medium` regression blocks close). App-touching phases also run `flowcode:browser smoke` (load-bearing testids render, console clean) → e2e findings in `{PREFIX}-qa-report.md`. Both are **advisory in availability but honest in reporting**: `flowcode:browser` resolves a driver via its ladder and never skips silently — only if no driver resolves does it record a tracked `[deferred]` finding carrying the exact repro command. A `[deferred]` is a recorded finding, not a skipped gate. These are agent-orchestrated checks, distinct from any plain-shell `e2e` gate in the registry (`quality-checks/quality-gates.md`).
-5. **Incremental Changelog** — Append a `## Phase N — {Phase Name}` section to `{PREFIX}-changelog.md` listing files changed in this phase. Create the file from `changelog-template.md` on first phase close.
-6. **Log Entry + Status** — Append a `[PHASE]` entry to the **top** of `{PREFIX}-log.md` (below the file header) using the `[PHASE]` template from `plan-log-template.md`. Every field mandatory; empty fields are a framework breach. Update the plan's row in `plan-index.md` Progress column: increment the completed count. Flip the phase block's `**Phase Status:**` to `done` in `{PREFIX}-plan.md`.
-
-**Read-only overlap (advisory).** Steps 1 (code review) and 3 (gates) are both read-only on source. Once the cleanup sweep (step 2) has landed any source changes, the executor MAY dispatch review and gates **concurrently** to save wall-clock — the numbered order stays the contract; only the read-only pair overlaps. If review then yields a `critical`/`high` fix, re-run the gates after the fix. When in doubt, run them sequentially — overlap is an optimization, never required. For a multi-phase wave, this close runs once over the union of the wave's changed files (`§ Phase Dependencies & Waves`), with the per-phase changelog/log/status/index bookkeeping (steps 5–6) written once per phase.
-
-When the close completes, **recompute the frontier and begin the next wave** (`§ Phase Dependencies & Waves`); each newly-started phase flips `pending → in-progress`. In the common single-phase-wave case this is simply "begin the next phase immediately."
-
-Phase-end entries are written to `{PREFIX}-log.md` only. Do NOT write `[PHASE]` entries to `.flowcode/project/project-log.md` — that file is project-level only (`[PLAN COMPLETE]`, `[BOOTSTRAP]`, `[BUGFIX]`, `[QUICKFIX]`).
-
----
-
-## Post-Execution Pipeline
-
-Runs after the **final phase** passes its quality gate. All steps are mandatory.
-
-**Step 1 — Quality gates (sequential):**
-Run tests, lint, typecheck, coverage. Fix all failures before proceeding.
-
-**Step 2 — Technical overview (sequential):**
-1. Main agent loads plan context (design, plan, log, incremental changelog) via the normal Tier 2 sweep — no dedicated loader agent needed.
-2. `flowcode:code-explorer-agent` (sonnet) audits all changed code → code map + divergence report.
-3. `flowcode:artifact-updater-agent` (sonnet) generates `{PREFIX}-technical-overview.md` from the audit; prepends `> **Audit skipped:** {reason}` if step 2 returned `skipped`.
-
-**Step 3 — QA report (sequential, prepend-only):**
-Dispatch `code-reviewer-agent` (when available) or a sonnet code-review sub-agent to prepend a new `## Check YYYY-MM-DD HH:MM — Plan completion` section to `{PREFIX}-qa-report.md`. The file is reverse-chronological and prepend-only: insert directly below the file header, above any prior `## Check` sections; never rewrite prior sections. Stack Gate uses a ≤ 3-column table; Review Findings use the finding-as-section format defined in `markdown-quality.md § Finding-as-Section Format`.
-
-- All `[medium]`+ findings must reach `**Resolution:**` (fixed, or `deferred — BL-NNN`) before proceeding.
-- `qa-probe-gate.js` blocks `git commit` / `gh pr create` / `gh pr merge` while unresolved `[medium]`+ findings remain in the latest check.
-
-**Step 4 — Changelog reconciliation + test notes (parallel):**
-Dispatch `flowcode:artifact-updater-agent` in `plan-close` mode, which runs the following in parallel internally:
-- `{PREFIX}-changelog.md` — reconcile per-phase sections against the code; write the Summary and Reconciliation sections (per-phase sections were appended during the plan by each phase close)
-- `{PREFIX}-test-notes.md` — generate using `test-notes-template.md`
-
-When the agent roster is unavailable, the main agent runs the two steps inline.
-
-**Step 5 — Finalize:**
-- Append `[PLAN COMPLETE]` entry to the **top** of `{PREFIX}-log.md` using the `[PLAN COMPLETE]` template in `plan-log-template.md` — the plan's own closing record (richer: includes phase count, artifacts, follow-ups).
-- Append `[PLAN COMPLETE]` entry to the **top** of `.flowcode/project/project-log.md` using the `[PLAN COMPLETE]` template in `project-log-template.md` — the brief cross-plan view. Both entries required; both must agree.
-- Update `plan-index.md` row: status → `complete`, Progress → `{N}/{N}`.
-- Flip the plan file's top-level `Status:` to `complete`.
-- Commit all artifacts — clean, no AI attribution.
-
-All artifacts saved to `.flowcode/plans/{PREFIX}/`.
+The per-phase execution procedure — implementation steps, the ordered **Phase Close Sequence**, and the **Post-Execution Pipeline** — lives in `plan-execution.md` (`on-demand`, loaded when `flowcode:execute` runs). It is the *sequence*; the rules it obeys (Phase Status, Phase-Close Minimum, Halt Conditions, Phase Dependencies & Waves, Revise Stage) are defined above in this file. Loading the procedure only when actually running, resuming, or closing a plan keeps it off the eager startup path — `plan-instructions.md` carries the contract; `plan-execution.md` carries the steps.
 
 ---
 

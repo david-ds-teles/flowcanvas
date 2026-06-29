@@ -3,7 +3,7 @@ name: flowcode:browser
 description: Drive a real browser against the running app — capture every declared viewport for the visual-parity gate, smoke-test that load-bearing testids render and the console is clean for the e2e gate, or both. Resolves a driver via the four-rung ladder (wired MCP → project Playwright → ephemeral Playwright → tracked deferral) so it runs unattended whenever Node is present. Standalone via /flowcode:browser, no plan required; also dispatched by the UI gate + execute pipeline.
 status: active
 tags: [browser, capture, smoke, visual-parity, e2e, standalone]
-links: [.claude/agents/flowcode/browser-runner-agent.md, .claude/skills/flowcode/browser/references/provisioning.md, .claude/skills/flowcode/browser/references/browser-config.schema.md, .claude/commands/flowcode/browser.md, .flowcode/ui/ui-workflow.md, .flowcode/plans/plan-instructions.md]
+links: [.flowcode/ui/ui-workflow.md, .flowcode/plans/plan-instructions.md]
 ---
 
 # Browser / App Check
@@ -64,7 +64,7 @@ Then relay a decision-ready verdict: the driver used, captures written + their p
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/browser-runner-agent.md` | The worker — resolves the driver, boots/attaches, runs the engine, writes `result.json`; sonnet |
+| `flowcode:browser-runner-agent` | The worker — resolves the driver, boots/attaches, runs the engine, writes `result.json`; sonnet |
 | `references/provisioning.md` | The four-rung driver ladder + exact ephemeral commands + boot/teardown — the procedure the worker follows |
 | `references/browser-config.schema.md` | The `browser-config.json` / `result.json` contract between this skill, the worker, and the engine |
 | `references/capture.mjs` | The vendored Playwright engine (rungs 2–3); `enginePath` passed to the worker |

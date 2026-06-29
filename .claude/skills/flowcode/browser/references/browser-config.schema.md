@@ -3,7 +3,7 @@ name: browser-config-schema
 description: The browser-config.json (worker → engine input) and result.json (engine → worker output) contracts for the flowcode:browser harness; the wire format capture.mjs reads and writes.
 status: active
 tags: [browser, schema, contract, capture, smoke]
-links: [.claude/skills/flowcode/browser/SKILL.md, .claude/agents/flowcode/browser-runner-agent.md]
+links: []
 ---
 
 # Browser Harness Config & Result Schema

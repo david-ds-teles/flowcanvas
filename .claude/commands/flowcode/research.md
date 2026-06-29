@@ -4,12 +4,12 @@ description: Standalone slash command to run a research-and-exploration session 
 status: active
 tags: [command, research, exploration, cache, standalone]
 argument-hint: "<research question> [; another independent question]"
-links: [.claude/skills/flowcode/research/SKILL.md, .flowcode/researches/researches-index.md, .flowcode/templates/research-template.md]
+links: [.flowcode/researches/researches-index.md, .flowcode/templates/research-template.md]
 ---
 
 # /flowcode:research
 
-- Thin entry point: loads and runs the shared `flowcode:research` skill at `.claude/skills/flowcode/research/SKILL.md` — the procedure lives in the skill, not here.
+- Thin entry point: loads and runs the shared `flowcode:research` skill — the procedure lives in the skill, not here.
 - **Standalone, no plan required** — answer any external unknown on demand; the finding is cached for every later phase to reuse.
 - **Cache-first:** reads `.flowcode/researches/researches-index.md` before any fetch; a fresh `complete` hit is returned as-is, never re-fetched.
 - Splits a multi-part request into independent scoped questions and dispatches the `flowcode:researcher-agent` (haiku) for each — in parallel.
@@ -40,7 +40,7 @@ Examples:
 
 You are running a research session on demand.
 
-Load `.claude/skills/flowcode/research/SKILL.md` and execute its procedure. Treat `$ARGUMENTS` as the request: split it into independent scoped questions (a `;` or an explicit "and" between distinct unknowns usually marks a split). Check `.flowcode/researches/researches-index.md` before any fetch, dispatch `flowcode:researcher-agent` for each question that needs fetching (parallel when independent), and relay the consolidated findings. Do not re-fetch a fresh `complete` cache hit.
+Run the `flowcode:research` skill and execute its procedure. Treat `$ARGUMENTS` as the request: split it into independent scoped questions (a `;` or an explicit "and" between distinct unknowns usually marks a split). Check `.flowcode/researches/researches-index.md` before any fetch, dispatch `flowcode:researcher-agent` for each question that needs fetching (parallel when independent), and relay the consolidated findings. Do not re-fetch a fresh `complete` cache hit.
 
 ## Non-Goals
 

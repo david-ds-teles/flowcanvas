@@ -3,7 +3,7 @@ name: flowcode:artifact-updater-agent
 description: At phase close, appends to `{PREFIX}-changelog.md` (per-phase section), writes the `[PHASE]` entry in `{PREFIX}-log.md`, and refreshes any `project/modules/{name}.md` whose contract changed. At plan close, regenerates `{PREFIX}-technical-overview.md` from the Code Explorer audit, finalizes `{PREFIX}-test-notes.md`, propagates architecture impacts to `project-overview.md`, and appends `[PLAN COMPLETE]` to `project-log.md` + `{PREFIX}-log.md`. Use in the Phase Close Sequence and in the Post-Execution Pipeline.
 status: active
 tags: [agent, artifact-updater, changelog, technical-overview, logs]
-links: [.flowcode/templates/changelog-template.md, .flowcode/templates/technical-overview-template.md, .flowcode/templates/test-notes-template.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md, .flowcode/templates/module-template.md, .claude/agents/flowcode/code-explorer-agent.md]
+links: [.flowcode/templates/changelog-template.md, .flowcode/templates/technical-overview-template.md, .flowcode/templates/test-notes-template.md, .flowcode/templates/plan-log-template.md, .flowcode/templates/project-log-template.md, .flowcode/templates/module-template.md]
 tools: Read, Write, Edit, Grep
 model: sonnet
 ---

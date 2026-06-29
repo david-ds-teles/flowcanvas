@@ -3,7 +3,7 @@ name: flowcode:review
 description: Run a standalone code review over an arbitrary diff — grounded in project-overview, module contracts, quality gates, and code conventions, and plan-aware when a plan applies. Dispatches `flowcode:code-reviewer-agent` and routes findings to the plan's `{PREFIX}-qa-report.md` or to a `.flowcode/reviews/{slug}-review.md`. Use ad-hoc via `/flowcode:review`, no plan required.
 status: active
 tags: [review, code-review, findings, quality, standalone]
-links: [.claude/agents/flowcode/code-reviewer-agent.md, .flowcode/reviews/reviews-index.md, .flowcode/templates/review-report-template.md, .claude/commands/flowcode/review.md, .flowcode/quality-checks/quality-checks-index.md]
+links: [.flowcode/reviews/reviews-index.md, .flowcode/templates/review-report-template.md, .flowcode/quality-checks/quality-checks-index.md]
 ---
 
 # Review Session
@@ -57,7 +57,7 @@ Collect the agent's report and relay a decision-ready summary: the gate outcome,
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/code-reviewer-agent.md` | The worker — loads context, scans, runs gates, prepends the `## Check` section; sonnet |
+| `flowcode:code-reviewer-agent` | The worker — loads context, scans, runs gates, prepends the `## Check` section; sonnet |
 | `.flowcode/reviews/reviews-index.md` | Index of standalone review reports — the agent updates the row on completion |
 | `.flowcode/templates/review-report-template.md` | Standalone report structure; the agent reads it before writing a new `{slug}-review.md` |
 | `.flowcode/templates/qa-report-template.md` | Plan-bound report structure; used when a `{PREFIX}` is in scope |

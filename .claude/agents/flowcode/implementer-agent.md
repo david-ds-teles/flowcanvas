@@ -3,7 +3,7 @@ name: flowcode:implementer-agent
 description: Implements ONE exclusively-owned, disjoint slice of an active phase — a set of files no other concurrent worker touches — grounded in the phase's design slice and module contracts. Writes only its owned files, never shared/wiring files, never gates or git. Returns a compact report (files written, exported symbols + signatures, deviations) so the main session can integrate. Dispatched in parallel (one per disjoint slice) by `flowcode:execute` during a phase's implementation step; falls back to the main session when slices are not cleanly disjoint.
 status: active
 tags: [agent, implementer, execute, parallel, phase, worker]
-links: [.flowcode/plans/plan-instructions.md, .flowcode/templates/plan-template.md, .claude/agents/flowcode/code-reviewer-agent.md]
+links: [.flowcode/plans/plan-instructions.md, .flowcode/templates/plan-template.md]
 tools: Read, Glob, Grep, Write, Edit
 model: sonnet
 ---
@@ -28,7 +28,7 @@ model: sonnet
 - **Contract fidelity:** Implement the exact signatures/types/endpoints the design and module docs define. Where a required detail was never decided, flag it as a design gap in the report — do not invent it.
 - **Conventions over novelty:** Follow the established patterns of the surrounding code (naming, layering, imports, error handling, tests). Production-grade, copy-adaptable code — no placeholders, no TODO stubs left behind.
 - **Leaf agent:** Do not dispatch sub-agents. Do your own reads and writes.
-- **No gates, no git:** Never run build/test/lint gates and never run git. The phase close sequence (`plan-instructions.md § Phase Execution`) owns verification.
+- **No gates, no git:** Never run build/test/lint gates and never run git. The phase close sequence (`plan-execution.md § Phase Close Sequence`) owns verification.
 
 ---
 

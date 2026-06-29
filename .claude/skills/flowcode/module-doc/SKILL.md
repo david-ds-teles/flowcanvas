@@ -3,7 +3,7 @@ name: flowcode:module-doc
 description: (Re)generate a single module's deep knowledge-base doc (`.flowcode/project/modules/{name}.md`) on demand — without a full re-bootstrap. Dispatches `flowcode:module-explorer-agent` (sonnet) in merge-mode to refresh a stale doc or backfill a module missing its file. Use when one module changed, a module doc went stale, or a module present in code is missing its `modules/{name}.md` (a `flowcode-rules.md §7a` breach).
 status: active
 tags: [module, knowledge-base, refresh, bootstrap, public-api]
-links: [.claude/agents/flowcode/module-explorer-agent.md, .flowcode/project/modules/README.md, .flowcode/templates/module-template.md, .flowcode/project/project-overview.md, .claude/commands/flowcode/module-doc.md, .claude/skills/flowcode/bootstrap/SKILL.md]
+links: [.flowcode/project/modules/README.md, .flowcode/templates/module-template.md, .flowcode/project/project-overview.md]
 ---
 
 # Module Doc Session
@@ -44,11 +44,11 @@ Surface each explorer's short report: file created/merged, depth counts, section
 
 | File | Use |
 |------|-----|
-| `.claude/agents/flowcode/module-explorer-agent.md` | The worker (sonnet) — deeply explores one module and writes its doc; holds the § Module Doc Completeness Bar |
+| `flowcode:module-explorer-agent` | The worker (sonnet) — deeply explores one module and writes its doc; holds the § Module Doc Completeness Bar |
 | `.flowcode/project/project-overview.md` | Source of the Modules table (name / path / purpose / stack) |
 | `.flowcode/project/modules/README.md` | Naming + sync conventions for module docs |
 | `.flowcode/templates/module-template.md` | The doc shape the explorer fills |
-| `.claude/skills/flowcode/bootstrap/SKILL.md` | The project-wide alternative when many modules need (re)generation |
+| `flowcode:bootstrap` | The project-wide alternative when many modules need (re)generation |
 
 ## Non-Goals
 

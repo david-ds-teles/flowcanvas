@@ -2,15 +2,15 @@
 name: plan-log-template
 description: Scaffold and entry formats for a per-plan execution log (.flowcode/plans/{PREFIX}/{PREFIX}-log.md).
 status: active
-tags: [template, plan-log, execution-log, entries]
+tags: [template, plan-log, execution-log, entries, revise]
 links: [.flowcode/templates/templates-index.md, .flowcode/plans/plan-instructions.md, .flowcode/templates/project-log-template.md]
 ---
 
 # {PREFIX} — {Feature Name} Log
 
 - Per-plan execution record: exactly one per plan at `.flowcode/plans/{PREFIX}/{PREFIX}-log.md`, created from this template when the plan folder is first created.
-- Reverse chronological — newest entry at top, directly below the header; updated at every phase end and at plan end; never deleted.
-- Holds three entry formats below: `[PLAN CREATED]` (once), `[PHASE]` (each phase end), `[PLAN COMPLETE]` (once at plan end).
+- Reverse chronological — newest entry at top, directly below the header; updated at every phase end, every revise pass, and at plan end; never deleted.
+- Holds four entry formats below: `[PLAN CREATED]` (once), `[PHASE]` (each phase end), `[REVISE]` (each revise pass), `[PLAN COMPLETE]` (once at plan end).
 - Every entry opens with `**Dev:**` — the developer who did this work, taken verbatim from the session banner's `Acting as Dev:` line (sourced from git / `FLOWCODE_DEV`); never invented.
 
 ---
@@ -55,6 +55,27 @@ Status values:
 **Files:** {comma-separated list of files created/modified in this phase}
 **Gates:** {gate outcomes — e.g. `tsc 0 · build ok · review clean after 1 fix`}
 **Deviations:** {every delta between the plan spec and what was built, or "none". If a deviation is lasting, the plan file's spec MUST be updated in the same turn — this field is not a substitute}
+
+---
+```
+
+### `[REVISE]` — written at the end of every revise pass
+
+Written after each pass of `flowcode:revise` (see `plan-instructions.md § Revise Stage`). Every field is mandatory; omitting any field is a framework breach.
+
+Context values:
+- `post-exec polish` — the plan is `active`, all phases `done` (the revise stage)
+- `post-completion amendment` — the plan is `complete` (a closed-plan scoped change)
+
+```markdown
+## [REVISE] {short label} — {DATE}
+
+**Dev:** {who did this revise — from the session banner's `Acting as Dev:` line}
+**Context:** {`post-exec polish` | `post-completion amendment`}
+**Changed:** {one-line — what was fixed/adjusted/amended; concrete nouns}
+**Files:** {comma-separated source + artifact files touched this pass}
+**Plan/spec amended:** {which plan/design sections were rewritten to match reality, or "none"}
+**Gates:** {gate outcomes on the touched scope — e.g. `tsc 0 · build ok · review clean`}
 
 ---
 ```
