@@ -81,7 +81,7 @@ async function main() {
         studio: !!q('.fc-studio'),
         canvasH: h(q('.fc-studio__center .react-flow')),
         rail: !!q('.fc-studio__rail'),
-        inspector: !!q('.fc-studio__inspector'),
+        inspector: !!q('.fc-studio__dock'),   // inspector lives inside the unified right dock
         rfNodes: document.querySelectorAll('.react-flow__node').length,
         edgeLabels: document.querySelectorAll('.fc-edge-label__rel').length,
       };
@@ -92,7 +92,7 @@ async function main() {
 
     ok(geom.studio, 'tri-pane shell mounted (.fc-studio)')
     ok(geom.canvasH > 200, `canvas has real height (${geom.canvasH}px > 200) — not the 0-height regression`)
-    ok(geom.rail && geom.inspector, 'both rails present (structure + inspector)')
+    ok(geom.rail && geom.inspector, 'both rails present (structure rail + right dock)')
     ok(geom.rfNodes >= 5, `React Flow rendered nodes (${geom.rfNodes})`)
     ok(geom.edgeLabels >= 3, `typed-edge rel labels rendered (${geom.edgeLabels})`)
     console.log(`screenshot: ${SHOT}`)

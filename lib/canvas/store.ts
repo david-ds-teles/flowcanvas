@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { create, type StateCreator } from 'zustand'
 import type { Connection } from '@xyflow/react'
 import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta } from './jsoncanvas'
 import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
@@ -7,9 +7,10 @@ import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from
 import type { AgentResponse, DesignBrief, MergeReport } from './brief'
 import { diffDocs } from './review'
 import type { ReviewState, ReviewDiff } from './review'
-import { buildSourceIndex, normPath } from './spine'
+import { buildSourceIndex, normPath, citedDocPaths } from './spine'
 import { migrateDoc } from './migrate'
 import { parseFlowcanvasDoc } from './validate'
+import { organizeByType as organizeByTypePure } from './layout'
 import { instantiateTemplate } from './templates'
 import type { CanvasTemplate } from './templates'
 import type { DocRef } from './refs'
@@ -52,7 +53,16 @@ interface CanvasState {
   setSelection: (ids: string[]) => void                                            // Phase 10: multi-select
   groupSelection: (ids: string[]) => void                                          // Phase 10: wrap ≥2 nodes in a container
   ungroup: (groupId: string) => void                                               // Phase 10: dissolve a container, keep children
-  applyLayout: (positions: Record<string, { x: number; y: number }>) => void       // Phase 10: bulk absolute-coord write (ELK + group drag)
+  applyLayout: (positions: Record<string, { x: number; y: number }>, sizes?: Record<string, { width: number; height: number }>) => void  // bulk absolute-coord write (ELK + group drag + organize-by-type)
+  organizeByType: () => void                                                        // #7/#8 — type-banded system-design re-layout (resizes group containers to enclose children)
+  // #1 — undo/redo: full-doc history stacks for manual edits (cleared on board switch). __hist is a
+  // transient directive on a set payload (reset|skip) read by the history middleware and stripped before
+  // the real set — it is never stored in state.
+  past: FlowcanvasDoc[]
+  future: FlowcanvasDoc[]
+  undo: () => void
+  redo: () => void
+  __hist?: 'reset' | 'skip'
   saveAs: (path: string) => Promise<void>                                          // Phase 10: write to a new path + adopt it
   openBoard: (path: string) => Promise<void>                                       // Phase 10: switch the active board
   setNodePosition: (id: string, x: number, y: number) => void
@@ -139,8 +149,36 @@ export const selectNodeCommentCount =
       0,
     ) ?? 0
 
-export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null, revealCommentsNodeId: null,
+// #1 — history middleware. Records every doc-mutating set into `past` (capped), clearing `future`. A set
+// payload carrying __hist:'reset' (board switch) clears both stacks; __hist:'skip' (undo/redo itself)
+// leaves them untouched. The directive is stripped before the real set, so it is never stored in state.
+const HISTORY_LIMIT = 60
+const withHistory =
+  (config: StateCreator<CanvasState>): StateCreator<CanvasState> =>
+  (set, get, api) => {
+    const tracked = ((partial: unknown, replace?: boolean) => {
+      let directive: 'reset' | 'skip' | undefined
+      let payload = partial
+      if (partial && typeof partial === 'object' && '__hist' in partial) {
+        const obj = { ...(partial as Record<string, unknown>) }
+        directive = obj.__hist as 'reset' | 'skip' | undefined
+        delete obj.__hist
+        payload = obj
+      }
+      const prevDoc = get().doc
+      ;(set as unknown as (p: unknown, r?: boolean) => void)(payload, replace)
+      if (directive === 'reset') { set({ past: [], future: [] } as Partial<CanvasState>); return }
+      if (directive === 'skip') return
+      const nextDoc = get().doc
+      if (nextDoc !== prevDoc && prevDoc && nextDoc) {
+        set({ past: [...get().past, prevDoc].slice(-HISTORY_LIMIT), future: [] } as Partial<CanvasState>)
+      }
+    }) as unknown as typeof set
+    return config(tracked, get, api)
+  }
+
+export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null, revealCommentsNodeId: null, past: [], future: [],
   coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
   bodyFor: (id) => get().bodies[id],
   // Canvas-authoritative load (Decision 4): doc.edges from disk are truth — no per-load reconcile.
@@ -152,17 +190,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { nodes, bodies } = await hydrateFiles(doc.nodes, {})
     // 004 Phase 5 — one shared ladder for load + import: migrateDoc 0.1→0.2 (bake derived links: edges,
     // reading the now-hydrated frontmatter) → 0.3 (no-op version bump). Boards persist '0.3'.
-    const { doc: next, migrated } = migrateDoc({ ...doc, nodes })
+    const { doc: migratedDoc, migrated } = migrateDoc({ ...doc, nodes })
     let reviewState: ReviewState | null = null
-    if (next.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
+    if (migratedDoc.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
+    // #2 / 005-D4 — auto-bind the living spine: when no core doc is bound and the board cites exactly one
+    // source doc that EXISTS on disk, adopt it as session.coreDocPath (persisted on the next save) so the
+    // spine appears with no manual pick. A cited-but-MISSING doc is left unbound on purpose — the spine
+    // then surfaces a clear "spec not found" message (the agent referenced a doc it never wrote).
+    let next = migratedDoc
+    let autobound = false
+    if (!next.flowcanvas.session.coreDocPath) {
+      const cited = citedDocPaths(nodes)
+      if (cited.length === 1 && (await api.readFileApi(cited[0]).then(() => true).catch(() => false))) {
+        next = { ...next, flowcanvas: { ...next.flowcanvas, session: { ...next.flowcanvas.session, coreDocPath: cited[0] } } }
+        autobound = true
+      }
+    }
     // 004 — resolve the living core-doc body so the spine renders immediately when coreDocPath is set.
     const coreDocPath = next.flowcanvas.session.coreDocPath
     const coreBody = coreDocPath ? await api.readFileApi(coreDocPath).catch(() => null) : null
     set({
       path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [],
       coreDocBody: coreBody, coreDocDraft: coreBody, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
+      __hist: 'reset',                                            // #1 — a board switch starts a fresh undo history
     })
-    if (migrated) await get().save()                              // persist the migrateDoc upgrade (0.1→0.2 bake and/or 0.2→0.3 bump) once
+    if (migrated || autobound) await get().save()                 // persist the migrate upgrade and/or the auto-bound core doc once
     const rev = get().doc?.flowcanvas.session.revision ?? next.flowcanvas.session.revision
     void api.putActive({ canvasRef: path, baseRevision: rev, intent: next.flowcanvas.session.intent ?? '' })
       .catch((e) => console.error('putActive failed', e))
@@ -278,14 +330,36 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   // Bulk absolute-position write — shared by the ELK "Re-organize" result and group-aware drag write-back,
   // so a multi-node move is one re-render + one dirty flip.
-  applyLayout(positions: Record<string, { x: number; y: number }>) {
+  applyLayout(positions: Record<string, { x: number; y: number }>, sizes?: Record<string, { width: number; height: number }>) {
     const { doc } = get()
     if (!doc) return
     const nodes = doc.nodes.map((n) => {
       const p = positions[n.id]
-      return p ? { ...n, x: p.x, y: p.y } : n
+      const s = sizes?.[n.id]
+      if (!p && !s) return n
+      return { ...n, ...(p ? { x: p.x, y: p.y } : null), ...(s ? { width: s.width, height: s.height } : null) }
     })
     set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // #7/#8 — re-lay the whole board into type bands (one column per component-kind), resizing each group
+  // container to enclose its children. One bulk write (positions + sizes); the doc stays ABSOLUTE.
+  organizeByType() {
+    const { doc } = get()
+    if (!doc || doc.nodes.length === 0) return
+    const { positions, sizes } = organizeByTypePure(doc.nodes)
+    get().applyLayout(positions, sizes)
+  },
+  // #1 — undo/redo. Swap in the previous / next full-doc snapshot from the history stacks. __hist:'skip'
+  // tells the middleware not to record the swap itself. Selection is cleared (restored ids may differ).
+  undo() {
+    const { past, doc } = get()
+    if (!past.length || !doc) return
+    set({ doc: past[past.length - 1], past: past.slice(0, -1), future: [doc, ...get().future].slice(0, HISTORY_LIMIT), dirty: true, selectedIds: [], __hist: 'skip' })
+  },
+  redo() {
+    const { future, doc } = get()
+    if (!future.length || !doc) return
+    set({ doc: future[0], future: future.slice(1), past: [...get().past, doc].slice(-HISTORY_LIMIT), dirty: true, selectedIds: [], __hist: 'skip' })
   },
   // Save the current board to a NEW path and adopt it: write, sync the revision, clear dirty, and update
   // the URL `?path=` in place (no reload) so a refresh reopens the new board.
@@ -328,7 +402,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       },
     }
     set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], readerNodeId: null,
-      coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [] })
+      coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [], __hist: 'reset' })
     doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
     if (typeof window !== 'undefined') {
       const u = new URL(window.location.href)
@@ -562,11 +636,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   async applyResponse(resp: AgentResponse) {
     const { doc, bodies } = get()
     if (!doc) throw new Error('no board loaded')
+    const wasEmpty = doc.nodes.length === 0
     const { next, report } = applyResponsePure(doc, resp, (p) => p + crypto.randomUUID().slice(0, 8), new Date().toISOString())
     for (const g of resp.generatedFiles ?? []) await api.writeFileApi(g.path, g.content)   // (2)
     const { nodes, bodies: nextBodies } = await hydrateFiles(next.nodes, bodies)            // (4)
     // v2: next.edges are authoritative — no links: re-derive (Decision 4).
     set({ doc: { ...next, nodes }, bodies: nextBodies, dirty: true })
+    // #8 — first extraction (the board was empty) → auto-arrange into readable type bands. Incremental
+    // rounds on an already-populated board keep the operator's arrangement (Organize by type re-runs it).
+    if (wasEmpty) get().organizeByType()
     await get().save()
     return report
   },
@@ -787,6 +865,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     // (the correct order so the 0.1→0.2 link-edge bake reads FRESH disk frontmatter) and persists '0.3'.
     await api.saveCanvas(targetPath, doc)
     await get().load(targetPath)
+    // #8 — a freshly imported board adopts the agent's raw positions; auto-arrange into readable type
+    // bands so an imported system-design board is legible immediately (the operator can still drag / undo).
+    get().organizeByType()
+    if (get().dirty) await get().save()
     if (typeof window !== 'undefined') {
       const u = new URL(window.location.href)
       u.searchParams.set('path', targetPath)
@@ -800,4 +882,4 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const doc = parseFlowcanvasDoc(parsed)                    // ZodError on an invalid doc → caller catches
     await get().importDoc(doc, file.name)
   },
-}))
+})))

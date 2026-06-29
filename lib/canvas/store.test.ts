@@ -442,3 +442,48 @@ describe('store / setNodeSize (group resize leaves members untouched)', () => {
     expect(n('c')).toMatchObject({ x: 50, y: 50, width: 100, height: 100 }) // group child untouched
   })
 })
+
+describe('store / undo + redo (#1 — history middleware)', () => {
+  beforeEach(() => {
+    useCanvasStore.setState({ doc: seed(), past: [], future: [] }) // setState bypasses tracking → clean history
+  })
+
+  it('records a doc-mutating action and exactly restores the prior snapshot on undo', () => {
+    const before = useCanvasStore.getState().doc!
+    useCanvasStore.getState().removeEdgeWriteback('lk:a->b') // mutates doc → middleware pushes history
+    expect(useCanvasStore.getState().past).toHaveLength(1)
+    expect(useCanvasStore.getState().doc!.edges).toHaveLength(0)
+    useCanvasStore.getState().undo()
+    expect(useCanvasStore.getState().doc).toBe(before) // exact pre-edit snapshot
+    expect(useCanvasStore.getState().doc!.edges).toHaveLength(1)
+    expect(useCanvasStore.getState().past).toHaveLength(0)
+    expect(useCanvasStore.getState().future).toHaveLength(1)
+  })
+
+  it('redo re-applies an undone change', () => {
+    useCanvasStore.getState().removeEdgeWriteback('lk:a->b')
+    const mutated = useCanvasStore.getState().doc!
+    useCanvasStore.getState().undo()
+    useCanvasStore.getState().redo()
+    expect(useCanvasStore.getState().doc).toBe(mutated)
+    expect(useCanvasStore.getState().doc!.edges).toHaveLength(0)
+    expect(useCanvasStore.getState().future).toHaveLength(0)
+  })
+
+  it('a fresh edit after undo clears the redo stack', () => {
+    useCanvasStore.getState().removeEdgeWriteback('lk:a->b')
+    useCanvasStore.getState().undo()
+    expect(useCanvasStore.getState().future).toHaveLength(1)
+    useCanvasStore.getState().addNode({ id: 'z', type: 'text', text: '', x: 0, y: 0, width: 100, height: 100, meta: { origin: 'user' } })
+    expect(useCanvasStore.getState().future).toHaveLength(0) // future invalidated by the new branch
+    expect(useCanvasStore.getState().past).toHaveLength(1)
+  })
+
+  it('undo and redo are no-ops on empty stacks', () => {
+    const d = useCanvasStore.getState().doc
+    useCanvasStore.getState().undo()
+    expect(useCanvasStore.getState().doc).toBe(d)
+    useCanvasStore.getState().redo()
+    expect(useCanvasStore.getState().doc).toBe(d)
+  })
+})

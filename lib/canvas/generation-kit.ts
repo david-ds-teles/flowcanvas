@@ -17,14 +17,26 @@ To add a markdown file: include it in generatedFiles (full content INCLUDING YAM
 Reply to a comment by setting parentId to that comment's id from the brief and copying its anchor.
 Keep coordinates on a 20px grid and place new nodes in empty regions.
 
-EXTRACTION (design doc -> typed system-design board, NOT document cards):
-- Map each component to one node and stamp meta.kind (see COMPONENT KINDS). Map each subsystem
-  cluster to a group node (type:"group", label + optional shape, set members' parentId to it).
-  A system/trust container is a group with meta.kind:"boundary". Map each documented
-  relationship/arrow to a typed edge.
+CORE SPEC DOC (the board's single source of truth — REQUIRED):
+- Every board is generated FROM one core markdown spec. If the brief carries coreDocPath, THAT file is
+  the spec — read it (read_file) and decompose it; do not rewrite or delete it.
+- If there is NO coreDocPath (extracting from an inline prompt / an empty board), FIRST author a single
+  core spec doc "<board-stem>.md" (YAML frontmatter + ATX headings describing the WHOLE system) and put
+  it in generatedFiles. The app binds the sole cited doc as the living core spine automatically.
+- Every node's meta.source.path MUST point to THAT one core spec doc — a file that EXISTS (the brief's
+  coreDocPath, or the "<board-stem>.md" you just wrote). NEVER cite a doc path you did not create: a
+  dangling source path leaves the board with no readable specification.
+
+EXTRACTION (core spec doc -> typed system-design board, NOT document cards):
+- Map each component to one node, stamp meta.kind (see COMPONENT KINDS), and give it a "label": a short
+  human name (<= 40 chars). Map each subsystem cluster to a group node (type:"group", label + optional
+  shape, set members' parentId to it). A system/trust container is a group with meta.kind:"boundary".
+  Map each documented relationship/arrow to a typed edge.
 - Decompose node content into small generated .md files (one per node) under
-  "<board-stem>.nodes/<slug>.md", each with frontmatter source: { path, anchor }.
-- Never inline document prose into the .canvas; never delete or rewrite the source doc.
+  "<board-stem>.nodes/<slug>.md". Each MUST carry frontmatter with name: (the component display name),
+  a one-line description:, and source: { path:"<core spec doc>", anchor } — so the widget shows a real
+  name and role, never a bare slug.
+- Never inline document prose into the .canvas.
 TYPED EDGES:
 - Set rel from [references, depends-on, implements, derives-from, calls, produces, informs, related].
   Set label to a short human display (defaults to rel). Do NOT invent rel values. Use containment
@@ -57,23 +69,28 @@ the AgentResponse JSON defined by the schema contract below.`
 
 const MCP_HOW_TO = `MCP LOOP (connected harness):
 1. get_board → the DesignBrief (nodes/edges/comments + intent + responseContract + coreDocPath).
-2. If coreDocPath is set, read_file(coreDocPath) for the full living core markdown.
-3. Reason: decompose into typed components (meta.kind + meta.source).
-4. write_file each derived "<board-stem>.nodes/<slug>.md" (.md/.mdx only).
+2. If coreDocPath is set, read_file(coreDocPath) for the full living core markdown. If it is NOT set, you
+   will author the core spec doc in step 4 before decomposing.
+3. Reason: decompose into typed components (meta.kind + label + meta.source).
+4. write_file the core spec "<board-stem>.md" FIRST (only when there was no coreDocPath), then each
+   derived "<board-stem>.nodes/<slug>.md" (.md/.mdx only) with name:/description:/source: frontmatter.
 5. apply_response(AgentResponse) — echo briefId; the tool merges + persists + bumps the revision.`
 
 const WORKED_EXAMPLE = `WORKED EXAMPLE — input "## Order lifecycle\\nCheckout calls Payments, which writes Orders DB."
+(no coreDocPath in the brief, so the core spec "board.md" is authored first and every node cites it)
 => {
   "responseVersion":"0.1","briefId":"<echo>","summary":"Extracted order lifecycle",
   "upsertNodes":[
-    {"id":"ag-checkout","type":"file","file":"board.nodes/checkout.md","x":0,"y":0,"width":260,"height":120,
-     "kind":"service","source":{"path":"commerce-design.md","anchor":"order-lifecycle"}},
-    {"id":"ag-orders","type":"file","file":"board.nodes/orders-db.md","x":320,"y":0,"width":260,"height":120,
-     "kind":"datastore","source":{"path":"commerce-design.md","anchor":"order-lifecycle"}}
+    {"id":"ag-checkout","type":"file","file":"board.nodes/checkout.md","label":"Checkout","x":0,"y":0,"width":260,"height":120,
+     "kind":"service","source":{"path":"board.md","anchor":"order-lifecycle"}},
+    {"id":"ag-orders","type":"file","file":"board.nodes/orders-db.md","label":"Orders DB","x":320,"y":0,"width":260,"height":120,
+     "kind":"datastore","source":{"path":"board.md","anchor":"order-lifecycle"}}
   ],
   "upsertEdges":[{"id":"ag-e1","fromNode":"ag-checkout","toNode":"ag-orders","rel":"produces","label":"writes"}],
   "generatedFiles":[
-    {"path":"board.nodes/checkout.md","content":"---\\nsource:\\n  path: commerce-design.md\\n  anchor: order-lifecycle\\n---\\nCheckout service."}
+    {"path":"board.md","content":"---\\ntitle: Order system\\n---\\n## Order lifecycle\\nCheckout calls Payments, which writes Orders DB."},
+    {"path":"board.nodes/checkout.md","content":"---\\nname: Checkout\\ndescription: Accepts orders and calls Payments\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\nCheckout service."},
+    {"path":"board.nodes/orders-db.md","content":"---\\nname: Orders DB\\ndescription: Persists orders\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\nOrders datastore."}
   ]
 }`
 

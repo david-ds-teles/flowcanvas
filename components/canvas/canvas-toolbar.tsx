@@ -5,7 +5,6 @@ import { useCanvasStore } from '@/lib/canvas/store'
 import { uploadFile, bundleUrl, type DirEntry } from '@/lib/api'
 import type { CanvasNode, NodeShape, ComponentKind } from '@/lib/canvas/jsoncanvas'
 import { COMPONENT_KINDS, COMPONENT_KIND_META } from '@/lib/canvas/jsoncanvas'
-import { computeLayout, type MeasuredSizes } from '@/lib/canvas/layout'
 import { FilePicker } from './file-picker'
 
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'])
@@ -33,6 +32,25 @@ export function useSaveShortcut() {
   }, [save])
 }
 
+/** #1 — ⌘Z / Ctrl+Z → undo, ⌘⇧Z / Ctrl+Y → redo. Ignored while typing in a field so it never hijacks a
+ *  field's native undo. Mounted by the toolbar. */
+export function useUndoRedoShortcut() {
+  const undo = useCanvasStore((s) => s.undo)
+  const redo = useCanvasStore((s) => s.redo)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo() }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [undo, redo])
+}
+
 interface CanvasToolbarProps {
   onOpenAgent: (tab: 'export' | 'import' | 'kit') => void
   onOpenBoard: (mode: 'open' | 'save') => void
@@ -47,7 +65,8 @@ interface CanvasToolbarProps {
 
 export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft, railRight, onToggleRailLeft, onToggleRailRight, onOpenTemplates, onOpenSubmit }: CanvasToolbarProps) {
   useSaveShortcut()
-  const { fitView, screenToFlowPosition, getNodes } = useReactFlow()
+  useUndoRedoShortcut()
+  const { fitView, screenToFlowPosition } = useReactFlow()
   const path = useCanvasStore((s) => s.path)
   const mode = useCanvasStore((s) => s.mode)
   const setMode = useCanvasStore((s) => s.setMode)
@@ -61,7 +80,11 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const groupSelection = useCanvasStore((s) => s.groupSelection)
   const ungroup = useCanvasStore((s) => s.ungroup)
-  const applyLayout = useCanvasStore((s) => s.applyLayout)
+  const organizeByType = useCanvasStore((s) => s.organizeByType)
+  const undo = useCanvasStore((s) => s.undo)
+  const redo = useCanvasStore((s) => s.redo)
+  const canUndo = useCanvasStore((s) => s.past.length > 0)
+  const canRedo = useCanvasStore((s) => s.future.length > 0)
   const [reorganizing, setReorganizing] = useState(false)
 
   // Group needs ≥2 ungrouped, non-group nodes; Ungroup needs ≥1 selected group.
@@ -69,30 +92,18 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
   const canGroup = doc ? selectedIds.filter((id) => { const n = doc.nodes.find((x) => x.id === id); return !!n && n.type !== 'group' && !n.parentId }).length >= 2 : false
   const canUngroup = selectedGroupIds.length > 0
 
-  // Re-organize: feed ELK the live measured sizes (tall markdown cards), then write back absolute
-  // positions — shifting each group's children by their group's delta — and fit the new layout.
-  const reorganize = useCallback(async () => {
+  // #7/#8 — Organize by type: re-lay the board into component-kind bands (services/datastores/queues/…),
+  // arranging each group's children into the same bands and resizing the group to enclose them, then fit.
+  const reorganize = useCallback(() => {
     if (!doc || reorganizing) return
     setReorganizing(true)
     try {
-      const measured: MeasuredSizes = {}
-      for (const n of getNodes()) if (n.measured?.width && n.measured?.height) measured[n.id] = { width: n.measured.width, height: n.measured.height }
-      const top = await computeLayout(doc.nodes, doc.edges, measured)
-      const updates: Record<string, { x: number; y: number }> = { ...top }
-      for (const g of doc.nodes) {
-        const np = top[g.id]
-        if (!np || g.type !== 'group') continue
-        const dx = np.x - g.x, dy = np.y - g.y
-        for (const c of doc.nodes) if (c.parentId === g.id) updates[c.id] = { x: c.x + dx, y: c.y + dy }
-      }
-      applyLayout(updates)
+      organizeByType()
       setTimeout(() => fitView({ duration: 320, padding: 0.2 }), 80) // let the store→RF sync land before fitting
-    } catch (e) {
-      console.error('Re-organize (ELK) failed', e) // surface, don't swallow (Phase 8 patchLinks precedent)
     } finally {
       setReorganizing(false)
     }
-  }, [doc, reorganizing, getNodes, applyLayout, fitView])
+  }, [doc, reorganizing, organizeByType, fitView])
 
   const [open, setOpen] = useState<Flyout>(null)         // the single open popover
   const [linkUrl, setLinkUrl] = useState('')             // inline link-URL input
@@ -334,15 +345,21 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
 
       <span className="fc-toolbar__divider fc-toolbar__divider--arrange" aria-hidden="true" />
 
-      {/* Phase 10 — multi-select grouping + ELK auto-layout. */}
+      {/* #1 undo/redo · multi-select grouping · type-band auto-layout. */}
       <div className="fc-toolbar__arrange">
+        <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-undo" disabled={!canUndo} aria-disabled={!canUndo} aria-label="Undo (⌘Z)" title="Undo (⌘Z)" onClick={undo}>
+          {sv(<path d="M9 7l-5 5 5 5M4 12h10a5 5 0 0 1 0 10h-1" />)}
+        </button>
+        <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-redo" disabled={!canRedo} aria-disabled={!canRedo} aria-label="Redo (⌘⇧Z)" title="Redo (⌘⇧Z)" onClick={redo}>
+          {sv(<path d="M15 7l5 5-5 5M20 12H10a5 5 0 0 0 0 10h1" />)}
+        </button>
         <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-group" disabled={!canGroup} aria-disabled={!canGroup} aria-label="Group selection" title="Group selection (select ≥2 nodes)" onClick={() => groupSelection(selectedIds)}>
           {sv(<><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3" /><rect x="9" y="9" width="6" height="6" rx="1" /></>)}
         </button>
         <button type="button" className="fc-tbtn fc-tbtn--icon" data-testid="toolbar-ungroup" disabled={!canUngroup} aria-disabled={!canUngroup} aria-label="Ungroup" title="Ungroup selected container" onClick={() => selectedGroupIds.forEach((id) => ungroup(id))}>
           {sv(<><path d="M4 8V5h3M20 16v3h-3M7 19H4v-3" /><path d="M14 5h6v6" /><path d="M10 14l8-8" /></>)}
         </button>
-        <button type="button" className={`fc-tbtn fc-tbtn--icon${reorganizing ? ' is-busy' : ''}`} data-testid="toolbar-reorganize" disabled={!doc || reorganizing} aria-busy={reorganizing} aria-label="Re-organize" title="Re-organize — auto-layout" onClick={() => void reorganize()}>
+        <button type="button" className={`fc-tbtn fc-tbtn--icon${reorganizing ? ' is-busy' : ''}`} data-testid="toolbar-reorganize" disabled={!doc || reorganizing} aria-busy={reorganizing} aria-label="Organize by type" title="Organize by type — band components into readable layers" onClick={reorganize}>
           {sv(<><path d="M4 6h7M4 12h7M4 18h7" /><path d="M16 8l3-3 3 3M19 5v14" /></>)}
         </button>
         <button type="button" className="fc-tbtn fc-tbtn--icon fc-tbtn--danger" data-testid="toolbar-delete" disabled={selectedIds.length === 0} aria-disabled={selectedIds.length === 0} aria-label="Delete selection" title={selectedIds.length ? `Delete selection (${selectedIds.length}) · Del` : 'Delete selection (select a node · Del)'} onClick={() => selectedIds.forEach((id) => removeNode(id))}>

@@ -181,7 +181,18 @@ export function CoreSpine({ onClose }: CoreSpineProps) {
           <>
             {!coreDocPath && <p className="fc-spine__msg">No core doc bound. Pick a cited doc above to make it the living spine.</p>}
             {coreDocPath && !ready && <p className="fc-spine__msg">Rendering…</p>}
-            {ready && result.error && <p className="fc-spine__msg fc-spine__msg--err">Could not render — {result.error}</p>}
+            {ready && result.error && (
+              /not found|enoent/i.test(result.error) ? (
+                // #2/#3 — the board cites a core spec doc that is not on disk (the agent referenced a doc
+                // it never wrote). Say so precisely instead of a bare "not found", and point at the fix.
+                <p className="fc-spine__msg fc-spine__msg--err" data-testid="spine-missing">
+                  Core spec not found — the components reference <code>{coreDocPath}</code>, but that document was never
+                  written to disk. Re-run the agent so it writes the core spec doc, or pick a different doc above.
+                </p>
+              ) : (
+                <p className="fc-spine__msg fc-spine__msg--err">Could not render — {result.error}</p>
+              )
+            )}
             {ready && result.html !== null && (
               <div className="fc-spine__prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: result.html }} />
             )}

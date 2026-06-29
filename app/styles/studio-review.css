@@ -69,16 +69,26 @@
 .fc-review__empty {
   flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
   justify-content: center;
+  padding: 28px 18px;
+}
+.fc-review__empty-h {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
-  padding: 40px 16px;
-  text-align: center;
+  color: var(--color-text-primary);
 }
+.fc-review__empty-p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.fc-review__empty-p strong { color: var(--color-text-primary); font-weight: 600; }
 
 /* ─── Scrollable body ────────────────────────────────────────────────────── */
 .fc-review__body {

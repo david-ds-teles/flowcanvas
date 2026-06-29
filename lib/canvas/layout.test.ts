@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { CanvasNode, CanvasEdge } from './jsoncanvas'
-import { computeLayout, type MeasuredSizes } from './layout'
+import { computeLayout, organizeByType, type MeasuredSizes } from './layout'
 
 // Small board: two connected top-level nodes, an island, and a group with one child.
 const nodes: CanvasNode[] = [
@@ -54,6 +54,51 @@ describe('layout / computeLayout (ELK re-organize)', () => {
         const b = ids[j]
         expect(intersects(out[a], out[b], sizeOf(a), sizeOf(b))).toBe(false)
       }
+    }
+  })
+})
+
+// #7/#8 — type-banded system-design layout.
+const kindNodes: CanvasNode[] = [
+  { id: 'actorTop', type: 'text', text: '', x: 0, y: 0, width: 200, height: 120, meta: { origin: 'agent', kind: 'actor' } },
+  { id: 'svcTop', type: 'file', file: 's.md', x: 0, y: 0, width: 240, height: 140, meta: { origin: 'agent', kind: 'service' } },
+  { id: 'g', type: 'group', label: 'sys', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'agent', shape: 'rectangle', kind: 'boundary' } },
+  { id: 'svcA', type: 'file', file: 'a.md', x: 0, y: 0, width: 240, height: 140, parentId: 'g', meta: { origin: 'agent', kind: 'service' } },
+  { id: 'svcB', type: 'file', file: 'b.md', x: 0, y: 0, width: 240, height: 140, parentId: 'g', meta: { origin: 'agent', kind: 'service' } },
+  { id: 'db', type: 'file', file: 'db.md', x: 0, y: 0, width: 240, height: 160, parentId: 'g', meta: { origin: 'agent', kind: 'datastore' } },
+]
+
+describe('layout / organizeByType (type-banded system-design layout)', () => {
+  it('positions every node and sizes the group container', () => {
+    const { positions, sizes } = organizeByType(kindNodes)
+    expect(Object.keys(positions).sort()).toEqual(['actorTop', 'db', 'g', 'svcA', 'svcB', 'svcTop'])
+    expect(sizes.g.width).toBeGreaterThan(0)
+    expect(sizes.g.height).toBeGreaterThan(0)
+  })
+
+  it('orders top-level bands left→right by kind (actor before service before group)', () => {
+    const { positions } = organizeByType(kindNodes)
+    expect(positions.actorTop.x).toBeLessThan(positions.svcTop.x)
+    expect(positions.svcTop.x).toBeLessThan(positions.g.x)
+  })
+
+  it('bands group children by kind — same-kind share a column and stack; other kinds shift right', () => {
+    const { positions } = organizeByType(kindNodes)
+    expect(positions.svcA.x).toBe(positions.svcB.x)        // both service → same band column
+    expect(positions.svcA.y).not.toBe(positions.svcB.y)    // stacked vertically
+    expect(positions.db.x).toBeGreaterThan(positions.svcA.x) // datastore band is right of the service band
+  })
+
+  it('resizes the group to fully enclose its children (design-system §8)', () => {
+    const { positions, sizes } = organizeByType(kindNodes)
+    const g = positions.g
+    const gs = sizes.g
+    for (const c of kindNodes.filter((n) => n.parentId === 'g')) {
+      const p = positions[c.id]
+      expect(p.x).toBeGreaterThanOrEqual(g.x)
+      expect(p.y).toBeGreaterThanOrEqual(g.y)
+      expect(p.x + c.width).toBeLessThanOrEqual(g.x + gs.width)
+      expect(p.y + c.height).toBeLessThanOrEqual(g.y + gs.height)
     }
   })
 })

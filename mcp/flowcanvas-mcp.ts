@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { buildBrief, applyResponse } from "../lib/canvas/brief";
 import type { AgentResponse } from "../lib/canvas/brief";
 import { buildKit } from "../lib/canvas/generation-kit";
+import { organizeByType } from "../lib/canvas/layout";
 import type { FileNode } from "../lib/canvas/jsoncanvas";
 import type { FlowcanvasDoc } from "../lib/canvas/jsoncanvas";
 import type { ResolvedFile, DirEntry, ActiveBoard } from "../lib/api";
@@ -195,6 +196,19 @@ server.registerTool(
         (prefix) => prefix + rid(),
         new Date().toISOString()
       );
+
+      // #7/#8 — first extraction (the board was empty) → auto-arrange the merged board into readable
+      // type bands server-side, mirroring the client importDoc / applyResponse path (the Zustand
+      // organizeByType never runs for an MCP apply). Skipped (idempotent) for an incremental round on
+      // an already-populated board, so it never disturbs an operator's existing arrangement.
+      if (doc.nodes.length === 0 && next.nodes.length > 0) {
+        const { positions, sizes } = organizeByType(next.nodes);
+        next.nodes = next.nodes.map((n) => ({
+          ...n,
+          ...(positions[n.id] ? { x: positions[n.id].x, y: positions[n.id].y } : null),
+          ...(sizes[n.id] ? { width: sizes[n.id].width, height: sizes[n.id].height } : null),
+        }));
+      }
 
       // Write generated files before persisting the canvas so the next resolve has them
       for (const gf of response.generatedFiles ?? []) {

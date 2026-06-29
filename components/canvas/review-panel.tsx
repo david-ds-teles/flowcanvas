@@ -206,9 +206,20 @@ export function ReviewPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {/* Empty state — no pending round */}
+      {/* Empty state — no pending round. #1: explain what change-review is for (agent rounds) and point
+          local edits at undo/redo, so the tab never reads as "useless / I changed things and nothing here". */}
       {!hasPendingRound && (
-        <div className="fc-review__empty">No pending round</div>
+        <div className="fc-review__empty" data-testid="review-empty">
+          <p className="fc-review__empty-h">No agent round to review</p>
+          <p className="fc-review__empty-p">
+            Change-review lists what the <strong>agent</strong> added, updated, or removed in its last round.
+            It appears here after the agent applies changes over MCP.
+          </p>
+          <p className="fc-review__empty-p">
+            Editing the board yourself? Those changes apply live — use <strong>Undo (⌘Z)</strong> and{' '}
+            <strong>Redo (⌘⇧Z)</strong> to step back and forward.
+          </p>
+        </div>
       )}
 
       {/* Diff body + footer */}
