@@ -46,7 +46,7 @@ interface CanvasState {
   saveAs: (path: string) => Promise<void>                                          // Phase 10: write to a new path + adopt it
   openBoard: (path: string) => Promise<void>                                       // Phase 10: switch the active board
   setNodePosition: (id: string, x: number, y: number) => void
-  setNodeSize: (id: string, width: number, height: number) => void
+  setNodeSize: (id: string, width: number, height: number, x?: number, y?: number) => void
   setNodeText: (id: string, text: string) => void
   setNodeLabel: (id: string, label: string) => void
   setNodeShape: (id: string, shape: NodeShape) => void
@@ -335,11 +335,37 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x, y } : n))
     set({ doc: { ...doc, nodes }, dirty: true })
   },
-  // Persist a resize (group nodes) committed by React Flow's NodeResizer on resize-end.
-  setNodeSize(id: string, width: number, height: number) {
+  // Persist a resize committed by React Flow's NodeResizer on resize-end. For a GROUP, scale every
+  // child proportionally (position + size) so resizing the fence resizes its contents the same
+  // proportions and the membership keeps its layout. Non-group widgets just take the new size. x/y are
+  // the resize-end origin the NodeResizer reports — a bottom/right drag leaves them at the node's x/y;
+  // a top/left drag moves them, so children scale relative to the new box corner either way.
+  setNodeSize(id: string, width: number, height: number, x?: number, y?: number) {
     const { doc } = get()
     if (!doc) return
-    const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, width, height } : n))
+    const target = doc.nodes.find((n) => n.id === id)
+    if (!target) return
+    const nx = x ?? target.x
+    const ny = y ?? target.y
+    const sx = target.width ? width / target.width : 1
+    const sy = target.height ? height / target.height : 1
+    const scaled = new Map<string, { x: number; y: number; width: number; height: number }>()
+    if (target.type === 'group') {
+      for (const c of doc.nodes) {
+        if (c.parentId !== id) continue
+        scaled.set(c.id, {
+          x: Math.round(nx + (c.x - target.x) * sx),
+          y: Math.round(ny + (c.y - target.y) * sy),
+          width: Math.max(1, Math.round(c.width * sx)),
+          height: Math.max(1, Math.round(c.height * sy)),
+        })
+      }
+    }
+    const nodes = doc.nodes.map((n) => {
+      if (n.id === id) return { ...n, x: nx, y: ny, width, height }
+      const s = scaled.get(n.id)
+      return s ? { ...n, ...s } : n
+    })
     set({ doc: { ...doc, nodes }, dirty: true })
   },
   // Edit a note's markdown body in place (double-click → inline textarea). No-op for non-text nodes.

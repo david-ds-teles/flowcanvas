@@ -33,7 +33,7 @@ function ShapeOutline({ shape, selected }: { shape: NodeShape; selected: boolean
       ) : shape === 'diamond' ? (
         <polygon points="50,1 99,50 50,99 1,50" {...a} />
       ) : (
-        <rect x="1" y="1" width="98" height="98" rx="6" {...a} />
+        <rect x="1" y="1" width="98" height="98" {...a} />
       )}
     </svg>
   )
@@ -60,7 +60,7 @@ function Inner({ id, selected, data }: NodeProps) {
         isVisible={!!selected}
         minWidth={120}
         minHeight={80}
-        onResizeEnd={(_e, p) => setNodeSize(id, Math.round(p.width), Math.round(p.height))}
+        onResizeEnd={(_e, p) => setNodeSize(id, Math.round(p.width), Math.round(p.height), Math.round(p.x), Math.round(p.y))}
         lineClassName="fc-group__rzline"
         handleClassName="fc-group__rzhandle"
       />

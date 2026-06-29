@@ -340,7 +340,18 @@
 /* the whole RF node wrapper is transparent to events too, so the rectangular corners outside the shape
    don't select/drag the node — only the painted shape, label, switcher, and resize handles capture
    (events still bubble from those to RF's wrapper listeners, so drag/select work). */
-.react-flow__node:has(.fc-group) { pointer-events: none !important; }   /* beat RF's inline pointer-events */
+.react-flow__node:has(.fc-group) {
+  pointer-events: none !important;        /* beat RF's inline pointer-events */
+  /* Reset React Flow's built-in group-node chrome. A type:"group" node also gets .react-flow__node-group,
+     which ships an opaque grey fill (rgba(240,240,240,.25)) + a border + 10px padding + a border-radius
+     from RF's stylesheet (loaded after ours). The fill read as the grey box; the padding inset + offset
+     the SVG outline so the fence drew ~10px smaller than and misaligned with the children (which sit at
+     absolute coords). The SVG shape's own outline + fill is the only group chrome we keep. */
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
 .react-flow__node:has(.fc-group) .react-flow__resize-control { pointer-events: all; }
 /* suppress the rectangular selection glow for shape nodes (set on the RF node wrapper) */
 .react-flow__node.selected:has(.fc-group) { box-shadow: none !important; }

@@ -334,3 +334,45 @@ describe('store / v2 — reviewDiff + navigateRef (focus)', () => {
     expect(doc!.nodes).toHaveLength(2)              // no new node added
   })
 })
+
+// Resizing a GROUP must scale every child the same proportions (position + size); a non-group resize
+// touches only that node. (group-resize child-scaling fix)
+describe('store / setNodeSize (group resize scales children)', () => {
+  function groupDoc(): FlowcanvasDoc {
+    return {
+      nodes: [
+        { id: 'g', type: 'group', label: 'G', x: 0, y: 0, width: 200, height: 200, meta: { origin: 'user', shape: 'rectangle' } },
+        { id: 'c', type: 'file', file: 'c.md', x: 50, y: 50, width: 100, height: 100, parentId: 'g', meta: { origin: 'user', frontmatter: {} } },
+        { id: 'loose', type: 'file', file: 'l.md', x: 400, y: 400, width: 100, height: 100, meta: { origin: 'user', frontmatter: {} } },
+      ],
+      edges: [],
+      flowcanvas: { schemaVersion: '0.2', session: { createdAt: '2026-06-26T00:00:00Z', updatedAt: '2026-06-26T00:00:00Z', revision: 0 }, comments: [] },
+    }
+  }
+
+  it('bottom-right resize (origin fixed) scales the child position + size by the ratio, leaves non-members alone', () => {
+    useCanvasStore.setState({ doc: groupDoc() })
+    useCanvasStore.getState().setNodeSize('g', 400, 400, 0, 0) // sx=sy=2, origin unchanged
+    const n = (id: string) => useCanvasStore.getState().doc!.nodes.find((x) => x.id === id)!
+    expect(n('g')).toMatchObject({ x: 0, y: 0, width: 400, height: 400 })
+    expect(n('c')).toMatchObject({ x: 100, y: 100, width: 200, height: 200 }) // (50,50,100,100) × 2
+    expect(n('loose')).toMatchObject({ x: 400, y: 400, width: 100, height: 100 }) // untouched
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('top-left resize moves the origin and scales children relative to the new corner', () => {
+    useCanvasStore.setState({ doc: groupDoc() })
+    useCanvasStore.getState().setNodeSize('g', 300, 300, -100, -100) // sx=sy=1.5, origin → (-100,-100)
+    const c = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'c')!
+    // x = -100 + (50-0)*1.5 = -25 ; same for y ; size = 100 × 1.5 = 150
+    expect(c).toMatchObject({ x: -25, y: -25, width: 150, height: 150 })
+  })
+
+  it('resizing a non-group widget changes only that node (no scaling, no x/y drift)', () => {
+    useCanvasStore.setState({ doc: groupDoc() })
+    useCanvasStore.getState().setNodeSize('loose', 250, 180) // no x/y passed → position holds
+    const n = (id: string) => useCanvasStore.getState().doc!.nodes.find((x) => x.id === id)!
+    expect(n('loose')).toMatchObject({ x: 400, y: 400, width: 250, height: 180 })
+    expect(n('c')).toMatchObject({ x: 50, y: 50, width: 100, height: 100 }) // group child untouched
+  })
+})

@@ -88,7 +88,12 @@
 .fc-reader { transition: width 0.18s ease; }
 .fc-reader[data-size='drawer'] { width: 440px; max-width: 92vw; }
 .fc-reader[data-size='half']   { width: 50vw;  max-width: 96vw; }
-.fc-reader[data-size='full']   { width: 100vw; max-width: 100vw; }
+/* "Full screen" is a true viewport overlay. The reader is absolutely positioned inside
+   .fc-studio__center (overflow:hidden, ~852px wide), so width:100vw anchored right:0 overflowed left
+   under the structure rail and was clipped — the left-aligned frontmatter (status pill + first tags)
+   landed in the hidden region (issue #2). position:fixed escapes the clip so it fills the viewport
+   above the rails + toolbar; the reader header (size controls + ✕) is the way back out. */
+.fc-reader[data-size='full']   { position: fixed; inset: 0; width: 100vw; max-width: 100vw; z-index: 45; }
 
 /* reader header — Drawer · Half · Full segmented control */
 .fc-reader__sizes { display: flex; gap: 3px; margin-left: auto; }

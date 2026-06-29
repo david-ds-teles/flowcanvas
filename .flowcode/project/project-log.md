@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [BUGFIX] 003 canvas-foundation visual follow-ups — group resize scaling, RF group chrome, sharp rect corners, full-reader frontmatter — 2026-06-29
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Cause:** Five operator-reported defects against the shipped `003-canvas-foundation`. (1) Resizing a group fence left its child widgets unscaled — `setNodeSize` wrote only the group's own w/h. (2 & 5) Groups/shapes showed an opaque grey box and a fence drawn ~10px smaller than + offset from the children — React Flow's built-in `.react-flow__node-group` chrome (grey fill + border + 10px padding, from RF's stylesheet which loads after ours) was never reset, so the padding inset/offset the SVG outline. (3) Rectangle corners were rounded — `ShapeOutline`'s rect used `rx="6"`. (4) The maximized ("full") reader hid the frontmatter status pill + first tags — the reader is `position:absolute` inside the `overflow:hidden` center pane, so `width:100vw` overflowed left under the structure rail and clipped the left-aligned frontmatter.
+**Fix:** (1) `setNodeSize` is now group-aware — scales every child's position + size by the resize ratio about the resize origin (`group-node` passes `p.x/p.y`). (2 & 5) Reset RF group chrome to transparent / 0-border / 0-padding / 0-radius on `.react-flow__node:has(.fc-group)` — the SVG outline now fills the box and aligns with the children (the §8 faint-indigo fill is kept). (3) Dropped the rect `rx` → true 90° corners. (4) `data-size='full'` is now a `position:fixed; inset:0; z-index:45` viewport overlay that escapes the clip so all frontmatter is visible.
+**Affected:** `lib/canvas/store.ts`, `components/canvas/nodes/group-node.tsx`, `app/styles/nodes.css`, `app/styles/reader.css`, `lib/canvas/store.test.ts` (+3 tests). Gates: tsc 0 · lint 0 · build ok · vitest 157/157 (+3) · live CDP verify — group wrapper bg transparent / border 0 / padding 0, SVG inset 0,0 (fence == box), rect rx none, full reader fixed z45 spanning 0–1440 with status pill @l=23 + tags visible.
+
+---
+
 ## [PLAN COMPLETE] 003-canvas-foundation — Canvas Foundation & Visual Integrity — 2026-06-29
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>
