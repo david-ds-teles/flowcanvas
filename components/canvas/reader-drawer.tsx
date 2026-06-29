@@ -95,7 +95,7 @@ export function ReaderDrawer({ nodeId, onClose }: ReaderDrawerProps) {
       </header>
 
       <div className="fc-reader__scroll">
-        <FrontmatterView frontmatter={frontmatter} variant="reader" sourceNodeId={nodeId} />
+        <FrontmatterView frontmatter={frontmatter} variant="reader" sourceNodeId={nodeId} collapsible />
         {!file && <p className="fc-reader__msg">This node has no readable markdown.</p>}
         {file && !ready && <p className="fc-reader__msg">Rendering…</p>}
         {ready && result.error && <p className="fc-reader__msg fc-reader__msg--err">Could not render — {result.error}</p>}

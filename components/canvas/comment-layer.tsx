@@ -5,11 +5,10 @@ import { useCanvasStore } from '@/lib/canvas/store'
 import { anchorForPoint, anchorToFlowPoint, type NodeGeom } from '@/lib/canvas/comments'
 import type { CommentAnchor } from '@/lib/canvas/jsoncanvas'
 import { CommentThread } from './comment-thread'
+import { nodeDisplayName } from '@/lib/canvas/node-name'
 
 // Local-human authorship for Phase 6; Phase 7's agent round-trip mints "agent:<model>" replies.
 const LOCAL_AUTHOR = 'human:you'
-
-const anchorLabel = (a: CommentAnchor) => (a.kind === 'node' ? a.nodeId : 'canvas')
 
 /**
  * Absolute overlay that renders comment pins and their threads above the React Flow pane.
@@ -56,6 +55,11 @@ export function CommentLayer() {
     [rfNodes, getInternalNode],
   )
   const geomById = useMemo(() => new Map(geom.map((g) => [g.id, g])), [geom])
+  const nodeById = useMemo(() => new Map((doc?.nodes ?? []).map((n) => [n.id, n])), [doc])
+  const anchorName = useCallback(
+    (a: CommentAnchor) => (a.kind === 'node' ? (nodeById.get(a.nodeId) ? nodeDisplayName(nodeById.get(a.nodeId)!) : a.nodeId) : 'canvas'),
+    [nodeById],
+  )
 
   const project = useCallback(
     (anchor: CommentAnchor) => {
@@ -125,7 +129,7 @@ export function CommentLayer() {
             data-testid="comment-pin"
             data-resolved={!!c.resolvedAt || undefined}
             style={{ left: p.x, top: p.y }}
-            aria-label={`Comment thread ${c.badge} (${anchorLabel(c.anchor)})`}
+            aria-label={`Comment thread ${c.badge} (${anchorName(c.anchor)})`}
             onClick={(e) => { e.stopPropagation(); setDraft(null); setOpenId(c.id) }}
           >
             <i>{c.badge}</i>
@@ -140,7 +144,7 @@ export function CommentLayer() {
           beakTop={draftPlace.beakTop}
           root={null}
           replies={[]}
-          anchorLabel={anchorLabel(draft)}
+          anchorLabel={anchorName(draft)}
           onCreate={(text) => { const id = addComment(draft, text, LOCAL_AUTHOR); setDraft(null); setOpenId(id) }}
           onReply={() => {}}
           onResolve={() => {}}
@@ -155,7 +159,7 @@ export function CommentLayer() {
           beakTop={openPlace.beakTop}
           root={openRoot}
           replies={comments.filter((c) => c.parentId === openRoot.id)}
-          anchorLabel={anchorLabel(openRoot.anchor)}
+          anchorLabel={anchorName(openRoot.anchor)}
           onCreate={() => {}}
           onReply={(text) => replyComment(openRoot.id, text, LOCAL_AUTHOR)}
           onResolve={() => resolveComment(openRoot.id)}

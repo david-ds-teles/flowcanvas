@@ -88,3 +88,30 @@
   color: var(--color-text-secondary);
 }
 .fc-link-chip__arrow { color: var(--color-primary); font-size: 11px; line-height: 1; }
+
+/* reader collapsible frontmatter (plan 003 Decision 4) — collapsed by default to a single dense row
+   (status + first tags + "+N") with a chevron expander; expanded shows the full grid + a collapse toggle. */
+.fc-fm--collapsed.fc-fm--reader { padding-top: 12px; padding-bottom: 12px; }
+.fc-fm__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.fc-fm__toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color .14s ease, border-color .14s ease;
+}
+.fc-fm__toggle:hover { color: var(--color-text-primary); border-color: var(--color-primary); }
+.fc-fm__toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-fm__toggle--open { margin: 0 0 9px auto; }
+.fc-fm__chev { font-size: 9px; line-height: 1; }
+@media (prefers-reduced-motion: reduce) { .fc-fm__toggle { transition: none; } }

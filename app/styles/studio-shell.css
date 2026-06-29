@@ -251,30 +251,8 @@
 .fc-link-chip--btn { cursor: pointer; }
 .fc-link-chip--btn:hover { box-shadow: 0 0 14px -4px rgba(94, 242, 255, 0.6); border-color: rgba(94, 242, 255, 0.5); }
 
-/* ── Delete connection (rel picker footer) ── */
-.fc-relpick__del {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 8px;
-  height: 30px;
-  border-radius: 4px;
-  border: 1px solid var(--color-outline-variant);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition: color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
-}
-.fc-relpick__del:hover {
-  color: var(--color-neon-rose);
-  border-color: rgba(255, 81, 106, 0.55);
-  background: rgba(255, 81, 106, 0.08);
-  box-shadow: 0 0 14px -4px rgba(255, 81, 106, 0.55);
-}
+/* (Plan 003 Phase 2 cleanup: the `.fc-relpick__del` rules were removed here — the rel-picker delete
+   button moved to the on-edge EdgeActionBar, so those selectors became dead.) */
 
 /* ── Empty-board state (mockup 05 "No board open") — overlay over the empty canvas grid ── */
 .fc-emptyboard {

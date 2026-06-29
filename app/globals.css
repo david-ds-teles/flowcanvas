@@ -32,7 +32,7 @@
   --color-surface-highest:  #2d3449;
   --color-primary:          #c0c1ff;   /* electric indigo — selection/focus/agent/primary */
   --color-primary-cont:     #8083ff;
-  --color-secondary:        #ddb7ff;   /* vivid violet — tags/metadata */
+  --color-secondary:        #e4c6ff;   /* violet — tags/metadata; recalibrated lighter for legibility on the dark surface (plan 003 Decision 4) */
   --color-secondary-cont:   #6f00be;
   --color-tertiary-cont:    #ff516a;   /* rose — comments/destructive */
   --color-text-primary:     #dae2fd;

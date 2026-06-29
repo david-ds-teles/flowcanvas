@@ -38,7 +38,8 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
     sourceHandle: e.fromSide, targetHandle: e.toSide,
     type: 'labeled', label: e.label,
     data: { origin: e.meta?.origin ?? 'user', rel: e.meta?.rel },   // v2 — rel drives typed-edge styling
-
+    selectable: true,                                  // explicit (was relying on RF defaults) — Phase 2
+    deletable: true,
     markerEnd: (e.toEnd ?? 'arrow') !== 'none' ? { type: MarkerType.ArrowClosed } : undefined,
   }))
   return { nodes, edges }

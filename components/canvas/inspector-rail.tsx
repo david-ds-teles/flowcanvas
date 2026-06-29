@@ -4,20 +4,11 @@ import { useCanvasStore } from '@/lib/canvas/store'
 import { extractRefs } from '@/lib/canvas/refs'
 import type { DocRef } from '@/lib/canvas/refs'
 import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
-import type { CanvasNode } from '@/lib/canvas/jsoncanvas'
+import { nodeDisplayName } from '@/lib/canvas/node-name'
 // studio-inspector.css is loaded via app/globals.css (matches the project's CSS-centralization convention).
 
 /** Normalize root-relative paths for matching (mirrors store.ts `normPath`). */
 const normPath = (p: string) => p.replace(/^\.?\//, '').replace(/\\/g, '/')
-
-/** Human-readable display name for any node type. */
-function displayName(n: CanvasNode): string {
-  if (n.type === 'group') return n.label || 'Group'
-  if (n.type === 'link')  return n.url
-  if (n.type === 'text')  return n.text.slice(0, 50).replace(/\n/g, ' ') || 'Note'
-  // FileNode: use the basename of the path
-  return n.file.split('/').pop() ?? n.file
-}
 
 export function InspectorRail({
   mode,
@@ -35,6 +26,7 @@ export function InspectorRail({
   const submitToAgent = useCanvasStore((s) => s.submitToAgent)
   const reviewDiff   = useCanvasStore((s) => s.reviewDiff)
   const reviewState  = useCanvasStore((s) => s.reviewState)   // subscribe so the review button re-renders reactively
+  const focusNode    = useCanvasStore((s) => s.focusNode)
 
   // ── local state (submit panel) ──
   const [intent, setIntent]   = useState('')
@@ -60,6 +52,11 @@ export function InspectorRail({
     : []
   const inEdges = doc && selectedNode
     ? doc.edges.filter((e) => e.toNode === selectedNode.id)
+    : []
+
+  // ── comments anchored to the selected node (root threads only) ──
+  const nodeComments = doc && selectedNode
+    ? doc.flowcanvas.comments.filter((c) => c.parentId === null && c.anchor.kind === 'node' && c.anchor.nodeId === selectedNode.id)
     : []
 
   // ── extracted refs (file nodes only) ──
@@ -240,7 +237,7 @@ export function InspectorRail({
             <path d="M4 5h16v14H4z" />
             <path d="M7 15V9l3 3 3-3v6" />
           </svg>
-          {selectedNode ? displayName(selectedNode) : 'No selection'}
+          {selectedNode ? nodeDisplayName(selectedNode) : 'No selection'}
         </div>
         <div className="fc-insp__meta">
           {selectedNode && (
@@ -328,7 +325,7 @@ export function InspectorRail({
                 </div>
                 {outEdges.map((e) => {
                   const target = doc!.nodes.find((n) => n.id === e.toNode)
-                  const tName = target ? displayName(target) : e.toNode
+                  const tName = target ? nodeDisplayName(target) : e.toNode
                   return (
                     <div key={e.id} className="fc-insp__relrow">
                       {e.meta?.rel && (
@@ -365,7 +362,7 @@ export function InspectorRail({
                 </div>
                 {inEdges.map((e) => {
                   const src = doc!.nodes.find((n) => n.id === e.fromNode)
-                  const sName = src ? displayName(src) : e.fromNode
+                  const sName = src ? nodeDisplayName(src) : e.fromNode
                   return (
                     <div key={e.id} className="fc-insp__relrow">
                       {e.meta?.rel && (
@@ -377,6 +374,34 @@ export function InspectorRail({
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* comments anchored to the selected node */}
+            {nodeComments.length > 0 && (
+              <div className="fc-insp__relsec" data-testid="inspector-comments">
+                <div className="fc-insp__rl-h">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                  </svg>
+                  Comments on this node
+                  <span className="fc-insp__rl-ct">{nodeComments.length}</span>
+                </div>
+                {nodeComments.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="fc-insp__cmt"
+                    data-testid="inspector-comment-row"
+                    onClick={() => focusNode(selectedNode.id)}
+                  >
+                    <span className="fc-insp__cmt-badge">{c.badge ?? '•'}</span>
+                    <span className="fc-insp__cmt-main">
+                      <span className="fc-insp__cmt-who">{c.author}{c.resolvedAt ? ' · resolved' : ''}</span>
+                      <span className="fc-insp__cmt-tx">{c.text.slice(0, 80)}</span>
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
 

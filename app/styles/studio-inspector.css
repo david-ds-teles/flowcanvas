@@ -125,8 +125,8 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--color-text-secondary);
-  background: rgba(221, 183, 255, .08);
-  border: 1px solid rgba(221, 183, 255, .25);
+  background: var(--color-surface-low);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-control);
   padding: 9px 11px;
   margin-bottom: 12px;
@@ -510,11 +510,57 @@
   padding: 1px 5px;
 }
 
+/* comments-on-this-node list (Phase 3, Decision 3) — root comments anchored to the selected node;
+   row click re-focuses the node (focusNode). Reuses the .fc-insp__relsec / .fc-insp__rl-h chrome. */
+.fc-insp__cmt {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 8px 9px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-control);
+  background: rgba(6, 14, 32, .4);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: box-shadow .14s ease, border-color .14s ease;
+}
+.fc-insp__cmt:hover {
+  box-shadow: 0 0 0 1px rgba(128, 131, 255, .35), 0 0 22px -6px rgba(128, 131, 255, .55);
+  border-color: transparent;
+}
+.fc-insp__cmt:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fc-insp__cmt-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-tertiary-cont);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+}
+.fc-insp__cmt-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fc-insp__cmt-who { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-secondary); }
+.fc-insp__cmt-tx {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .fc-insp__src-foc,
   .fc-insp__relrow,
   .fc-insp__lchip,
+  .fc-insp__cmt,
   .fc-insp__ibtn,
   .fc-insp__x,
   .fc-insp__scope button,

@@ -41,10 +41,11 @@
   font-family: var(--font-jetbrains-mono);
   font-size: 11px;
   text-align: center;
-  box-shadow: 0 0 0 3px rgba(192, 193, 255, 0.18), 0 10px 26px -10px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65);
 }
 .fc-edge-input::placeholder { color: var(--color-outline); }
-.fc-edge-input:focus { outline: none; }
+/* focus-only ring (plan 003 Decision 4) — no always-on faded ring; crisp 2px primary on focus */
+.fc-edge-input:focus { outline: none; box-shadow: 0 0 0 2px var(--color-primary), 0 10px 26px -10px rgba(0, 0, 0, 0.65); }
 
 /* handles — small neon dots with an enlarged invisible grab target so connections are easy to start.
    Prefixed with `.react-flow` to outrank @xyflow/react's own stylesheet (loaded after globals.css). */
@@ -75,3 +76,39 @@
 
 /* connect mode — emphasise the handles so it's clear edges are drawable */
 .fc-rf--connect .react-flow__handle { background: var(--color-primary); box-shadow: 0 0 12px -1px var(--color-primary); }
+
+/* Selected-edge action bar (Phase 2) — visible relabel · rel · delete; portaled below the label pill.
+   Replaces the buried RelPicker delete; the bar is the single delete surface for an edge. */
+.fc-edge-actions {
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px -14px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+.fc-edge-actions__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-edge-actions__btn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); background: rgba(128, 131, 255, 0.1); }
+.fc-edge-actions__btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.fc-edge-actions__btn--del:hover { color: var(--color-neon-rose); border-color: var(--color-neon-rose); background: rgba(255, 81, 106, 0.1); }

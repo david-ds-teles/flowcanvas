@@ -1,7 +1,7 @@
 ---
 name: 003-canvas-foundation-design
 description: Design artifact for Canvas Foundation & Visual Integrity — make flowcanvas a correct, complete direct-manipulation system-design canvas (universal resize, discoverable edge edit/delete, comments connected to widgets) and fix the visual integrity (faded-box rings, purple contrast, reader readability) before the 004 generation-loop redesign.
-status: draft
+status: approved
 tags: [design, canvas, ux, interaction, visual, react-flow]
 links: [.flowcode/plans/003-canvas-foundation/003-canvas-foundation-plan.md, .flowcode/plans/003-canvas-foundation/003-canvas-foundation-ui-design.md]
 ---
@@ -13,7 +13,7 @@ links: [.flowcode/plans/003-canvas-foundation/003-canvas-foundation-plan.md, .fl
 - Scope — in: universal `NodeResizer`, on-edge action affordance (relabel · rel · delete), comment↔widget connection (badge · name · navigation), visual/contrast/reader fixes, browser runtime verification. Out: the system-design component widget, the living core-markdown spine, the agent generation kit, and frictionless import — all Plan 004.
 - Built entirely on existing primitives (`setNodeSize`, `relabelEdge`/`setEdgeRel`/`removeEdgeWriteback`, the comment anchor model, design tokens) — no schema, MCP, or contract changes — so risk stays low and verification is fast.
 - Sequenced first deliberately: 004's new surfaces (component widgets, core-doc spine, linking) must land on a canvas where the basics work and look right, not repeat v2's plumbing-heavy / experience-light outcome.
-- Status draft; author agent (conversation) + human (scope approval); dated 2026-06-28.
+- Status approved (2026-06-29); author agent (conversation) + human (scope approval); dated 2026-06-28. All Open Questions resolved at their recommended defaults on approval.
 - Sibling plan: `003-canvas-foundation-plan.md` (created after this design is approved).
 
 ---
@@ -416,8 +416,8 @@ No external research file is required — every change reuses an in-repo, alread
 
 ## Open Questions
 
-- [ ] **Dedicated long-form reading face for the reader?** Keeping Geist (design-system §0) is the in-scope choice; introducing a local reading serif/humanist face for reader prose only would improve readability but amends §0 and adds a `@fontsource` dependency + a token. Operator decision — defer to a follow-up unless approved now.
-- [ ] **`--color-secondary` recalibration: global token vs reader-scoped override?** A global `#e4c6ff` ripples to the `import`-edge stroke and the switcher/reader-size gradients (benign). Confirm a global shift is acceptable vs scoping the new value to prose/chips only.
-- [ ] **Markdown vertical resize semantics:** Decision 1 Option C makes height "how much body to reveal" (card never exceeds content). Confirm this over Option A (width-only) before implementation — it changes user expectation of the bottom handle.
-- [ ] **`RelPicker` embedded delete:** the design moves the delete to the new action bar and strips `fc-relpick__del`. Confirm removing the redundant in-picker delete (vs keeping both surfaces).
-- [ ] **CommentBadge click target:** `setSelection([id])` (select only, no recenter) is chosen over `focusNode(id)` (select + viewport center) so a click on an already-visible node doesn't jump the canvas. Confirm.
+- [x] **Dedicated long-form reading face for the reader?** Keeping Geist (design-system §0) is the in-scope choice; introducing a local reading serif/humanist face for reader prose only would improve readability but amends §0 and adds a `@fontsource` dependency + a token. Operator decision — defer to a follow-up unless approved now. → **Resolved 2026-06-29:** keep Geist; tune the ramp + feature-settings only. A dedicated reading face is deferred to a follow-up.
+- [x] **`--color-secondary` recalibration: global token vs reader-scoped override?** A global `#e4c6ff` ripples to the `import`-edge stroke and the switcher/reader-size gradients (benign). Confirm a global shift is acceptable vs scoping the new value to prose/chips only. → **Resolved 2026-06-29:** global `@theme` token change (`#ddb7ff → #e4c6ff`); the benign ripple to the import-edge stroke + switcher/reader-size gradients is accepted.
+- [x] **Markdown vertical resize semantics:** Decision 1 Option C makes height "how much body to reveal" (card never exceeds content). Confirm this over Option A (width-only) before implementation — it changes user expectation of the bottom handle. → **Resolved 2026-06-29:** Option C — vertical drag persists `height`, re-derives `--fc-body-max`, card stays content-driven (never exceeds content).
+- [x] **`RelPicker` embedded delete:** the design moves the delete to the new action bar and strips `fc-relpick__del`. Confirm removing the redundant in-picker delete (vs keeping both surfaces). → **Resolved 2026-06-29:** move delete into the `EdgeActionBar`; strip `fc-relpick__del` from `RelPicker` (single delete surface).
+- [x] **CommentBadge click target:** `setSelection([id])` (select only, no recenter) is chosen over `focusNode(id)` (select + viewport center) so a click on an already-visible node doesn't jump the canvas. Confirm. → **Resolved 2026-06-29:** `setSelection([id])` — select only, no viewport recenter.

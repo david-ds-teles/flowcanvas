@@ -1,7 +1,7 @@
 ---
 name: 003-canvas-foundation-ui-design
 description: UI design artifact for Canvas Foundation & Visual Integrity — three style variants, each a faithful render of the real running studio + the real board with ALL plan-003 changes applied (universal resize, on-edge action bar, on-card comment badge, killed faded rings, recalibrated violet, redesigned reader).
-status: draft
+status: approved
 tags: [ui-design, frontend, mockups, screens, canvas, nyx]
 links: [.flowcode/plans/003-canvas-foundation/003-canvas-foundation-plan.md, .flowcode/ui/ui-workflow.md, .flowcode/ui/ui-mockup-discipline.md]
 ---
@@ -12,7 +12,7 @@ links: [.flowcode/plans/003-canvas-foundation/003-canvas-foundation-plan.md, .fl
 - The iteration axis is **visual style/design** (operator request), held against a constant interaction layer: every variant renders the same universal resize handles, on-edge action bar, on-card comment badge, flattened SOURCE row, and redesigned reader.
 - Each mockup carries a MOCKUP-CONTROLS bar that steps through every interaction state: Overview · ① Resize · ② Edge tools · ③ Comments · ④ Violet (recalibration) · ⑤ Reader.
 - Ground truth captured first: `mockups/captures/*.png` are real headless-Chrome screenshots of the current studio (the "before"), the fidelity reference the mocks were built against.
-- Status draft; author agent (built in the main session from the real CSS + a captured screenshot, per `ui-mockup-discipline.md`); dated 2026-06-28.
+- Status approved (2026-06-29); author agent (built in the main session from the real CSS + a captured screenshot, per `ui-mockup-discipline.md`); dated 2026-06-28. Variant `01` nyx-refined selected; Open Questions resolved at recommended defaults on approval.
 - Gate: generated before any implementation phase — precondition for this frontend-touching plan.
 - Sibling plan: `003-canvas-foundation-plan.md`.
 
@@ -120,13 +120,15 @@ Required for every UI-touching plan. Populated during the phase-close visual-par
 
 | Phase | Expected drift (placeholder → real data) | Acceptable drift (explicit accept) | Regressions (must fix before phase-done) |
 |-------|-------------------------------------------|-------------------------------------|-------------------------------------------|
-| Phase 1 | | | |
-| Phase 2 | | | |
+| Phase 1 | Selecting any card node (markdown/note/image/link) now renders the 8-handle `NodeResizer` chrome (`.fc-rzline`/`.fc-rzhandle`) — matches `01-nyx-refined` `② Resize`. Verified live: 8 resize controls on markdown + note select; 0 at rest. Captures `phase-1/desktop-{overview,resize}.png`. | None | None. (A markdown-node click also opens the reader drawer — **pre-existing intended** behavior in `use-canvas-handlers onNodeClick`, untouched by this phase — not a regression.) |
+| Phase 2 | A selected edge floats the `EdgeActionBar` (`rel ▾ · ✎ Label · ✕`) below the pill + thicker selected stroke — matches `01-nyx-refined` `② Edge tools`. Verified live: bar + 3 controls render on edge select; `rel ▾` opens the 8-option `RelPicker`; delete is single-surfaced on the bar. Captures `phase-2/desktop-{edge-tools,edge-relpicker}.png`. | None | None |
+| Phase 3 | On-card rose `💬N` badge on nodes with unresolved comments; the thread header resolves the node's human name (was the UUID); the inspector gains a "Comments on this node" list — matches `01-nyx-refined` `③ Comments`. Verified live (11/11): badge `💬1` + exact-count aria-label; badge click selects the node → inspector list (1 row) + click-to-focus; thread header "Thread · 1 · Order Service". Capture `phase-3/desktop-comments.png`. | None | None |
+| Phase 4 | Recalibrated violet (`--color-secondary #e4c6ff`), focus-only rings (no always-on faded boxes), reader prose `em`/links role-reduced off violet (em→text-primary, links→primary indigo), and a collapsible compact reader frontmatter — matches `01-nyx-refined` `④ Violet` + `⑤ Reader`. Verified live (10/10): token = `#e4c6ff` globally; `.fc-edge-input` has no rest ring; reader frontmatter collapsed by default → expander reveals full grid; a rendered prose link computes to `rgb(192,193,255)` (primary). Captures `phase-4/desktop-reader-{collapsed,expanded}.png`. The reader `em`/heading recolor + recalibrated violet are **Expected drift** (intended), not regressions. | The global `--color-secondary` shift ripples to the import-edge stroke + switcher/reader-size gradients — **accepted** (resolved Open Question). | None |
 
-Note: the reader `em`/heading recolor (off `--color-secondary`) and the chosen style variant are **intended** — record as Expected drift, not a regression.
+Note: the reader `em`/heading recolor (off `--color-secondary`) and the chosen style variant are **intended** — record as Expected drift, not a regression. Visual-parity capture is via a direct Playwright interaction harness (ephemeral driver), which exercises interaction states the stock loaded-state engine cannot.
 
 ## Open Questions
 
 - [x] Operator selected the STYLE variant: `01` nyx-refined (2026-06-28) — the current glass-neon language, fixed. `02`/`03` retained as re-theme references.
-- [ ] Confirm the recalibrated `--color-secondary` is a global token change (ripples to the `import`-edge stroke + switcher/reader-size gradients) vs a prose/chip-scoped override — see design Open Questions.
-- [ ] Dedicated long-form reading face for reader prose (amends design-system §0 + adds a dependency) — defer unless approved.
+- [x] Confirm the recalibrated `--color-secondary` is a global token change (ripples to the `import`-edge stroke + switcher/reader-size gradients) vs a prose/chip-scoped override — see design Open Questions. → **Resolved 2026-06-29:** global `@theme` token change; benign ripple accepted.
+- [x] Dedicated long-form reading face for reader prose (amends design-system §0 + adds a dependency) — defer unless approved. → **Resolved 2026-06-29:** keep Geist; reading face deferred to a follow-up.

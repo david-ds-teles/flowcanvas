@@ -312,7 +312,7 @@
   flex: 1 1 auto;
   min-height: 60px;
   resize: none;
-  border: 1px solid var(--color-primary);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-control);
   background: rgba(6, 14, 32, 0.7);
   color: var(--color-text-primary);
@@ -320,8 +320,11 @@
   font-size: 12.5px;
   line-height: 1.5;
   padding: 6px 8px;
+  transition: border-color .14s ease, box-shadow .14s ease;
 }
-.fc-note__edit:focus { outline: none; box-shadow: 0 0 0 2px rgba(192, 193, 255, 0.25); }
+/* focus-only ring (plan 003 Decision 4) — neutral border at rest, crisp primary ring on focus
+   (was an always-on indigo border + a faded second ring) */
+.fc-note__edit:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
 
 /* group / shape node — a REAL shape: only the painted SVG outline is hit-testable (the rectangular
    bounding box + corners pass clicks through), and React Flow's rectangular .selected box is suppressed
@@ -424,3 +427,44 @@
 .fc-node--img { height: 100%; }
 .fc-node--fallback { width: 100%; height: 100%; padding: 12px 14px; }
 .fc-group { width: 100%; height: 100%; }
+
+/* Shared NodeResizeFrame chrome (markdown / note / image / link) — nyx accents; handles enlarged
+   for grab. Mirrors the group resizer (.fc-group__rz*); the group keeps its own rules unchanged. */
+.fc-rzline { border-color: var(--color-primary) !important; }
+.fc-rzhandle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--color-primary) !important;
+  border: 1.5px solid var(--color-bg) !important;
+  border-radius: 2px;
+}
+
+/* On-card comment badge (Phase 3, Decision 3) — rose pill anchored to the card's top-right corner; a
+   sibling of the card inside NodeResizeFrame so it escapes overflow:hidden. Click → select the node. */
+.fc-node__badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 143, 176, 0.55);
+  background: var(--color-tertiary-cont);
+  color: #fff;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 12px -2px rgba(255, 81, 106, 0.7);
+  transition: box-shadow .14s ease, transform .12s ease;
+}
+.fc-node__badge-ic { font-size: 9px; line-height: 1; }
+.fc-node__badge:hover { box-shadow: 0 2px 16px -1px rgba(255, 81, 106, 0.85); transform: translateY(-1px); }
+.fc-node__badge:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .fc-node__badge { transition: none; } }

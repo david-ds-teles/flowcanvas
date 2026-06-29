@@ -286,13 +286,15 @@
   padding: 12px;
   border-radius: var(--radius-control);
   border: 1px solid var(--color-outline-variant);
-  background: rgba(6, 14, 32, 0.7);
+  background: var(--color-surface-low);
   color: var(--color-text-primary);
   font-family: var(--font-jetbrains-mono);
   font-size: 11.5px;
   line-height: 1.5;
+  transition: border-color .14s ease, box-shadow .14s ease;
 }
-.fc-agent__ta:focus { outline: none; border-color: var(--color-primary); }
+/* focus-only ring (plan 003 Decision 4) — lightened surface, crisp primary border + ring on focus */
+.fc-agent__ta:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
 .fc-agent__row { display: flex; gap: 8px; }
 .fc-agent__msg { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
 .fc-agent__msg--err { color: var(--color-neon-rose); }

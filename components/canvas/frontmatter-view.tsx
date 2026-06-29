@@ -1,5 +1,5 @@
 'use client'
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useCanvasStore } from '@/lib/canvas/store'
 import type { DocRef } from '@/lib/canvas/refs'
@@ -62,11 +62,14 @@ interface FrontmatterViewProps {
   className?: string
   /** When set, the ↗ link chips become clickable buttons that call `navigateRef` (Decision 9). */
   sourceNodeId?: string
+  /** Reader variant only — render the frontmatter collapsed by default with an expander (plan 003 Decision 4). */
+  collapsible?: boolean
 }
 
-export function FrontmatterView({ frontmatter, variant = 'card', className, sourceNodeId }: FrontmatterViewProps) {
+export function FrontmatterView({ frontmatter, variant = 'card', className, sourceNodeId, collapsible = false }: FrontmatterViewProps) {
   const fm = frontmatter ?? {}
   const navigateRef = useCanvasStore((s) => s.navigateRef)
+  const [open, setOpen] = useState(false)
 
   // Every meaningful field — priority keys first, then the rest (skipping the title + empties).
   const keys = [
@@ -83,8 +86,54 @@ export function FrontmatterView({ frontmatter, variant = 'card', className, sour
   // falls through to the kv grid so it's never dropped into an empty wrapper.
   const restKeys = keys.filter((k) => k !== 'tags' && k !== 'links' && !(k === 'status' && hasStatus))
 
+  // Reader collapsible variant (plan 003 Decision 4): collapsed by default to a dense status + first-tags
+  // row with a "+N" count and an expander; the card variant is never collapsible.
+  if (collapsible && !open) {
+    const shownTags = tags ? tags.slice(0, 3) : []
+    const hidden =
+      (tags ? Math.max(0, tags.length - shownTags.length) : 0) + (links ? links.length : 0) + restKeys.length
+    return (
+      <div className={cn('fc-fm', 'fc-fm--reader', 'fc-fm--collapsed', className)}>
+        <div className="fc-fm__bar">
+          {hasStatus && (
+            <span className={cn('fc-pill', statusClass(String(status)))}>
+              <span className="fc-pill__dot" aria-hidden="true" />
+              {String(status)}
+            </span>
+          )}
+          {shownTags.map((t, i) => (
+            <span key={`${String(t)}-${i}`} className="fc-tag">
+              {String(t)}
+            </span>
+          ))}
+          {hidden > 0 && <span className="fc-fm__more">+{hidden}</span>}
+          <button
+            type="button"
+            className="fc-fm__toggle"
+            data-testid="reader-fm-toggle"
+            aria-expanded={false}
+            onClick={() => setOpen(true)}
+          >
+            frontmatter <span className="fc-fm__chev" aria-hidden="true">▾</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('fc-fm', variant === 'reader' ? 'fc-fm--reader' : 'fc-fm--card', className)}>
+      {collapsible && (
+        <button
+          type="button"
+          className="fc-fm__toggle fc-fm__toggle--open"
+          data-testid="reader-fm-toggle"
+          aria-expanded={true}
+          onClick={() => setOpen(false)}
+        >
+          frontmatter <span className="fc-fm__chev" aria-hidden="true">▴</span>
+        </button>
+      )}
       {hasStatus && (
         <div className="fc-fm__row">
           <span className={cn('fc-pill', statusClass(String(status)))}>

@@ -105,6 +105,18 @@ async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>)
   return { nodes: out, bodies: next }
 }
 
+/** Primitive-returning selector (Decision 3): count of UNRESOLVED ROOT comments anchored to node `id`.
+ *  Returns a `number` (not an object) so per-node `<CommentBadge>` subscriptions stay churn-free — a map
+ *  selector would hand back a fresh object each render and thrash the memoized node components. */
+export const selectNodeCommentCount =
+  (id: string) =>
+  (s: CanvasState): number =>
+    s.doc?.flowcanvas.comments.reduce(
+      (n, c) =>
+        n + (c.parentId === null && !c.resolvedAt && c.anchor.kind === 'node' && c.anchor.nodeId === id ? 1 : 0),
+      0,
+    ) ?? 0
+
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null,
   bodyFor: (id) => get().bodies[id],

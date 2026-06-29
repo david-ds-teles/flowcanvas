@@ -1,15 +1,15 @@
 'use client'
 import { memo, useState, useRef, useEffect } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { type NodeProps } from '@xyflow/react'
 import type { TextNode } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { CanvasMarkdown } from '../canvas-markdown'
-
-const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
+import { NodeResizeFrame } from './node-frame'
+import { CommentBadge } from './comment-badge'
 
 // A text/note node. Double-click the body to edit it inline (textarea); Enter-less newlines allowed,
 // ⌘/Ctrl+Enter or blur commits, Esc cancels. Stored markdown is rendered when not editing.
-function Inner({ id, data }: NodeProps) {
+function Inner({ id, selected, data }: NodeProps) {
   const node = (data as { node: TextNode }).node
   const setNodeText = useCanvasStore((s) => s.setNodeText)
   const [editing, setEditing] = useState(false)
@@ -24,7 +24,7 @@ function Inner({ id, data }: NodeProps) {
   const cancel = () => { setEditing(false); setDraft(node.text) }
 
   return (
-    <>
+    <NodeResizeFrame id={id} selected={!!selected} minWidth={180} minHeight={120}>
       <div className="fc-node--note" onDoubleClick={() => { setDraft(node.text); setEditing(true) }}>
         <span className="fc-note__kicker">note</span>
         {editing ? (
@@ -48,11 +48,8 @@ function Inner({ id, data }: NodeProps) {
           </div>
         )}
       </div>
-      {/* handles outside the card so all sides stay grabbable (see markdown-node) */}
-      {SIDES.map((p) => (
-        <Handle key={p} type="source" position={p} id={p} />
-      ))}
-    </>
+      <CommentBadge nodeId={id} />
+    </NodeResizeFrame>
   )
 }
 

@@ -16,6 +16,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCanvasStore } from '@/lib/canvas/store'
+import type { NodeKind } from '@/lib/canvas/jsoncanvas'
 import { useCanvasHandlers } from './use-canvas-handlers'
 import { MarkdownNode } from './nodes/markdown-node'
 import { ImageNode } from './nodes/image-node'
@@ -46,14 +47,16 @@ function readPath(): string {
   return new URLSearchParams(window.location.search).get('path') ?? DEFAULT_PATH
 }
 
-const nodeTypes: NodeTypes = {
+// Keyed by NodeKind so the renderer registry stays exhaustive: add a variant to NodeKind in
+// lib/canvas/jsoncanvas.ts and this object fails to compile until it gets a matching renderer here.
+const nodeTypes = {
   markdown: MarkdownNode,
   image: ImageNode,
   link: LinkChipNode,
   note: NoteNode,
   group: GroupNode,
   file: FallbackNode,
-}
+} satisfies Record<NodeKind, NodeTypes[string]>
 const edgeTypes: EdgeTypes = { labeled: LabeledEdge }
 const defaultEdgeOptions = { type: 'labeled' }
 
@@ -208,6 +211,8 @@ function CanvasFlow() {
             connectionLineType={ConnectionLineType.SmoothStep}
             connectionRadius={34}
             deleteKeyCode={['Delete', 'Backspace']}
+            elementsSelectable
+            edgesFocusable
             selectionOnDrag={mode === 'select'}
             selectionMode={SelectionMode.Partial}
             panOnDrag={mode === 'select' ? [1, 2] : true}

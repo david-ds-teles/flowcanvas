@@ -77,6 +77,9 @@ describe('adapter / toReactFlow', () => {
     expect(lk.label).toBe('links')
     expect((lk.data as { origin: string }).origin).toBe('links')
     expect(lk.markerEnd).toBeTruthy()
+    // Phase 2 — explicit selectability flags (no longer relying on RF defaults)
+    expect(lk.selectable).toBe(true)
+    expect(lk.deletable).toBe(true)
   })
 })
 

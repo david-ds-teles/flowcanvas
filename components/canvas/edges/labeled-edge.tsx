@@ -15,7 +15,7 @@ const STROKE: Record<EdgeOrigin, string> = {
 }
 
 // In-canvas quick label editor — replaces the old window.prompt. Mounts only while this edge is being
-// edited (double-click or a freshly-drawn edge), seeds once from the current label and autofocuses.
+// edited (double-click, the bar's ✎, or a freshly-drawn edge), seeds once from the current label.
 function EdgeLabelEditor({ id, initial, x, y }: { id: string; initial: string; x: number; y: number }) {
   const relabelEdge = useCanvasStore((s) => s.relabelEdge)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
@@ -49,15 +49,15 @@ function EdgeLabelEditor({ id, initial, x, y }: { id: string; initial: string; x
   )
 }
 
-// Typed-relationship picker (Decision 1/7) — a curated rel grid + a free-form label field. Rendered
-// inside the same EdgeLabelRenderer as the pill, anchored just below it.
+// Typed-relationship picker (Decision 1/7) — a curated rel grid + a free-form label field. Delete moved
+// OUT to the EdgeActionBar (single delete surface, design Decision 2). Anchored below the action bar.
 function RelPicker({ id, rel, label, x, y, onClose }: { id: string; rel: RelationshipType; label: string; x: number; y: number; onClose: () => void }) {
   const setEdgeRel = useCanvasStore((s) => s.setEdgeRel)
   const relabelEdge = useCanvasStore((s) => s.relabelEdge)
-  const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
   const [text, setText] = useState(label)
   return (
     <div
+      id={`fc-rel-picker-${id}`}
       className="fc-relpick nodrag nopan"
       data-testid="edge-rel-picker"
       style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
@@ -93,24 +93,31 @@ function RelPicker({ id, rel, label, x, y, onClose }: { id: string; rel: Relatio
         />
         <button type="button" className="fc-relpick__apply" onClick={() => { relabelEdge(id, text.trim()); onClose() }}>Apply</button>
       </div>
-      <button
-        type="button"
-        className="fc-relpick__del"
-        data-testid="edge-delete"
-        title="Delete this connection"
-        onClick={() => { removeEdgeWriteback(id); onClose() }}
-      >
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" />
-        </svg>
-        Delete connection
-      </button>
+    </div>
+  )
+}
+
+// Selected-edge action bar (Decision 2) — the visible affordance: rel ▾ · ✎ Label · ✕. Portaled just
+// below the label pill; reuses setEdgeRel (via RelPicker) / relabelEdge (via EdgeLabelEditor) /
+// removeEdgeWriteback verbatim. This is now the ONLY delete surface for an edge.
+function EdgeActionBar({ id, x, y, picker, onRel, onLabel }: { id: string; x: number; y: number; picker: boolean; onRel: () => void; onLabel: () => void }) {
+  const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
+  return (
+    <div
+      className="fc-edge-actions nodrag nopan"
+      data-testid="edge-action-bar"
+      style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-rel" aria-expanded={picker} aria-controls={`fc-rel-picker-${id}`} title="Set relationship type" onClick={onRel}>rel ▾</button>
+      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-label" title="Edit label" aria-label="Edit label" onClick={onLabel}>✎ Label</button>
+      <button type="button" className="fc-edge-actions__btn fc-edge-actions__btn--del" data-testid="edge-delete" title="Delete this connection" aria-label="Delete connection" onClick={() => removeEdgeWriteback(id)}>✕</button>
     </div>
   )
 }
 
 export const LabeledEdge = memo(function LabeledEdge({
-  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data,
+  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data, selected,
 }: EdgeProps) {
   // Orthogonal right-angle routing (fewer crossings than bezier).
   const [path, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 8 })
@@ -121,6 +128,14 @@ export const LabeledEdge = memo(function LabeledEdge({
   const editing = useCanvasStore((s) => s.editingEdgeId === id)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const [picker, setPicker] = useState(false)
+  // Close the rel picker when the edge is deselected — the picker is an affordance of a selected edge,
+  // so it should not linger (and this avoids the y-offset shift when the action bar unmounts). Render-
+  // phase reset is the React-sanctioned alternative to a setState-in-effect (see comment-layer.tsx).
+  const [prevSelected, setPrevSelected] = useState(selected)
+  if (prevSelected !== selected) {
+    setPrevSelected(selected)
+    if (!selected && picker) setPicker(false)
+  }
   const text = typeof label === 'string' ? label : ''
 
   return (
@@ -129,7 +144,7 @@ export const LabeledEdge = memo(function LabeledEdge({
         id={id}
         path={path}
         markerEnd={markerEnd}
-        style={{ stroke: STROKE[origin] ?? STROKE.user, strokeWidth: 1.5, strokeDasharray: derived ? '5 4' : undefined }}
+        style={{ stroke: STROKE[origin] ?? STROKE.user, strokeWidth: selected ? 2.5 : 1.5, strokeDasharray: derived ? '5 4' : undefined }}
       />
       {editing ? (
         <EdgeLabelEditor id={id} initial={text} x={labelX} y={labelY} />
@@ -140,6 +155,7 @@ export const LabeledEdge = memo(function LabeledEdge({
             className={`fc-edge-label fc-edge-label--${origin} nodrag nopan`}
             data-testid="edge-rel-pill"
             aria-expanded={picker}
+            aria-controls={`fc-rel-picker-${id}`}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }}
             title="Click to set relationship · double-click to edit label"
             onClick={(e) => { e.stopPropagation(); setPicker((v) => !v) }}
@@ -149,7 +165,17 @@ export const LabeledEdge = memo(function LabeledEdge({
             <span className="fc-edge-label__rel">{rel}</span>
             {text !== '' && <span className="fc-edge-label__text">{text}</span>}
           </div>
-          {picker && <RelPicker id={id} rel={rel} label={text} x={labelX} y={labelY + 28} onClose={() => setPicker(false)} />}
+          {selected && (
+            <EdgeActionBar
+              id={id}
+              x={labelX}
+              y={labelY + 24}
+              picker={picker}
+              onRel={() => setPicker((v) => !v)}
+              onLabel={() => { setPicker(false); setEditingEdge(id) }}
+            />
+          )}
+          {picker && <RelPicker id={id} rel={rel} label={text} x={labelX} y={labelY + (selected ? 56 : 28)} onClose={() => setPicker(false)} />}
         </EdgeLabelRenderer>
       )}
     </>
