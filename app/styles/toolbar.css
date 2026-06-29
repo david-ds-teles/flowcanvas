@@ -389,6 +389,7 @@
 .fc-toolbar__flyhost .fc-menu,
 .fc-toolbar__flyhost .fc-picker { top: 46px; left: 0; margin-left: 0; }
 .fc-menu--shapes,
+.fc-menu--components,
 .fc-menu--file { min-width: 184px; }
 /* the File menu sits near the right edge — open it right-aligned so it never clips off-canvas */
 .fc-toolbar__file .fc-menu { top: 46px; left: auto; right: 0; }

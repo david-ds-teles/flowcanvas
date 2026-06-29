@@ -99,6 +99,12 @@ export interface NodeMeta {
   source?: NodeSource                      // v2 (Decision 2)
   template?: string                        // v2 — template id this node came from (Decision 8)
   kind?: ComponentKind                     // 004 — optional, additive; absent ⇒ legacy card render
+  /** Horizontal alignment of a node's text/label. */
+  align?: 'left' | 'center' | 'right'
+  /** Vertical alignment of a node's text/label. */
+  valign?: 'top' | 'middle' | 'bottom'
+  /** Custom background/fill color (applies to text/note/shape nodes). Distinct from `color` (foreground/stroke). */
+  fill?: CanvasColor
 }
 
 interface NodeBase {

@@ -337,7 +337,12 @@
      the adapter sets on the RF wrapper; absent ⇒ the default bright indigo. */
   --fc-group-stroke: var(--node-accent, var(--color-primary));
 }
-.fc-group__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+/* The outline is inset a uniform 6px from the RF node box (was inset:0 + a percentage viewBox, which
+   drew an asymmetric sub-pixel margin that left the bottom line cramped). An <svg> is a REPLACED
+   element, so `inset` alone does NOT size it — it must get an explicit width/height or it falls back
+   to its intrinsic ~300×150 and every group renders the same fixed-size box covering only part of the
+   node. calc() keeps it stretched to the node while giving an even padding border on all four sides. */
+.fc-group__svg { position: absolute; top: 6px; left: 6px; width: calc(100% - 12px); height: calc(100% - 12px); overflow: visible; pointer-events: none; }
 .fc-group__svg ellipse, .fc-group__svg polygon, .fc-group__svg rect { pointer-events: visiblePainted; }  /* …only the shape captures */
 /* the whole RF node wrapper is transparent to events too, so the rectangular corners outside the shape
    don't select/drag the node — only the painted shape, label, switcher, and resize handles capture
@@ -359,9 +364,9 @@
 .react-flow__node.selected:has(.fc-group) { box-shadow: none !important; }
 .fc-group__label {
   position: absolute;
-  left: 10px;
-  top: 8px;
-  max-width: calc(100% - 20px);
+  left: 16px;
+  top: 14px;
+  max-width: calc(100% - 32px);
   font-family: var(--font-jetbrains-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
@@ -424,6 +429,64 @@
 .fc-group__sbtn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); }
 .fc-group__sbtn.is-on { color: #06222a; background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary)); }
 .fc-group__sbtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* Shared node format bar (note + shape) — alignment · text colour · fill. Floats above the selected
+   node; same glass treatment as the shape switcher. Mounted by node-format-bar.tsx. */
+.fc-fmt-bar {
+  position: absolute;
+  left: 50%;
+  top: -46px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.fc-fmt-group { display: inline-flex; align-items: center; gap: 2px; }
+.fc-fmt-div { width: 1px; align-self: stretch; margin: 2px 1px; background: var(--color-outline-variant); }
+.fc-fmt-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-fmt-btn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); }
+.fc-fmt-btn.is-on { color: #06222a; background: linear-gradient(135deg, var(--color-neon-cyan), var(--color-secondary)); }
+.fc-fmt-btn--clear { font-size: 13px; }
+.fc-fmt-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+/* Colour swatches — the native picker is overlaid invisibly so the chip is the click target. */
+.fc-fmt-swatch { position: relative; display: inline-flex; width: 26px; height: 26px; border-radius: 6px; overflow: hidden; cursor: pointer; }
+.fc-fmt-swatch:hover { outline: 1px solid var(--color-outline-variant); }
+.fc-fmt-swatch__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.fc-fmt-swatch__chip--fill { border: 1px solid var(--color-outline-variant); background-clip: padding-box; }
+.fc-fmt-swatch input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 
 /* NodeResizer chrome in nyx accents — handles enlarged so they're easy to grab */
 .fc-group__rzline { border-color: var(--color-primary) !important; }

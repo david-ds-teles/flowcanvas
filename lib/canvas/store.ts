@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Connection } from '@xyflow/react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta } from './jsoncanvas'
 import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
 import { deriveLinkEdges } from './edges'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
@@ -33,6 +33,7 @@ interface CanvasState {
   selectedIds: string[]              // UI-only: ids in the current multi-selection (transient, never persisted)
   reviewState: ReviewState | null    // v2: the submit-time snapshot loaded when a round is pending (transient)
   focusNodeId: string | null         // v2: navigateRef target the shell should setCenter on (transient, UI consumes + clears)
+  revealCommentsNodeId: string | null  // comment badge → shell opens the inspector's "Comments on this node" (transient, UI consumes + clears)
   // 004 Phase 4 — living core-markdown spine + bidirectional link highlight (all transient, never persisted)
   coreDocBody: string | null         // resolved markdown of session.coreDocPath (the spine render source)
   coreDocDraft: string | null        // in-progress edit buffer for the spine
@@ -59,6 +60,9 @@ interface CanvasState {
   setNodeText: (id: string, text: string) => void
   setNodeLabel: (id: string, label: string) => void
   setNodeShape: (id: string, shape: NodeShape) => void
+  setNodeColor: (id: string, color?: CanvasColor) => void
+  setNodeFill: (id: string, fill?: CanvasColor) => void
+  setNodeAlign: (id: string, align?: NodeMeta['align'], valign?: NodeMeta['valign']) => void
   relabelEdge: (id: string, label: string) => void
   setEdgeRel: (id: string, rel: RelationshipType) => void          // v2: typed-edge rel picker (Phase 6)
   setEditingEdge: (id: string | null) => void
@@ -81,6 +85,8 @@ interface CanvasState {
   discardRound: () => Promise<void>                                // restore the snapshot, delete the round's files (Decision 6)
   clearFocus: () => void                                           // shell calls this after centering on focusNodeId
   focusNode: (id: string) => void                                 // select + request a viewport center (structure rail)
+  revealNodeComments: (id: string) => void                        // comment badge: select + ask the shell to open the inspector's comments
+  clearRevealComments: () => void                                 // shell calls this after opening the inspector
   navigateRef: (sourceNodeId: string, ref: DocRef) => Promise<void> // focus-or-add + references edge (Decision 9)
   addTemplate: (t: CanvasTemplate, x: number, y: number) => Promise<void>  // instantiate a template fragment (Decision 8)
   resyncFile: (path: string) => Promise<void>                     // re-derive one file's links edges + refresh its frontmatter (Decision 10)
@@ -134,7 +140,7 @@ export const selectNodeCommentCount =
     ) ?? 0
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null,
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null, revealCommentsNodeId: null,
   coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
   bodyFor: (id) => get().bodies[id],
   // Canvas-authoritative load (Decision 4): doc.edges from disk are truth — no per-load reconcile.
@@ -353,11 +359,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x, y } : n))
     set({ doc: { ...doc, nodes }, dirty: true })
   },
-  // Persist a resize committed by React Flow's NodeResizer on resize-end. For a GROUP, scale every
-  // child proportionally (position + size) so resizing the fence resizes its contents the same
-  // proportions and the membership keeps its layout. Non-group widgets just take the new size. x/y are
-  // the resize-end origin the NodeResizer reports — a bottom/right drag leaves them at the node's x/y;
-  // a top/left drag moves them, so children scale relative to the new box corner either way.
+  // Persist a resize committed by React Flow's NodeResizer on resize-end. Only the resized node's own
+  // box changes — for a GROUP, its members keep their absolute position and size (resizing the fence
+  // must NOT reflow or rescale its contents). Members are stored in absolute coords and rendered via
+  // the adapter's parentId + extent:'parent' conversion, so leaving them untouched keeps them visually
+  // fixed even when a top/left handle moves the group origin. x/y are the resize-end origin the
+  // NodeResizer reports — a bottom/right drag leaves them at the node's x/y; a top/left drag moves them.
   setNodeSize(id: string, width: number, height: number, x?: number, y?: number) {
     const { doc } = get()
     if (!doc) return
@@ -365,25 +372,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (!target) return
     const nx = x ?? target.x
     const ny = y ?? target.y
-    const sx = target.width ? width / target.width : 1
-    const sy = target.height ? height / target.height : 1
-    const scaled = new Map<string, { x: number; y: number; width: number; height: number }>()
-    if (target.type === 'group') {
-      for (const c of doc.nodes) {
-        if (c.parentId !== id) continue
-        scaled.set(c.id, {
-          x: Math.round(nx + (c.x - target.x) * sx),
-          y: Math.round(ny + (c.y - target.y) * sy),
-          width: Math.max(1, Math.round(c.width * sx)),
-          height: Math.max(1, Math.round(c.height * sy)),
-        })
-      }
-    }
-    const nodes = doc.nodes.map((n) => {
-      if (n.id === id) return { ...n, x: nx, y: ny, width, height }
-      const s = scaled.get(n.id)
-      return s ? { ...n, ...s } : n
-    })
+    const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x: nx, y: ny, width, height } : n))
     set({ doc: { ...doc, nodes }, dirty: true })
   },
   // Edit a note's markdown body in place (double-click → inline textarea). No-op for non-text nodes.
@@ -405,6 +394,44 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { doc } = get()
     if (!doc) return
     const nodes = doc.nodes.map((n) => (n.id === id && n.type === 'group' ? { ...n, meta: { ...n.meta, shape } } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Set a node's foreground/stroke color (NodeBase.color). Passing `undefined` removes the field.
+  setNodeColor(id: string, color?: CanvasColor) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => {
+      if (n.id !== id) return n
+      const next: CanvasNode = { ...n }
+      if (color === undefined) delete (next as { color?: CanvasColor }).color
+      else (next as { color?: CanvasColor }).color = color
+      return next
+    })
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Set a node's background fill color (meta.fill). Passing `undefined` removes the field.
+  setNodeFill(id: string, fill?: CanvasColor) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => {
+      if (n.id !== id) return n
+      const meta: NodeMeta = { ...n.meta }
+      if (fill === undefined) delete meta.fill; else meta.fill = fill
+      return { ...n, meta }
+    })
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Set a node's text alignment (meta.align / meta.valign). Each `undefined` argument clears its own field.
+  setNodeAlign(id: string, align?: NodeMeta['align'], valign?: NodeMeta['valign']) {
+    const { doc } = get()
+    if (!doc) return
+    const nodes = doc.nodes.map((n) => {
+      if (n.id !== id) return n
+      const meta: NodeMeta = { ...n.meta }
+      if (align === undefined) delete meta.align; else meta.align = align
+      if (valign === undefined) delete meta.valign; else meta.valign = valign
+      return { ...n, meta }
+    })
     set({ doc: { ...doc, nodes }, dirty: true })
   },
   relabelEdge(id: string, label: string) {
@@ -630,6 +657,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // Select a node and request the viewport center on it (the FocusBridge consumes focusNodeId).
   focusNode(id: string) {
     set({ selectedIds: [id], focusNodeId: id })
+  },
+  // Comment badge: select the node and signal the shell to open the inspector's comments (no recenter).
+  revealNodeComments(id: string) {
+    set({ selectedIds: [id], revealCommentsNodeId: id })
+  },
+  clearRevealComments() {
+    set({ revealCommentsNodeId: null })
   },
   // Reference navigation (Decision 9): focus the target node if it is on the board, else add it near the
   // source and draw a rel:'references' edge from the source to it. Bounded by one click.

@@ -40,6 +40,8 @@ import { ReviewPanel } from './review-panel'
 import { CoreSpine } from './core-spine'
 import { citedDocPaths } from '@/lib/canvas/spine'
 import { useRoundReady } from './use-round-ready'
+import { AgentFab } from './agent-fab'
+import { cn } from '@/lib/utils'
 
 // Board loaded when the URL carries no ?path. A real .canvas at the project root, so the app
 // shows content out of the box instead of an empty grid.
@@ -69,6 +71,8 @@ const defaultEdgeOptions = { type: 'labeled' }
 type Rail = 'open' | 'collapsed'
 type LeftTab = 'structure' | 'templates'
 type InspectorMode = 'inspector' | 'submit' | 'review'
+// Issue #1 — the unified right dock shows ONE panel at a time, picked by its vertical tab-strip.
+type RightTab = 'spine' | 'inspector' | 'review'
 
 // Effect bridge: when navigateRef sets focusNodeId, center the viewport on it, then clear it.
 function FocusBridge() {
@@ -93,6 +97,9 @@ function CanvasFlow() {
   const closeReader = useCanvasStore((s) => s.closeReader)
   const clearBoard = useCanvasStore((s) => s.clearBoard)
   const linkedNodeIds = useCanvasStore((s) => s.linkedNodeIds)   // 004 — spine→canvas pulse targets
+  const reviewState = useCanvasStore((s) => s.reviewState)       // drives the dock Review-tab attention dot
+  const revealCommentsNodeId = useCanvasStore((s) => s.revealCommentsNodeId)  // comment badge → open inspector
+  const clearRevealComments = useCanvasStore((s) => s.clearRevealComments)
   const handlers = useCanvasHandlers()
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
@@ -106,10 +113,17 @@ function CanvasFlow() {
   const [railRight, setRailRight] = useState<Rail>('open')
   const [leftTab, setLeftTab] = useState<LeftTab>('structure')
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>('inspector')
-  const [spineOpen, setSpineOpen] = useState(true)   // 004 — the docked core-doc spine
+  const [rightTab, setRightTab] = useState<RightTab>('inspector')   // Issue #1 — active panel in the unified right dock
 
   // The spine is available when the board binds a core doc OR cites at least one source doc (Q4 switcher).
   const spineAvailable = !!doc && (!!doc.flowcanvas.session.coreDocPath || citedDocPaths(doc.nodes).length > 0)
+  // The Spine tab only exists while a core/cited doc is bound — fall back to Inspector if it vanishes.
+  const effectiveRightTab: RightTab = rightTab === 'spine' && !spineAvailable ? 'inspector' : rightTab
+  // InspectorRail still owns inspector⇄submit; its in-panel "Review" action now selects the dock's Review tab.
+  const setInspectorRailMode = (m: InspectorMode) => {
+    if (m === 'review') setRightTab('review')
+    else setInspectorMode(m)
+  }
   // Pulse the spine→canvas linked nodes by tagging their RF node className (transient highlight).
   const rfNodes = useMemo(() => {
     if (linkedNodeIds.length === 0) return handlers.nodes
@@ -121,11 +135,38 @@ function CanvasFlow() {
     void load(path).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [load, path])
 
+  // Issue #7 — ⌘/Ctrl+\ toggles ALL panels at once: if any rail is open, collapse both; else restore
+  // both. Ignored while typing in a field so it never hijacks a literal backslash.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!((e.metaKey || e.ctrlKey) && e.key === '\\')) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      e.preventDefault()
+      const next: Rail = railLeft === 'open' || railRight === 'open' ? 'collapsed' : 'open'
+      setRailLeft(next)
+      setRailRight(next)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [railLeft, railRight])
+
+  // Comment badge → reveal its message: open the right dock on the Inspector tab so the "Comments on
+  // this node" list is visible (the badge already selected the node). Without this the badge looks dead
+  // when the dock is collapsed or showing another tab.
+  useEffect(() => {
+    if (!revealCommentsNodeId) return
+    setRailRight('open')
+    setRightTab('inspector')
+    setInspectorMode('inspector')
+    clearRevealComments()
+  }, [revealCommentsNodeId, clearRevealComments])
+
   // Phase 7 (Decision 5/6) — detect the out-of-band agent round (MCP apply_response bumps the on-disk
   // revision) while the board is pending review, and surface a non-blocking "round ready" banner.
   // Reloading both refreshes the merged board and opens change-review.
   const round = useRoundReady()
-  const onReloadRound = () => { round.reload(); setInspectorMode('review'); setRailRight('open') }
+  const onReloadRound = () => { round.reload(); setRightTab('review'); setRailRight('open') }
 
   return (
     <div
@@ -157,8 +198,8 @@ function CanvasFlow() {
           onToggleRailLeft={() => setRailLeft((r) => (r === 'open' ? 'collapsed' : 'open'))}
           onToggleRailRight={() => setRailRight((r) => (r === 'open' ? 'collapsed' : 'open'))}
           onOpenTemplates={() => { setLeftTab('templates'); setRailLeft('open') }}
-          onOpenSubmit={() => { setInspectorMode('submit'); setRailRight('open') }}
-          onOpenAgent={(tab) => setAgent({ open: true, tab })}
+          onOpenSubmit={() => { setRightTab('inspector'); setInspectorMode('submit'); setRailRight('open') }}
+          onOpenAgent={(tab) => setAgent((a) => (a.open && a.tab === tab ? { ...a, open: false } : { open: true, tab }))}
           onOpenBoard={(boardMode) => setBoard({ open: true, mode: boardMode })}
           onClearBoard={() => setConfirmClear(true)}
         />
@@ -264,7 +305,7 @@ function CanvasFlow() {
                   <button type="button" className="fc-emptyboard__btn fc-emptyboard__btn--primary" data-testid="empty-open" onClick={() => setBoard({ open: true, mode: 'open' })}>
                     Open .canvas…
                   </button>
-                  <button type="button" className="fc-emptyboard__btn" data-testid="empty-extract" onClick={() => { setInspectorMode('submit'); setRailRight('open') }}>
+                  <button type="button" className="fc-emptyboard__btn" data-testid="empty-extract" onClick={() => { setRightTab('inspector'); setInspectorMode('submit'); setRailRight('open') }}>
                     Extract via agent
                   </button>
                 </div>
@@ -273,52 +314,125 @@ function CanvasFlow() {
           )}
         </div>
 
-        {/* 004 — docked living core-doc spine (between canvas and inspector). Mounted when the board
-            binds a core doc or cites a source doc; a thin strip reopens it when closed. */}
-        {spineAvailable && spineOpen && <CoreSpine onClose={() => setSpineOpen(false)} />}
-        {spineAvailable && !spineOpen && (
-          <div className="fc-railstrip fc-railstrip--spine" data-testid="spine-strip">
+        {/* RIGHT dock (Issue #1) — ONE collapsible column (≈384px) showing a single panel at a time,
+            selected by the vertical icon tab-strip on its inner (canvas-facing) edge. Replaces the old
+            two-sibling Core-Spine (410px) + Inspector (324px) layout that double-charged the width and
+            starved the canvas. Collapse/expand rides the same railRight + data-railright as before. */}
+        <aside className="fc-studio__dock" data-testid="right-dock" aria-label="Right dock">
+          <div className="fc-dock__tabs" role="tablist" aria-orientation="vertical" aria-label="Dock panels">
+            {spineAvailable && (
+              <button
+                type="button"
+                role="tab"
+                className={cn('fc-dock__tab', effectiveRightTab === 'spine' && 'is-on')}
+                data-testid="right-dock-tab-spine"
+                aria-selected={effectiveRightTab === 'spine'}
+                title="Core Doc spine"
+                aria-label="Core Doc spine"
+                onClick={() => { setRightTab('spine'); setRailRight('open') }}
+              >
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
-              className="fc-railstrip__btn"
-              data-testid="spine-reopen"
-              title="Open Core Doc spine"
-              aria-label="Open Core Doc spine"
-              onClick={() => setSpineOpen(true)}
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* RIGHT inspector — default / submit / review (collapsible) */}
-        <aside className="fc-studio__inspector" aria-label="Inspector">
-          {inspectorMode === 'review'
-            ? <ReviewPanel onClose={() => setInspectorMode('inspector')} />
-            : <InspectorRail mode={inspectorMode} setMode={setInspectorMode} />}
-        </aside>
-
-        {/* Collapsed RIGHT-rail reopen strip — slim icon column that restores the inspector. */}
-        {railRight === 'collapsed' && (
-          <div className="fc-railstrip fc-railstrip--right" data-testid="rail-strip-right">
-            <button
-              type="button"
-              className="fc-railstrip__btn"
-              data-testid="rail-reopen-inspector"
-              title="Open Inspector"
-              aria-label="Open Inspector"
-              onClick={() => setRailRight('open')}
+              role="tab"
+              className={cn('fc-dock__tab', effectiveRightTab === 'inspector' && 'is-on')}
+              data-testid="right-dock-tab-inspector"
+              aria-selected={effectiveRightTab === 'inspector'}
+              title="Inspector"
+              aria-label="Inspector"
+              onClick={() => { setRightTab('inspector'); setRailRight('open') }}
             >
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 5h16v14H4z" />
                 <path d="M7 15V9l3 3 3-3v6" />
               </svg>
             </button>
+            <button
+              type="button"
+              role="tab"
+              className={cn('fc-dock__tab', effectiveRightTab === 'review' && 'is-on')}
+              data-testid="right-dock-tab-review"
+              aria-selected={effectiveRightTab === 'review'}
+              title="Change-review"
+              aria-label="Change-review"
+              onClick={() => { setRightTab('review'); setRailRight('open') }}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                <path d="M9 11l3 3 8-8" />
+              </svg>
+              {reviewState && effectiveRightTab !== 'review' && <span className="fc-dock__tab-dot" aria-hidden="true" />}
+            </button>
+          </div>
+
+          <div className="fc-dock__body">
+            {effectiveRightTab === 'spine' && <CoreSpine onClose={() => setRightTab('inspector')} />}
+            {effectiveRightTab === 'inspector' && <InspectorRail mode={inspectorMode} setMode={setInspectorRailMode} />}
+            {effectiveRightTab === 'review' && <ReviewPanel onClose={() => setRightTab('inspector')} />}
+          </div>
+        </aside>
+
+        {/* Collapsed RIGHT-rail reopen strip — slim icon column mirroring the dock's vertical tab-strip,
+            so every panel menu stays reachable while the dock is collapsed (not just the inspector).
+            Each button restores the dock straight to its panel. Spine only when a core/cited doc is bound. */}
+        {railRight === 'collapsed' && (
+          <div className="fc-railstrip fc-railstrip--right" data-testid="rail-strip-right">
+            {spineAvailable && (
+              <button
+                type="button"
+                className="fc-railstrip__btn"
+                data-testid="rail-reopen-spine"
+                title="Open Core Doc spine"
+                aria-label="Open Core Doc spine"
+                onClick={() => { setRightTab('spine'); setRailRight('open') }}
+              >
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="rail-reopen-inspector"
+              title="Open Inspector"
+              aria-label="Open Inspector"
+              onClick={() => { setRightTab('inspector'); setRailRight('open') }}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 5h16v14H4z" />
+                <path d="M7 15V9l3 3 3-3v6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="fc-railstrip__btn"
+              data-testid="rail-reopen-review"
+              title="Open Change-review"
+              aria-label="Open Change-review"
+              onClick={() => { setRightTab('review'); setRailRight('open') }}
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                <path d="M9 11l3 3 8-8" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Issue #8 — floating agent widget: barely-visible bottom-right control that opens a small
+          upward menu, reusing the same handlers as the toolbar (export/kit) and the submit flow. */}
+      {doc && (
+        <AgentFab
+          onOpenAgent={(tab) => setAgent((a) => (a.open && a.tab === tab ? { ...a, open: false } : { open: true, tab }))}
+          onSubmit={() => { setRightTab('inspector'); setInspectorMode('submit'); setRailRight('open') }}
+        />
+      )}
 
       {/* Agent round-trip panel (export/import + submit fallback) */}
       {agent.open && (

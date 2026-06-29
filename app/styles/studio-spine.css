@@ -1,14 +1,15 @@
 /* 004 Phase 4 — the living core-markdown spine: a docked flex pane (between canvas and inspector),
    its section outline + per-heading component badges, the editor, and the bidirectional link pulse. */
 
+/* Issue #1 — the spine now lives inside the unified right dock's body (.fc-dock__body), so it fills
+   that slot instead of being its own fixed-width flex sibling. The dock owns the left border + width. */
 .fc-spine {
-  width: 410px;
-  flex: 0 0 auto;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid var(--color-outline-variant);
   background: var(--color-surface-lowest);
   background-image:
     linear-gradient(rgba(6, 14, 32, 0.86), rgba(6, 14, 32, 0.86)),
@@ -121,9 +122,6 @@
 }
 .fc-spine__submit:hover:not(:disabled) { box-shadow: 0 0 18px -4px var(--color-primary); }
 .fc-spine__submit:disabled { opacity: 0.45; cursor: default; }
-
-/* collapsed-spine reopen strip (mirrors the rail strips) */
-.fc-railstrip--spine { border-left: 1px solid var(--color-outline-variant); }
 
 /* spine → canvas pulse: the RF node wrapper gets .fc-rf--linked while linkedNodeIds holds its id.
    The ring pulses via a one-shot keyframe (fades to nothing) so it leaves no persistent style — the

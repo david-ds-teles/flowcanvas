@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { uploadFile, bundleUrl, type DirEntry } from '@/lib/api'
-import type { CanvasNode, NodeShape } from '@/lib/canvas/jsoncanvas'
+import type { CanvasNode, NodeShape, ComponentKind } from '@/lib/canvas/jsoncanvas'
+import { COMPONENT_KINDS, COMPONENT_KIND_META } from '@/lib/canvas/jsoncanvas'
 import { computeLayout, type MeasuredSizes } from '@/lib/canvas/layout'
 import { FilePicker } from './file-picker'
 
@@ -18,7 +19,7 @@ const isImage = (e: DirEntry) => !!e.ext && IMAGE_EXT.has(e.ext.toLowerCase())
 //   link     — the inline link-URL input (no window.prompt)
 //   shape    — rectangle / ellipse / diamond chooser
 //   file     — the File menu (Upload / Import / Export)
-type Flyout = 'add' | 'markdown' | 'image' | 'link' | 'shape' | 'file' | null
+type Flyout = 'add' | 'markdown' | 'image' | 'link' | 'shape' | 'component' | 'file' | null
 
 /** ⌘S / Ctrl+S → save (clears the dirty dot). Mounted by the toolbar. */
 export function useSaveShortcut() {
@@ -120,6 +121,12 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
   const addShape = useCallback((shape: NodeShape) => {
     const { x, y } = placeAt()
     addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'group', label: '', x, y, width: 320, height: 220, meta: { origin: 'user', shape } } as CanvasNode)
+    close()
+  }, [addNode, placeAt, close])
+
+  const addComponent = useCallback((kind: ComponentKind) => {
+    const { x, y } = placeAt()
+    addNode({ id: `n-${crypto.randomUUID().slice(0, 8)}`, type: 'text', text: '', x, y, width: 200, height: 100, meta: { origin: 'user', kind } } as CanvasNode)
     close()
   }, [addNode, placeAt, close])
 
@@ -229,6 +236,10 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
           {sv(<rect x="5" y="6" width="14" height="12" rx="2" />)}
           <svg className="fc-tbtn__caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
         </button>
+        <button type="button" className="fc-tbtn fc-tbtn--flyout" data-testid="toolbar-add-component" aria-label="Add component" title="Add component" aria-haspopup="menu" aria-expanded={open === 'component'} onClick={() => toggle('component')}>
+          {sv(<><rect x="5" y="7" width="14" height="10" rx="1" /><path d="M8 7V5M16 7V5M5 13h14" /></>)}
+          <svg className="fc-tbtn__caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
       </div>
 
       {/* Narrow (<1024px): collapse the insert tools back into the legacy "+ Add ▾" menu. */}
@@ -245,6 +256,7 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
             <button className="fc-menu__item" data-testid="add-node-markdown" role="menuitem" onClick={() => setOpen('markdown')}>Markdown file…</button>
             <button className="fc-menu__item" data-testid="add-node-text" role="menuitem" onClick={addText}>Note (text)</button>
             <button className="fc-menu__item" data-testid="add-node-shape" role="menuitem" onClick={() => setOpen('shape')}>Shape ▸</button>
+            <button className="fc-menu__item" data-testid="add-node-component" role="menuitem" onClick={() => setOpen('component')}>Component ▸</button>
             <button className="fc-menu__item" data-testid="add-node-image" role="menuitem" onClick={() => setOpen('image')}>Image…</button>
             <button className="fc-menu__item" data-testid="add-node-link" role="menuitem" onClick={() => setOpen('link')}>Link…</button>
           </div>
@@ -255,6 +267,16 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
             <button className="fc-menu__item" data-testid="add-node-rectangle" role="menuitem" onClick={() => addShape('rectangle')}>▭ Rectangle</button>
             <button className="fc-menu__item" data-testid="add-node-ellipse" role="menuitem" onClick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button className="fc-menu__item" data-testid="add-node-diamond" role="menuitem" onClick={() => addShape('diamond')}>◇ Diamond</button>
+          </div>
+        )}
+
+        {open === 'component' && (
+          <div className="fc-menu fc-menu--components" role="menu" aria-label="Component" data-testid="component-menu">
+            {COMPONENT_KINDS.filter((k) => k !== 'boundary').map((kind) => (
+              <button key={kind} className="fc-menu__item" data-testid={`add-component-${kind}`} role="menuitem" onClick={() => addComponent(kind)}>
+                · {COMPONENT_KIND_META[kind].label}
+              </button>
+            ))}
           </div>
         )}
 

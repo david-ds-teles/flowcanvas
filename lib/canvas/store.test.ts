@@ -176,6 +176,71 @@ describe('store / node editing (text · label · size)', () => {
   })
 })
 
+describe('store / setNodeColor · setNodeFill · setNodeAlign', () => {
+  it('setNodeColor sets node.color and marks dirty', () => {
+    useCanvasStore.getState().setNodeColor('a', '#ff0000')
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.color).toBe('#ff0000')
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeColor clears node.color when called with undefined and marks dirty', () => {
+    useCanvasStore.getState().setNodeColor('a', '#ff0000')
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().setNodeColor('a', undefined)
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.color).toBeUndefined()
+    expect('color' in n).toBe(false)
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeFill sets meta.fill and marks dirty', () => {
+    useCanvasStore.getState().setNodeFill('a', '#00ff00')
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.meta?.fill).toBe('#00ff00')
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeFill clears meta.fill when called with undefined, preserving other meta', () => {
+    useCanvasStore.getState().setNodeFill('a', '#00ff00')
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().setNodeFill('a', undefined)
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.meta?.fill).toBeUndefined()
+    expect('fill' in (n.meta ?? {})).toBe(false)
+    expect(n.meta?.origin).toBe('user')   // other meta preserved
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeAlign sets both align and valign and marks dirty', () => {
+    useCanvasStore.getState().setNodeAlign('a', 'center', 'middle')
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.meta?.align).toBe('center')
+    expect(n.meta?.valign).toBe('middle')
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeAlign clears align when passed undefined, updates valign independently', () => {
+    useCanvasStore.getState().setNodeAlign('a', 'left', 'top')
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().setNodeAlign('a', undefined, 'bottom')
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect('align' in (n.meta ?? {})).toBe(false)
+    expect(n.meta?.valign).toBe('bottom')
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setNodeAlign clears valign when passed undefined, leaves align intact', () => {
+    useCanvasStore.getState().setNodeAlign('a', 'right', 'bottom')
+    useCanvasStore.setState({ dirty: false })
+    useCanvasStore.getState().setNodeAlign('a', 'right', undefined)
+    const n = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'a')!
+    expect(n.meta?.align).toBe('right')
+    expect('valign' in (n.meta ?? {})).toBe(false)
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+})
+
 describe('store / reader', () => {
   it('openReader / closeReader toggle the reader node id', () => {
     useCanvasStore.getState().openReader('a')
@@ -335,9 +400,9 @@ describe('store / v2 — reviewDiff + navigateRef (focus)', () => {
   })
 })
 
-// Resizing a GROUP must scale every child the same proportions (position + size); a non-group resize
-// touches only that node. (group-resize child-scaling fix)
-describe('store / setNodeSize (group resize scales children)', () => {
+// Resizing a GROUP changes only the group's own box — members keep their absolute position and size
+// (the fence must not reflow or rescale its contents). A non-group resize touches only that node.
+describe('store / setNodeSize (group resize leaves members untouched)', () => {
   function groupDoc(): FlowcanvasDoc {
     return {
       nodes: [
@@ -350,22 +415,23 @@ describe('store / setNodeSize (group resize scales children)', () => {
     }
   }
 
-  it('bottom-right resize (origin fixed) scales the child position + size by the ratio, leaves non-members alone', () => {
+  it('bottom-right resize (origin fixed) grows the fence and leaves members + non-members untouched', () => {
     useCanvasStore.setState({ doc: groupDoc() })
-    useCanvasStore.getState().setNodeSize('g', 400, 400, 0, 0) // sx=sy=2, origin unchanged
+    useCanvasStore.getState().setNodeSize('g', 400, 400, 0, 0) // origin unchanged
     const n = (id: string) => useCanvasStore.getState().doc!.nodes.find((x) => x.id === id)!
     expect(n('g')).toMatchObject({ x: 0, y: 0, width: 400, height: 400 })
-    expect(n('c')).toMatchObject({ x: 100, y: 100, width: 200, height: 200 }) // (50,50,100,100) × 2
+    expect(n('c')).toMatchObject({ x: 50, y: 50, width: 100, height: 100 }) // member unmoved + unscaled
     expect(n('loose')).toMatchObject({ x: 400, y: 400, width: 100, height: 100 }) // untouched
     expect(useCanvasStore.getState().dirty).toBe(true)
   })
 
-  it('top-left resize moves the origin and scales children relative to the new corner', () => {
+  it('top-left resize moves the group origin but the member keeps its absolute coords + size', () => {
     useCanvasStore.setState({ doc: groupDoc() })
-    useCanvasStore.getState().setNodeSize('g', 300, 300, -100, -100) // sx=sy=1.5, origin → (-100,-100)
+    useCanvasStore.getState().setNodeSize('g', 300, 300, -100, -100) // origin → (-100,-100)
+    const g = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'g')!
     const c = useCanvasStore.getState().doc!.nodes.find((x) => x.id === 'c')!
-    // x = -100 + (50-0)*1.5 = -25 ; same for y ; size = 100 × 1.5 = 150
-    expect(c).toMatchObject({ x: -25, y: -25, width: 150, height: 150 })
+    expect(g).toMatchObject({ x: -100, y: -100, width: 300, height: 300 })
+    expect(c).toMatchObject({ x: 50, y: 50, width: 100, height: 100 }) // absolute position + size held
   })
 
   it('resizing a non-group widget changes only that node (no scaling, no x/y drift)', () => {

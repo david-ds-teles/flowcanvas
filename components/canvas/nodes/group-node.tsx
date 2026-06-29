@@ -1,8 +1,10 @@
 'use client'
-import { memo, useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect, type CSSProperties } from 'react'
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react'
 import type { GroupNode as CanvasGroupNode, NodeShape } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
+import { useShiftKey } from './use-shift-key'
+import { NodeFormatBar } from './node-format-bar'
 
 const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
 const SHAPES: { key: NodeShape; glyph: string; label: string }[] = [
@@ -29,11 +31,11 @@ function ShapeOutline({ shape, selected }: { shape: NodeShape; selected: boolean
   return (
     <svg className="fc-group__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       {shape === 'ellipse' ? (
-        <ellipse cx="50" cy="50" rx="49" ry="49" {...a} />
+        <ellipse cx="50" cy="50" rx="50" ry="50" {...a} />
       ) : shape === 'diamond' ? (
-        <polygon points="50,1 99,50 50,99 1,50" {...a} />
+        <polygon points="50,0 100,50 50,100 0,50" {...a} />
       ) : (
-        <rect x="1" y="1" width="98" height="98" {...a} />
+        <rect x="0" y="0" width="100" height="100" {...a} />
       )}
     </svg>
   )
@@ -45,9 +47,21 @@ function Inner({ id, selected, data }: NodeProps) {
   const setNodeLabel = useCanvasStore((s) => s.setNodeLabel)
   const setNodeSize = useCanvasStore((s) => s.setNodeSize)
   const setNodeShape = useCanvasStore((s) => s.setNodeShape)
+  const shift = useShiftKey()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(node.label ?? '')
   const ref = useRef<HTMLInputElement>(null)
+
+  const align = node.meta?.align
+  const valign = node.meta?.valign
+  // meta.fill overrides the default group interior tint; node.color tints the outline via the adapter.
+  const fillStyle: CSSProperties = node.meta?.fill ? ({ ['--fc-group-fill']: node.meta.fill } as CSSProperties) : {}
+  const labelStyle: CSSProperties = {
+    ...(align === 'center' ? { left: '50%', right: 'auto' } : align === 'right' ? { left: 'auto', right: 16 } : align === 'left' ? { left: 16, right: 'auto' } : null),
+    ...(valign === 'middle' ? { top: '50%', bottom: 'auto' } : valign === 'bottom' ? { top: 'auto', bottom: 14 } : valign === 'top' ? { top: 14, bottom: 'auto' } : null),
+    ...((align === 'center' || valign === 'middle') ? { transform: `${align === 'center' ? 'translateX(-50%)' : ''} ${valign === 'middle' ? 'translateY(-50%)' : ''}`.trim() } : null),
+    ...(align ? { textAlign: align } : null),
+  }
 
   useEffect(() => { if (editing) { ref.current?.focus(); ref.current?.select() } }, [editing])
 
@@ -58,6 +72,7 @@ function Inner({ id, selected, data }: NodeProps) {
     <>
       <NodeResizer
         isVisible={!!selected}
+        keepAspectRatio={shift}
         minWidth={120}
         minHeight={80}
         onResizeEnd={(_e, p) => setNodeSize(id, Math.round(p.width), Math.round(p.height), Math.round(p.x), Math.round(p.y))}
@@ -65,13 +80,16 @@ function Inner({ id, selected, data }: NodeProps) {
         handleClassName="fc-group__rzhandle"
       />
 
-      {/* shape + color switcher — shown only while the node is selected */}
+      {/* shape switcher (leading) + alignment / colour / fill format bar — shown while selected */}
       {selected && (
-        <div className="fc-group__bar nodrag nopan" onPointerDownCapture={(e) => e.stopPropagation()}>
-          {SHAPES.map((s) => (
+        <NodeFormatBar
+          id={id}
+          node={node}
+          leading={SHAPES.map((s) => (
             <button
               key={s.key}
-              className={`fc-group__sbtn${shape === s.key ? ' is-on' : ''}`}
+              type="button"
+              className={`fc-fmt-btn${shape === s.key ? ' is-on' : ''}`}
               title={s.label}
               aria-label={s.label}
               aria-pressed={shape === s.key}
@@ -80,12 +98,12 @@ function Inner({ id, selected, data }: NodeProps) {
               {s.glyph}
             </button>
           ))}
-        </div>
+        />
       )}
 
-      <div className={`fc-group fc-group--${shape}`}>
+      <div className={`fc-group fc-group--${shape}`} style={fillStyle}>
         <ShapeOutline shape={shape} selected={!!selected} />
-        <div className="fc-group__label nodrag" onDoubleClick={() => { setDraft(node.label ?? ''); setEditing(true) }}>
+        <div className="fc-group__label nodrag" style={labelStyle} onDoubleClick={() => { setDraft(node.label ?? ''); setEditing(true) }}>
           {editing ? (
             <input
               ref={ref}

@@ -2,6 +2,7 @@
 import { Handle, Position, NodeResizer } from '@xyflow/react'
 import type { ReactNode } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
+import { useShiftKey } from './use-shift-key'
 
 const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
 
@@ -20,10 +21,12 @@ export interface NodeResizeFrameProps {
 export function NodeResizeFrame({ id, selected, minWidth, minHeight, children }: NodeResizeFrameProps) {
   const setNodeSize = useCanvasStore((s) => s.setNodeSize)
   const commentMode = useCanvasStore((s) => s.mode === 'comment')
+  const shift = useShiftKey()   // hold SHIFT → lock aspect ratio (equal resize), like any canvas tool
   return (
     <>
       <NodeResizer
         isVisible={selected && !commentMode}
+        keepAspectRatio={shift}
         minWidth={minWidth}
         minHeight={minHeight}
         onResizeEnd={(_e, d) => setNodeSize(id, Math.round(d.width), Math.round(d.height))}
