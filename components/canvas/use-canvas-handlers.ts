@@ -26,6 +26,7 @@ export function useCanvasHandlers() {
   const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
   const removeNode = useCanvasStore((s) => s.removeNode)
   const applyLayout = useCanvasStore((s) => s.applyLayout)
+  const fitGroups = useCanvasStore((s) => s.fitGroups)
   const setSelection = useCanvasStore((s) => s.setSelection)
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
@@ -154,8 +155,17 @@ export function useCanvasHandlers() {
         }
       }
       applyLayout(updates)
+      // Grow each group whose CHILD moved so the boundary follows its components — but skip a group that
+      // was itself dragged (it just translated with its children, so its bounds are unchanged).
+      const movedIds = new Set(moved.map((d) => d.id))
+      const parents = new Set<string>()
+      for (const d of moved) {
+        const p = doc?.nodes.find((x) => x.id === d.id)?.parentId
+        if (p && !movedIds.has(p)) parents.add(p)
+      }
+      if (parents.size) fitGroups([...parents])
     },
-    [getInternalNode, groupIds, childrenByParent, applyLayout],
+    [getInternalNode, groupIds, childrenByParent, applyLayout, doc, fitGroups],
   )
 
   // Mirror React Flow's selection into the store so the toolbar can enable Group/Ungroup.

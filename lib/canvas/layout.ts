@@ -22,8 +22,8 @@ function bandRank(n: CanvasNode): number {
 
 const COL_GAP = 56          // gap between type-band columns
 const ROW_GAP = 32          // gap between stacked nodes in a band
-const GROUP_PAD = 28        // inner padding inside a group container
-const GROUP_LABEL_PAD = 44  // extra top padding so the group label clears its children
+export const GROUP_PAD = 28        // inner padding inside a group container
+export const GROUP_LABEL_PAD = 44  // extra top padding so the group label clears its children
 const GROUP_GAP = 88        // gap between top-level items (leaf bands ↔ groups ↔ groups)
 const ORIGIN_X = 80
 const ORIGIN_Y = 80

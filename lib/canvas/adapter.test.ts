@@ -58,9 +58,17 @@ describe('adapter / toReactFlow', () => {
     const md = nodes.find((n) => n.id === 'n-design')!
     expect(md.position).toEqual({ x: -480, y: -200 })
     expect(md.width).toBe(380)
-    expect(md.height).toBeUndefined() // markdown is content-sized so the collapse toggle shrinks the card
-    expect((md.style as Record<string, string>)['--fc-body-max']).toBe('232px') // authored 320 − 88 chrome
+    expect(md.height).toBe(320) // an expanded markdown card honors its authored box so manual resize sticks
     expect((md.data as { node: { id: string } }).node.id).toBe('n-design')
+  })
+
+  it('drops a collapsed markdown card to auto height (header only) so the collapse toggle shrinks it', () => {
+    const collapsed: FlowcanvasDoc = {
+      ...doc,
+      nodes: doc.nodes.map((n) => (n.id === 'n-design' ? { ...n, meta: { ...n.meta, origin: 'user' as const, collapsed: true } } : n)),
+    }
+    const md = toReactFlow(collapsed).nodes.find((n) => n.id === 'n-design')!
+    expect(md.height).toBeUndefined()
   })
 
   it('keeps the authored box for non-markdown nodes', () => {
@@ -154,11 +162,11 @@ describe('adapter / Phase 10 — group containers (parentId, abs↔rel)', () => 
     expect(ids.indexOf('g-1')).toBeLessThan(ids.indexOf('c-1'))
   })
 
-  it('emits a child position relative to its parent, with parentId + extent:parent', () => {
+  it('emits a child position relative to its parent, with parentId and NO extent clamp', () => {
     const c = toReactFlow(grouped).nodes.find((n) => n.id === 'c-1')!
     expect(c.position).toEqual({ x: 40, y: 40 }) // abs (50,60) − parent (10,20)
     expect(c.parentId).toBe('g-1')
-    expect(c.extent).toBe('parent')
+    expect(c.extent).toBeUndefined() // not clamped — the group auto-grows to enclose its children instead
   })
 
   it('keeps a top-level node absolute and parentless', () => {

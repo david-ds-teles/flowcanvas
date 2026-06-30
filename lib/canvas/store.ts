@@ -11,7 +11,7 @@ import type { ReviewState, ReviewDiff } from './review'
 import { buildSourceIndex, normPath, citedDocPaths } from './spine'
 import { migrateDoc, normalizePorts } from './migrate'
 import { parseFlowcanvasDoc } from './validate'
-import { organizeByType as organizeByTypePure } from './layout'
+import { organizeByType as organizeByTypePure, GROUP_PAD, GROUP_LABEL_PAD } from './layout'
 import { instantiateTemplate } from './templates'
 import type { CanvasTemplate } from './templates'
 import type { DocRef } from './refs'
@@ -68,6 +68,7 @@ interface CanvasState {
   openBoard: (path: string) => Promise<void>                                       // Phase 10: switch the active board
   setNodePosition: (id: string, x: number, y: number) => void
   setNodeSize: (id: string, width: number, height: number, x?: number, y?: number) => void
+  fitGroups: (groupIds: string[]) => void                                          // grow each group to enclose its children (after a child resize/drag)
   setNodeText: (id: string, text: string) => void
   setNodeLabel: (id: string, label: string) => void
   setNodeShape: (id: string, shape: NodeShape) => void
@@ -203,6 +204,23 @@ export const selectNodeCommentCount =
         n + (c.parentId === null && !c.resolvedAt && c.anchor.kind === 'node' && c.anchor.nodeId === id ? 1 : 0),
       0,
     ) ?? 0
+
+/** Grow a group node so it encloses its children (+ inner padding, + top headroom for the label). GROW-
+ *  ONLY — the group expands to contain a child that spills past it but never shrinks below its current
+ *  bounds, so the boundary stops "limiting" a child resize without snapping away a deliberately roomy box.
+ *  A childless group is left untouched. Doc coords are ABSOLUTE. Pure (identity preserved when unchanged). */
+function fitGroupToChildren(nodes: CanvasNode[], groupId: string): CanvasNode[] {
+  const group = nodes.find((n) => n.id === groupId)
+  if (!group || group.type !== 'group') return nodes
+  const kids = nodes.filter((n) => n.parentId === groupId)
+  if (kids.length === 0) return nodes
+  const minX = Math.min(group.x, ...kids.map((k) => k.x - GROUP_PAD))
+  const minY = Math.min(group.y, ...kids.map((k) => k.y - GROUP_LABEL_PAD))
+  const maxX = Math.max(group.x + group.width, ...kids.map((k) => k.x + k.width + GROUP_PAD))
+  const maxY = Math.max(group.y + group.height, ...kids.map((k) => k.y + k.height + GROUP_PAD))
+  if (group.x === minX && group.y === minY && group.width === maxX - minX && group.height === maxY - minY) return nodes
+  return nodes.map((n) => (n.id === groupId ? { ...n, x: minX, y: minY, width: maxX - minX, height: maxY - minY } : n))
+}
 
 // #1 — history middleware. Records every doc-mutating set into `past` (capped), clearing `future`. A set
 // payload carrying __hist:'reset' (board switch) clears both stacks; __hist:'skip' (undo/redo itself)
@@ -512,7 +530,19 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     if (!target) return
     const nx = x ?? target.x
     const ny = y ?? target.y
-    const nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x: nx, y: ny, width, height } : n))
+    let nodes = doc.nodes.map((n) => (n.id === id ? { ...n, x: nx, y: ny, width, height } : n))
+    // A resized child grows/repositions its parent group so the boundary always encloses its components.
+    if (target.parentId) nodes = fitGroupToChildren(nodes, target.parentId)
+    set({ doc: { ...doc, nodes }, dirty: true })
+  },
+  // Grow each named group to enclose its children (after a child resize/drag moved/sized it). No-op for
+  // ids that are not groups or have no children. Persists only when at least one group actually changed.
+  fitGroups(groupIds: string[]) {
+    const { doc } = get()
+    if (!doc) return
+    let nodes = doc.nodes
+    for (const gid of groupIds) nodes = fitGroupToChildren(nodes, gid)
+    if (nodes === doc.nodes) return
     set({ doc: { ...doc, nodes }, dirty: true })
   },
   // Edit a note's markdown body in place (double-click → inline textarea). No-op for non-text nodes.

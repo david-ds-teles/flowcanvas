@@ -14,6 +14,15 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [BUGFIX] Node + group resize — markdown card honors its box; group auto-grows to fit its components — 2026-06-30
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Cause:** Two operator-reported resize defects, surfaced in sequence. (1) A markdown card was content-sized — the adapter emitted `height: undefined` (RF auto-measures) and the body was capped by a `max-height` *ceiling* — so a dragged height never stuck: during drag only the fence grew, and on drop the height reverted to the text's content height (width worked, it was always explicit). Component widgets (`.fc-cmp` `height:100%` + explicit RF height) were unaffected. (2) Once height-resize worked, a child INSIDE a group was clamped by the group box — the adapter set `extent:'parent'` on children, so the boundary capped the resize instead of adapting to it.
+**Fix:** (1) An EXPANDED markdown card now keeps its authored box like every other node — adapter emits `height: n.height` (collapsed → `undefined`, header only, so the collapse toggle still shrinks it); `.fc-node` gets `height:100%` and `.fc-node__body` flex-fills (`min-height:0`) instead of the `max-height` ceiling (`--fc-body-max` retired). (2) Dropped `extent:'parent'` so a child is not clamped; the group auto-grows to enclose its children via pure `fitGroupToChildren` (GROW-ONLY — expands to contain a spilling child, never shrinks a roomy box) wired into `setNodeSize` (child resize) + a new `fitGroups` action called from `onNodeDragStop` (child drag). `GROUP_PAD`/`GROUP_LABEL_PAD` exported from `layout` for reuse.
+**Affected:** `lib/canvas/{adapter,store,layout}.ts`, `components/canvas/use-canvas-handlers.ts`, `app/styles/nodes.css`; tests `lib/canvas/{adapter,store}.test.ts` (+4). Gates: tsc 0 · lint 0 · vitest 249/249 · build ok. NOT yet gesture-verified (no Playwright/CDP in env) — markdown resize is implicitly confirmed (operator hit the group clamp while resizing a card); group auto-grow pending a live gesture check per [[verify-interactions-end-to-end]].
+
+---
+
 ## [QUICKFIX] Agent generation quality — compliance-forced spec · server-side quality net · visible contract sync — 2026-06-30
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>

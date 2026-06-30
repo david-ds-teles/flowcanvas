@@ -8,6 +8,7 @@
 .fc-node {
   display: flex;
   flex-direction: column;
+  height: 100%;                 /* fill the authored RF box so manual resize sticks; collapsed → auto (header only) */
   border-radius: var(--radius-card);
   border: 1px solid transparent;
   color: var(--color-text-primary);
@@ -96,11 +97,11 @@
 /* Frontmatter chip/table/bar styles moved to app/styles/frontmatter.css (Phase 9 — shared
    <FrontmatterView>, card + reader variants). */
 
-/* body — rendered markdown, clamped to --fc-body-max with a fade-to-card edge */
+/* body — rendered markdown; fills the card box (scrolls/clips on overflow) with a fade-to-card edge */
 .fc-node__body {
   position: relative;
   flex: 1 1 auto;
-  max-height: var(--fc-body-max, 280px);
+  min-height: 0;
   overflow: hidden;
   padding: 8px 12px 12px;
 }

@@ -16,11 +16,14 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
     // 004 — a non-group node carrying meta.kind renders as the system-design component widget; a group
     // keeps type:'group' (a meta.kind:'boundary' group is tinted via --node-accent below).
     const renderType = n.meta?.kind && n.type !== 'group' ? 'component' : kind
-    const autoHeight = renderType === 'markdown'          // component keeps its authored box; markdown auto-measures
+    // A markdown card honors its authored box so manual resize sticks — EXCEPT when collapsed, where it
+    // drops to its header (auto height) so the collapse toggle visibly shrinks it. Every other node already
+    // keeps its authored box. (Previously markdown auto-measured, which reverted a resized card to its
+    // content height — the resize "didn't stick".)
+    const collapsedCard = renderType === 'markdown' && !!n.meta?.collapsed
     const vars: Record<string, string> = {}
     if (n.color) vars['--node-accent'] = colorVar(n.color) ?? ''
     else if (n.meta?.kind && n.type === 'group') vars['--node-accent'] = colorVar(COMPONENT_KIND_META[n.meta.kind].accent) ?? ''
-    if (autoHeight) vars['--fc-body-max'] = `${Math.max(72, n.height - 88)}px`   // clamp the rendered body to ~the authored box
     // Doc coords are ABSOLUTE; React Flow wants a child positioned RELATIVE to its parent. A dangling
     // parentId (parent not on the board) degrades to a top-level node at its absolute position.
     const parent = n.parentId ? byId.get(n.parentId) : undefined
@@ -30,10 +33,12 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
       type: renderType,
       position,
       width: n.width,
-      height: autoHeight ? undefined : n.height,         // markdown auto-measures; others keep the authored box
+      height: collapsedCard ? undefined : n.height,      // collapsed card → auto (header only); else the authored box
       data: { node: n },
       deletable: true,                                   // nodes + edges are key-deletable; the doc write-back lives in use-canvas-handlers
-      ...(parent ? { parentId: n.parentId, extent: 'parent' as const } : {}),
+      // No extent:'parent' — a child is NOT clamped to the group box; instead the group auto-grows to
+      // enclose its children on resize/drag (store.fitGroups), so the boundary adapts to its components.
+      ...(parent ? { parentId: n.parentId } : {}),
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
   })

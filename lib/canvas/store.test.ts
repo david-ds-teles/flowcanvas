@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { FlowcanvasDoc, CanvasEdge } from './jsoncanvas'
 import { useCanvasStore } from './store'
+import { GROUP_PAD } from './layout'
 
 // v2: onConnect / removeEdgeWriteback no longer touch the fs — the Phase-8 links: write-back is retired
 // (Decision 4) — so these synchronous store actions are exercised directly with no api stub. Actions that
@@ -588,5 +589,42 @@ describe('store / undo + redo (#1 — history middleware)', () => {
     expect(useCanvasStore.getState().doc).toBe(d)
     useCanvasStore.getState().redo()
     expect(useCanvasStore.getState().doc).toBe(d)
+  })
+})
+
+describe('store / groups adapt to their children (fitGroups)', () => {
+  function withGroup() {
+    useCanvasStore.setState({ doc: { ...seed(), nodes: [
+      { id: 'g', type: 'group', label: 'box', x: 0, y: 0, width: 200, height: 160, meta: { origin: 'user', shape: 'rectangle' } },
+      { id: 'c', type: 'file', file: 'c.md', x: 40, y: 60, width: 100, height: 80, parentId: 'g', meta: { origin: 'user' } },
+    ] } })
+  }
+
+  it('resizing a child beyond the group grows the parent to enclose it (grow-only, + padding)', () => {
+    withGroup()                                            // group (0,0,200,160), child (40,60,100,80)
+    useCanvasStore.getState().setNodeSize('c', 300, 200)   // child now (40,60)..(340,260) — spills past the box
+    const g = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'g')!
+    expect(g.x).toBe(0)                                    // grow-only — top-left does not move in (child stays inside)
+    expect(g.y).toBe(0)
+    expect(g.x + g.width).toBe(340 + GROUP_PAD)            // extended right to enclose the grown child
+    expect(g.y + g.height).toBe(260 + GROUP_PAD)           // extended down to enclose the grown child
+  })
+
+  it('a resize that stays inside the group leaves the group unchanged', () => {
+    withGroup()
+    const before = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'g')!
+    useCanvasStore.getState().setNodeSize('c', 110, 70)    // still well within (0,0,200,160)
+    const after = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'g')!
+    expect({ x: after.x, y: after.y, width: after.width, height: after.height })
+      .toEqual({ x: before.x, y: before.y, width: before.width, height: before.height })
+  })
+
+  it('fitGroups is a no-op for a childless group', () => {
+    withGroup()
+    const d0 = useCanvasStore.getState().doc!
+    useCanvasStore.setState({ doc: { ...d0, nodes: d0.nodes.filter((n) => n.id !== 'c') } })
+    const before = useCanvasStore.getState().doc!
+    useCanvasStore.getState().fitGroups(['g'])
+    expect(useCanvasStore.getState().doc).toBe(before)   // identity preserved — nothing changed
   })
 })
