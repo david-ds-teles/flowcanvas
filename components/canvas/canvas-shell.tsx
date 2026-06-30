@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -11,12 +11,13 @@ import {
   ConnectionLineType,
   SelectionMode,
   useReactFlow,
+  type Node as RFNode,
   type NodeTypes,
   type EdgeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCanvasStore } from '@/lib/canvas/store'
-import type { NodeKind } from '@/lib/canvas/jsoncanvas'
+import { isFileNode, type NodeKind } from '@/lib/canvas/jsoncanvas'
 import { useCanvasHandlers } from './use-canvas-handlers'
 import { MarkdownNode } from './nodes/markdown-node'
 import { ImageNode } from './nodes/image-node'
@@ -95,6 +96,8 @@ function CanvasFlow() {
   const mode = useCanvasStore((s) => s.mode)
   const readerNodeId = useCanvasStore((s) => s.readerNodeId)
   const closeReader = useCanvasStore((s) => s.closeReader)
+  const openReader = useCanvasStore((s) => s.openReader)
+  const highlightSpineSection = useCanvasStore((s) => s.highlightSpineSection)
   const clearBoard = useCanvasStore((s) => s.clearBoard)
   const linkedNodeIds = useCanvasStore((s) => s.linkedNodeIds)   // 004 — spine→canvas pulse targets
   const reviewState = useCanvasStore((s) => s.reviewState)       // drives the dock Review-tab attention dot
@@ -124,6 +127,27 @@ function CanvasFlow() {
     if (m === 'review') setRightTab('review')
     else setInspectorMode(m)
   }
+
+  // Read specs in place (markdown-component-click-spec): single-click a file/component node opens the
+  // core-doc spine and highlights the section it came from; double-click opens the full markdown reader.
+  // A short debounce lets the double-click cancel the pending single-click so the two gestures never both fire.
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onNodeClick = useCallback((_e: React.MouseEvent, rfNode: RFNode) => {
+    const n = doc?.nodes.find((x) => x.id === rfNode.id)
+    if (!n || !isFileNode(n)) return
+    if (clickTimer.current) clearTimeout(clickTimer.current)
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null
+      if (spineAvailable) { setRightTab('spine'); setRailRight('open') }
+      const anchor = n.meta?.source?.anchor
+      if (anchor) highlightSpineSection(anchor)
+    }, 220)
+  }, [doc, spineAvailable, highlightSpineSection])
+  const onNodeDoubleClick = useCallback((_e: React.MouseEvent, rfNode: RFNode) => {
+    if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null }
+    const n = doc?.nodes.find((x) => x.id === rfNode.id)
+    if (n && isFileNode(n)) openReader(rfNode.id)
+  }, [doc, openReader])
   // Pulse the spine→canvas linked nodes by tagging their RF node className (transient highlight).
   const rfNodes = useMemo(() => {
     if (linkedNodeIds.length === 0) return handlers.nodes
@@ -262,7 +286,8 @@ function CanvasFlow() {
             onEdgesChange={handlers.onEdgesChange}
             onConnect={handlers.onConnect}
             onNodeDragStop={handlers.onNodeDragStop}
-            onNodeClick={handlers.onNodeClick}
+            onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
             onSelectionChange={handlers.onSelectionChange}
             onEdgeDoubleClick={handlers.onEdgeDoubleClick}
             isValidConnection={handlers.isValidConnection}

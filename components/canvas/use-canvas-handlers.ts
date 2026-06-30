@@ -12,7 +12,6 @@ import {
 } from '@xyflow/react'
 import { toReactFlow } from '@/lib/canvas/adapter'
 import { useCanvasStore } from '@/lib/canvas/store'
-import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
 import { sideAndT } from '@/lib/canvas/ports'
 
 /**
@@ -30,7 +29,6 @@ export function useCanvasHandlers() {
   const setSelection = useCanvasStore((s) => s.setSelection)
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
-  const openReader = useCanvasStore((s) => s.openReader)
   const movePort = useCanvasStore((s) => s.movePort)
   const { getInternalNode, screenToFlowPosition } = useReactFlow()
 
@@ -179,15 +177,8 @@ export function useCanvasHandlers() {
     [],
   )
 
-  // Click a markdown node → open the reader drawer (at the current size). Other kinds have nothing
-  // more to read, so a click just selects. Comment mode is handled by the overlay, not here.
-  const onNodeClick = useCallback(
-    (_e: React.MouseEvent, node: RFNode) => {
-      const n = doc?.nodes.find((x) => x.id === node.id)
-      if (n && isFileNode(n) && nodeKind(n) === 'markdown') openReader(node.id)
-    },
-    [doc, openReader],
-  )
+  // Node single/double-click behavior (read-in-place: click→spine, double-click→reader) is owned by
+  // CanvasShell, which holds the right-dock tab state the spine needs. Comment mode is the overlay's.
 
   return {
     nodes,
@@ -199,6 +190,5 @@ export function useCanvasHandlers() {
     onSelectionChange,
     onEdgeDoubleClick,
     isValidConnection,
-    onNodeClick,
   }
 }
