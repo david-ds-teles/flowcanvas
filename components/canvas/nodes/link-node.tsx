@@ -19,7 +19,7 @@ function Inner({ id, selected, data }: NodeProps) {
   const href = normalizeUrl(node.url)
   const display = href.replace(/^https?:\/\//, '').replace(/\/$/, '')
   return (
-    <NodeResizeFrame id={id} selected={!!selected} minWidth={180} minHeight={56}>
+    <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={180} minHeight={56}>
       <a className="fc-node--link" href={href} target="_blank" rel="noopener noreferrer" title={href}>
         <span className="fc-link__glyph">↗</span>
         <span className="fc-link__main">

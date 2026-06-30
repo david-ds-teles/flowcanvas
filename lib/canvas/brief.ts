@@ -22,6 +22,7 @@ import type {
   LinkNode,
   TextNode,
   RelationshipType,
+  EdgeType,
   NodeSource,
   NodeShape,
   ComponentKind,
@@ -56,7 +57,8 @@ export interface BriefEdge {
   from: string
   to: string
   label?: string
-  rel?: RelationshipType                 // typed relationship (v2, Decision 1)
+  rel?: RelationshipType                 // typed relationship (v2, Decision 1) — legacy, kept one version
+  edgeType?: EdgeType                     // 006 — semantic flow type; drives the legend {color,line,head}
   origin: EdgeOrigin
   // 005-edges — echo the current visual style so the agent can preserve or restyle it (parity)
   routing?: EdgeRouting
@@ -122,7 +124,8 @@ export interface AgentEdge {
   fromSide?: Side                        // 005-edges: omit ⇒ the endpoint floats from node center
   toSide?: Side
   label?: string
-  rel?: RelationshipType                 // typed relationship (v2, Decision 1)
+  rel?: RelationshipType                 // typed relationship (v2, Decision 1) — legacy, optional
+  edgeType?: EdgeType                     // 006 — semantic flow type (data-flow|request|response|event|dependency|reference); drives the legend style
   // 005-edges — full parity with the human edge Style panel (see [[agent-feature-parity]])
   routing?: EdgeRouting                  // 'bezier' (default) | 'smoothstep' | 'straight'
   line?: EdgeLineStyle                   // 'solid' (default) | 'dashed' | 'dotted'
@@ -242,6 +245,8 @@ export function buildBrief(
     const rel: RelationshipType = e.meta?.rel ?? (origin === 'links' ? 'references' : 'related')
     return {
       id: e.id, from: e.fromNode, to: e.toNode, label: e.label, rel, origin,
+      // 006 — echo the flow type so the agent reads + round-trips it (the primary edge meaning)
+      ...(e.meta?.edgeType ? { edgeType: e.meta.edgeType } : {}),
       // 005-edges — echo any non-default visual style so the agent round-trips it (parity)
       ...(e.meta?.routing ? { routing: e.meta.routing } : {}),
       ...(e.meta?.line ? { line: e.meta.line } : {}),
@@ -374,6 +379,7 @@ export function applyResponse(
         toEnd: ae.toEnd ?? existing.toEnd ?? 'arrow',
         meta: {
           ...existing.meta, origin: 'agent', rel,
+          ...(ae.edgeType !== undefined ? { edgeType: ae.edgeType } : {}),   // 006 — flow type (agent parity)
           ...(ae.routing !== undefined ? { routing: ae.routing } : {}),
           ...(ae.line !== undefined ? { line: ae.line } : {}),
           ...(ae.labelT !== undefined ? { labelT: ae.labelT } : {}),
@@ -399,6 +405,7 @@ export function applyResponse(
       toEnd: ae.toEnd ?? 'arrow',
       meta: {
         origin: 'agent', rel: relNew,
+        edgeType: ae.edgeType ?? 'reference',   // 006 — flow type (agent parity); default neutral like human onConnect
         ...(ae.routing !== undefined ? { routing: ae.routing } : {}),
         ...(ae.line !== undefined ? { line: ae.line } : {}),
         ...(ae.labelT !== undefined ? { labelT: ae.labelT } : {}),

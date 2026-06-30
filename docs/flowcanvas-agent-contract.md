@@ -16,10 +16,8 @@ CORE SPEC DOC (the board's single source of truth — REQUIRED):
   core spec doc "<board-stem>.md" (YAML frontmatter + ATX headings describing the WHOLE system) and put
   it in generatedFiles.
 - ALWAYS set coreDocPath in your AgentResponse to that one core spec doc (the brief's coreDocPath, or the
-  "<board-stem>.md" you just wrote). The app then binds it as the living core spine AND places a readable
-  markdown card for it on the canvas automatically. This is the ONE exception to the generatedFiles +
-  upsertNodes rule above: do NOT add your own upsertNodes entry for the core spec doc — the app owns its
-  card (creation, placement, dedup).
+  "<board-stem>.md" you just wrote). The app binds it as the living core spine (a docked pane) — it is NOT
+  a canvas card. Do NOT add an upsertNodes entry for the core spec doc: it is the spine, never a board node.
 - Every node's meta.source.path MUST point to THAT one core spec doc — a file that EXISTS (the brief's
   coreDocPath, or the "<board-stem>.md" you just wrote). NEVER cite a doc path you did not create: a
   dangling source path leaves the board with no readable specification.
@@ -34,19 +32,28 @@ EXTRACTION (core spec doc -> typed system-design board, NOT document cards):
   a one-line description:, and source: { path:"<core spec doc>", anchor } — so the widget shows a real
   name and role, never a bare slug.
 - Never inline document prose into the .canvas.
-TYPED EDGES:
-- Set rel from [references, depends-on, implements, derives-from, calls, produces, informs, related].
-  Set label to a short human display (defaults to rel). Do NOT invent rel values. Use containment
-  (parentId) for "contains", not an edge.
-EDGE STYLE (optional, per edge — full parity with the human style controls; omit any for clean defaults):
-- routing: "bezier" (default, curved) | "smoothstep" (right-angle) | "straight".
-- line: "solid" (default) | "dashed" | "dotted".
-- color: hex "#RRGGBB" or a preset "1".."6"; omit ⇒ stroke colored by provenance.
-- fromEnd / toEnd: marker shape per end — "none" | "arrow" (default toEnd) | "arrow-open" | "circle" | "diamond".
-- fromSide / toSide: pin an endpoint to "top"|"right"|"bottom"|"left". OMIT BOTH to let the edge FLOAT from
-  the node center to the nearest perimeter point (the default — cleaner, fewer crossings). Pin only when a
-  specific side genuinely reads better.
+TYPED EDGES (flow type — the PRIMARY edge meaning; the board is read by color/line/head):
+- Set edgeType from [data-flow, request, response, event, dependency, reference]. It drives the edge's
+  default color + line + arrowhead via the legend. Pick the one matching the documented arrow:
+  a data write/produce ⇒ "data-flow"; a synchronous call ⇒ "request" (its return ⇒ "response");
+  an async/published signal ⇒ "event"; a build/needs-it relation ⇒ "dependency"; a doc/see-also link
+  ⇒ "reference". Omit ⇒ "reference". Set label to a short human display. Use containment (parentId) for
+  "contains", not an edge.
+- LEGEND (edgeType ⇒ {color, line, head}): data-flow = cyan · solid · arrow; request = amber · solid ·
+  open-arrow; response = amber · dotted · open-arrow; event = violet · solid · diamond; dependency =
+  grey · dashed · arrow; reference = grey · dotted · circle.
+- rel (LEGACY, optional): the older taxonomy [references, depends-on, implements, derives-from, calls,
+  produces, informs, related] is still accepted and maps to an edgeType — prefer edgeType.
+EDGE STYLE (optional, per edge — OVERRIDES the edgeType legend default; omit any to keep the type's style):
+- color: hex "#RRGGBB" or a preset "1".."6"; omit ⇒ the edgeType's legend color.
+- line: "solid" | "dashed" | "dotted"; omit ⇒ the edgeType's legend line.
+- fromEnd / toEnd: marker per end — "none" | "arrow" | "arrow-open" | "circle" | "diamond"; omit ⇒ the edgeType's legend heads.
+- routing: "smoothstep" (default, right-angle — cleanest for a system diagram) | "bezier" (curve) | "straight".
+- fromSide / toSide: pin an endpoint to "top"|"right"|"bottom"|"left". OMIT BOTH to let the edge attach at a
+  connection dot facing the other node (the default — cleaner, fewer crossings). Pin only when a specific
+  side genuinely reads better.
 - labelT: 0..1 label position along the line (0.5 = midpoint); set it to move a label off a busy crossing.
+- points: array of {x,y} waypoints (absolute canvas coords) the line bends through; omit ⇒ auto-route.
 
 COMPONENT KINDS (set meta.kind on a node; absent ⇒ a plain card):
 - service   — a runtime process that executes logic (API, microservice, worker, gateway, function).

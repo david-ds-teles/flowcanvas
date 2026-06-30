@@ -27,6 +27,7 @@ import { FallbackNode } from './nodes/fallback-node'
 import { ComponentNode } from './nodes/component-node'
 import { LabeledEdge } from './edges/labeled-edge'
 import { CommentLayer } from './comment-layer'
+import { EdgeLegend } from './legend'
 import { CanvasToolbar } from './canvas-toolbar'
 import { Dropzone } from './dropzone'
 import { TemplateDropLayer } from './template-drop'
@@ -290,6 +291,7 @@ function CanvasFlow() {
           <Dropzone />
           <TemplateDropLayer />
           <CommentLayer />
+          <EdgeLegend />
           {readerNodeId && <ReaderDrawer nodeId={readerNodeId} onClose={closeReader} />}
 
           {/* Empty-board state (mockup 05 "No board open") — shown over the grid when the board has no

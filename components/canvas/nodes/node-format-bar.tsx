@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react'
 import type { CanvasNode } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
+import { ColorPicker } from '@/components/ui/color-picker'
 
 // Shared floating format bar shown above a selected text/note or shape node. Writes alignment +
 // foreground colour + fill through the store (setNodeAlign / setNodeColor / setNodeFill); the node
@@ -38,8 +39,6 @@ function VIcon({ cy }: { cy: number }) {
     </svg>
   )
 }
-
-const isHex = (c?: string) => !!c && /^#[0-9a-fA-F]{6}$/.test(c)
 
 export function NodeFormatBar({ id, node, leading }: { id: string; node: CanvasNode; leading?: ReactNode }) {
   const setNodeAlign = useCanvasStore((s) => s.setNodeAlign)
@@ -90,37 +89,15 @@ export function NodeFormatBar({ id, node, leading }: { id: string; node: CanvasN
 
       <span className="fc-fmt-div" aria-hidden="true" />
 
-      <span className="fc-fmt-group" role="group" aria-label="Colour">
-        <label className="fc-fmt-swatch" title="Text / line colour" data-testid="fmt-color">
-          <span className="fc-fmt-swatch__chip" style={{ color: color || 'var(--color-text-secondary)' }}>A</span>
-          <input
-            type="color"
-            aria-label="Text colour"
-            value={isHex(color) ? color : '#5ef2ff'}
-            onChange={(e) => setNodeColor(id, e.target.value)}
-          />
-        </label>
-        <label className="fc-fmt-swatch" title="Fill colour" data-testid="fmt-fill">
-          <span className="fc-fmt-swatch__chip fc-fmt-swatch__chip--fill" style={{ background: fill || 'transparent' }} />
-          <input
-            type="color"
-            aria-label="Fill colour"
-            value={isHex(fill) ? fill : '#0d1528'}
-            onChange={(e) => setNodeFill(id, e.target.value)}
-          />
-        </label>
-        {(color || fill) && (
-          <button
-            type="button"
-            className="fc-fmt-btn fc-fmt-btn--clear"
-            data-testid="fmt-color-clear"
-            title="Clear colours"
-            aria-label="Clear colours"
-            onClick={() => { setNodeColor(id, undefined); setNodeFill(id, undefined) }}
-          >
-            ⌫
-          </button>
-        )}
+      {/* 006 — node text + fill colour use the shared <ColorPicker> (same component as the edge colour). */}
+      <span className="fc-fmt-group fc-fmt-group--color" role="group" aria-label="Text colour" data-testid="fmt-color">
+        <span className="fc-fmt-collabel" aria-hidden="true">A</span>
+        <ColorPicker value={color} onChange={(c) => setNodeColor(id, c)} onClear={color ? () => setNodeColor(id, undefined) : undefined} label="Text colour" />
+      </span>
+      <span className="fc-fmt-div" aria-hidden="true" />
+      <span className="fc-fmt-group fc-fmt-group--color" role="group" aria-label="Fill colour" data-testid="fmt-fill">
+        <span className="fc-fmt-collabel fc-fmt-collabel--fill" aria-hidden="true" />
+        <ColorPicker value={fill} onChange={(c) => setNodeFill(id, c)} onClear={fill ? () => setNodeFill(id, undefined) : undefined} label="Fill colour" />
       </span>
     </div>
   )

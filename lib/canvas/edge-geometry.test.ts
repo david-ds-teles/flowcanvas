@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rectIntersection, sideOf, floatingParams, nearestT, nearestSegmentIndex, type Rect } from './edge-geometry'
+import { rectIntersection, sideOf, floatingParams, nearestT, nearestSegmentIndex, snapAngle, type Rect, type Point } from './edge-geometry'
 
 const A: Rect = { x: 0, y: 0, width: 100, height: 100 }     // center (50,50)
 const B: Rect = { x: 300, y: 0, width: 100, height: 100 }   // center (350,50) — directly to the right
@@ -56,5 +56,34 @@ describe('nearestSegmentIndex', () => {
   it('picks the segment nearest the grab point', () => {
     expect(nearestSegmentIndex(pts, { x: 50, y: 4 })).toBe(0)   // hugging the horizontal segment
     expect(nearestSegmentIndex(pts, { x: 96, y: 60 })).toBe(1)  // hugging the vertical segment
+  })
+})
+
+describe('snapAngle', () => {
+  const prev: Point = { x: 0, y: 0 }
+  const len = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y)
+
+  it('snaps a near-horizontal segment to dy≈0', () => {
+    const out = snapAngle(prev, { x: 100, y: 10 })
+    expect(out.y).toBeCloseTo(0)
+  })
+
+  it('snaps a ~40° segment to 45° (dx≈dy)', () => {
+    const out = snapAngle(prev, { x: 100, y: 84 })   // atan2(84,100) ≈ 40°
+    expect(out.x).toBeCloseTo(out.y)
+  })
+
+  it('snaps an ~85° segment to 90° (dx≈0)', () => {
+    const out = snapAngle(prev, { x: 10, y: 100 })   // atan2(100,10) ≈ 84.3°
+    expect(out.x).toBeCloseTo(0)
+  })
+
+  it('preserves the segment length', () => {
+    const p: Point = { x: 100, y: 84 }
+    expect(len(prev, snapAngle(prev, p))).toBeCloseTo(len(prev, p))
+  })
+
+  it('returns p unchanged for a zero-length input', () => {
+    expect(snapAngle({ x: 5, y: 5 }, { x: 5, y: 5 })).toEqual({ x: 5, y: 5 })
   })
 })

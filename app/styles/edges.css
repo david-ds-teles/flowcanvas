@@ -122,15 +122,31 @@
 /* Off-screen holder for the shared <marker> defs (configurable arrowheads; edges reference url(#id)). */
 .fc-edge-markers { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 
-/* Reduce handle noise: the four connect dots are hidden at rest and fade in on node hover or in connect
-   mode. Floating edges no longer need a visible anchor dot, so a board reads clean; the grab target is
-   still live (the ::before hit-area), so connections are just as easy to start. */
-.react-flow .react-flow__handle { opacity: 0; transition: opacity .12s ease, background .14s ease, box-shadow .14s ease; }
-.react-flow .react-flow__node:hover .react-flow__handle,
-.react-flow .react-flow__handle:hover,
-.react-flow .react-flow__handle.connectingfrom,
-.react-flow .react-flow__handle.connectingto,
-.fc-rf--connect .react-flow__handle { opacity: 1; }
+/* 006 — connection ports. The per-port dots (.fc-port) are ALWAYS visible (subtle filled) so edges
+   clearly anchor to real, reusable, movable dots and the arrowhead seats inside. The four faint side
+   "add" handles (.fc-port-add) stay hidden at rest and fade in on node hover / connect mode (so any node,
+   even one with no ports yet, can start a connection — which creates a dot on that side) — board reads clean. */
+.react-flow .react-flow__handle { transition: opacity .12s ease, background .14s ease, box-shadow .14s ease; }
+.react-flow .react-flow__handle.fc-port-add { opacity: 0; }
+.react-flow .react-flow__node:hover .react-flow__handle.fc-port-add,
+.react-flow .react-flow__handle.fc-port-add:hover,
+.react-flow .react-flow__handle.fc-port-add.connectingfrom,
+.react-flow .react-flow__handle.fc-port-add.connectingto,
+.fc-rf--connect .react-flow__handle.fc-port-add { opacity: 1; }
+
+/* Always-visible port dot — subtler than the loud connect handle; brightens on hover, cyan on valid drop. */
+.react-flow .react-flow__handle.fc-port {
+  opacity: 1;
+  width: 9px;
+  height: 9px;
+  background: var(--color-surface-highest);
+  border: 1.5px solid var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55);
+  cursor: crosshair;
+}
+.react-flow .react-flow__handle.fc-port:hover { background: var(--color-primary); box-shadow: 0 0 10px -1px var(--color-primary); }
+.react-flow .react-flow__handle.fc-port.connectingto,
+.react-flow .react-flow__handle.fc-port.valid { background: var(--color-neon-cyan); border-color: var(--color-neon-cyan); }
 
 /* The per-edge Style panel (routing · line · color · end markers · pinned sides), portaled below the bar. */
 .fc-edgestyle {

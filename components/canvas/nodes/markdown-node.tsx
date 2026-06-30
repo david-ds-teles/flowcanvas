@@ -19,7 +19,7 @@ function Inner({ id, selected, data }: NodeProps) {
   const title = String(fm.name ?? basename(node.file))
 
   return (
-    <NodeResizeFrame id={id} selected={!!selected} minWidth={240} minHeight={140}>
+    <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={240} minHeight={140}>
       <div className={cn('fc-node', 'fc-node--md', collapsed && 'is-collapsed')}>
         <header className="fc-node__head">
           <span className="fc-node__title" title={title}>

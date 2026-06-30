@@ -1,24 +1,26 @@
 'use client'
-import { Handle, Position, NodeResizer } from '@xyflow/react'
+import { NodeResizer } from '@xyflow/react'
 import type { ReactNode } from 'react'
+import type { CanvasNode } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { useShiftKey } from './use-shift-key'
-
-const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
+import { PortHandles } from './port-handles'
 
 export interface NodeResizeFrameProps {
   id: string
+  node: CanvasNode
   selected: boolean
   minWidth: number
   minHeight: number
   children: ReactNode
 }
 
-// One shared resizer + handles wrapper for every non-group card. The <NodeResizer> and the four
-// <Handle>s are SIBLINGS of the card (never nested inside its overflow:hidden box) — the exact
+// One shared resizer + connection-port wrapper for every non-group card. The <NodeResizer> and the
+// <PortHandles> dots are SIBLINGS of the card (never nested inside its overflow:hidden box) — the exact
 // constraint the node-component comments warn about. Resize persists through the existing setNodeSize
-// action (no schema change). Handles are hidden in comment mode so they never swallow a pin-drop click.
-export function NodeResizeFrame({ id, selected, minWidth, minHeight, children }: NodeResizeFrameProps) {
+// action (no schema change). 006: the four fixed side handles are replaced by per-port connection dots
+// (+ faint side "add" handles) so edges anchor to real, reusable, movable dots.
+export function NodeResizeFrame({ id, node, selected, minWidth, minHeight, children }: NodeResizeFrameProps) {
   const setNodeSize = useCanvasStore((s) => s.setNodeSize)
   const commentMode = useCanvasStore((s) => s.mode === 'comment')
   const shift = useShiftKey()   // hold SHIFT → lock aspect ratio (equal resize), like any canvas tool
@@ -34,9 +36,7 @@ export function NodeResizeFrame({ id, selected, minWidth, minHeight, children }:
         handleClassName="fc-rzhandle"
       />
       {children}
-      {SIDES.map((p) => (
-        <Handle key={p} type="source" position={p} id={p} />
-      ))}
+      {!commentMode && <PortHandles node={node} />}
     </>
   )
 }

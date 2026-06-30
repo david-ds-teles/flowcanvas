@@ -79,7 +79,7 @@ export const REL_LABELS: Record<RelationshipType, string> = {
 // Decision 4 — 'import' marks extraction-seeded edges; 'links' stays for legacy/migrated.
 export type EdgeOrigin = 'links' | 'user' | 'agent' | 'import'
 export const EDGE_ORIGINS: readonly EdgeOrigin[] = ['links', 'user', 'agent', 'import']
-export const SCHEMA_VERSIONS = ['0.1', '0.2', '0.3', '0.4'] as const
+export const SCHEMA_VERSIONS = ['0.1', '0.2', '0.3', '0.4', '0.5'] as const
 
 // ── 005-edges — per-edge visual style (human + agent authorable; see [[agent-feature-parity]]) ──
 /** Path geometry between endpoints: 'smoothstep' (right-angle, default) · 'bezier' (curve) · 'straight'. */
@@ -90,6 +90,52 @@ export const EDGE_ROUTINGS: readonly EdgeRouting[] = ['smoothstep', 'bezier', 's
 export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted'
 /** Ordered allowed set — drives the line-style picker UI + the agent contract. */
 export const EDGE_LINE_STYLES: readonly EdgeLineStyle[] = ['solid', 'dashed', 'dotted']
+
+// ── 006-semantic-edges — connection ports (Decision 1) ──────────────────────
+/** A connection dot on a node perimeter. Stable id so edges can share/reuse/drag it. */
+export interface ConnectionPort {
+  id: string        // 'p-<short>' minted via uuid
+  side: Side        // which edge of the node box
+  t: number         // 0..1 offset along that side (0 = start corner, 1 = end corner)
+}
+
+// ── 006-semantic-edges — flow taxonomy (Decision 2) ─────────────────────────
+/** Semantic flow type of an edge — drives the legend visual via EDGE_TYPE_STYLE. */
+export type EdgeType =
+  | 'data-flow' | 'request' | 'response'
+  | 'event' | 'dependency' | 'reference'
+
+/** Ordered allowed set — drives the legend, the type picker, and the agent contract. */
+export const EDGE_TYPES: readonly EdgeType[] = [
+  'data-flow', 'request', 'response', 'event', 'dependency', 'reference',
+]
+
+/** Default {color, line, head} a flow type paints. Single source for legend + picker + renderer. */
+export interface EdgeTypeStyle {
+  label: string
+  color: CanvasColor    // preset id '1'..'6' or hex; resolved by adapter.colorVar
+  line: EdgeLineStyle   // 'solid' | 'dashed' | 'dotted'
+  fromEnd: EdgeEnd      // marker at the source end
+  toEnd: EdgeEnd        // marker at the target end
+}
+
+// Presets: '1' rose '2' amber '3' gold '4' lime '5' cyan '6' violet.
+// dependency/reference use muted hex (no muted preset). Exact hex tunable (design Open Q — palette).
+export const EDGE_TYPE_STYLE: Record<EdgeType, EdgeTypeStyle> = {
+  'data-flow':  { label: 'data flow',  color: '5',       line: 'solid',  fromEnd: 'none', toEnd: 'arrow' },
+  request:      { label: 'request',    color: '2',       line: 'solid',  fromEnd: 'none', toEnd: 'arrow-open' },
+  response:     { label: 'response',   color: '2',       line: 'dotted', fromEnd: 'none', toEnd: 'arrow-open' },
+  event:        { label: 'event',      color: '6',       line: 'solid',  fromEnd: 'none', toEnd: 'diamond' },
+  dependency:   { label: 'dependency', color: '#8b93a7', line: 'dashed', fromEnd: 'none', toEnd: 'arrow' },
+  reference:    { label: 'reference',  color: '#6b7280', line: 'dotted', fromEnd: 'none', toEnd: 'circle' },
+}
+
+/** Migration map — old RelationshipType → new EdgeType (Decision 2). */
+export const REL_TO_EDGE_TYPE: Record<RelationshipType, EdgeType> = {
+  calls: 'request', produces: 'data-flow', 'depends-on': 'dependency',
+  references: 'reference', informs: 'event', implements: 'dependency',
+  'derives-from': 'reference', related: 'reference',
+}
 
 // Decision 2 — provenance back to the source design/plan doc a node was extracted from.
 export interface NodeSource {
@@ -112,6 +158,7 @@ export interface NodeMeta {
   source?: NodeSource                      // v2 (Decision 2)
   template?: string                        // v2 — template id this node came from (Decision 8)
   kind?: ComponentKind                     // 004 — optional, additive; absent ⇒ legacy card render
+  ports?: ConnectionPort[]                 // 006 — connection dots on this node's perimeter; absent ⇒ no ports yet (legacy/never-connected node)
   /** Horizontal alignment of a node's text/label. */
   align?: 'left' | 'center' | 'right'
   /** Vertical alignment of a node's text/label. */
@@ -138,13 +185,15 @@ export type CanvasNode = FileNode | LinkNode | TextNode | GroupNode
 export interface CanvasEdge {
   id: string
   fromNode: string; toNode: string
-  fromSide?: Side; toSide?: Side              // 005-edges: PRESENT = pinned to that side · ABSENT = floats from node center
+  fromSide?: Side; toSide?: Side              // 005-edges: authoring sugar — normalized into a port at load (006). PRESENT = seed a pinned-side port · ABSENT = geometric autoPort
+  fromPort?: string; toPort?: string          // 006 — ConnectionPort id geometry source of truth; the rendered endpoint anchors here
   fromEnd?: EdgeEnd; toEnd?: EdgeEnd          // marker shape per end; default toEnd:"arrow", fromEnd:"none"
   color?: CanvasColor                         // 005-edges: now drives the rendered stroke (overrides the provenance default)
   label?: string                              // free-form display (unchanged)
   meta?: {
     origin?: EdgeOrigin
-    rel?: RelationshipType                    // v2 — typed relationship (Decision 1)
+    rel?: RelationshipType                    // v2 — typed relationship (Decision 1); 006: readable one more version, superseded by edgeType
+    edgeType?: EdgeType                        // 006 — semantic flow type; resolves default {color,line,head} via EDGE_TYPE_STYLE
     routing?: EdgeRouting                     // 005-edges — path style; absent ⇒ renderer default 'smoothstep'
     line?: EdgeLineStyle                      // 005-edges — stroke dash; absent ⇒ 'solid' (or 'dashed' for a derived links edge)
     labelT?: number                           // 005-edges — 0..1 label position along the path; absent ⇒ 0.5 (midpoint)
@@ -185,7 +234,7 @@ export interface SessionMeta {
 }
 
 export interface FlowcanvasExt {
-  schemaVersion: '0.1' | '0.2' | '0.3' | '0.4'   // 005-edges boards persist '0.4'
+  schemaVersion: '0.1' | '0.2' | '0.3' | '0.4' | '0.5'   // 006 boards persist '0.5'
   session: SessionMeta
   comments: Comment[]
 }

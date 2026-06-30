@@ -1,6 +1,6 @@
 import { type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
 import type { CSSProperties } from 'react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, EdgeOrigin, RelationshipType } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, EdgeOrigin, RelationshipType, ConnectionPort, Side } from './jsoncanvas'
 import { nodeKind, COMPONENT_KIND_META } from './jsoncanvas'
 
 const PRESET: Record<string, string> = { '1': '#ff516a', '2': '#f59f00', '3': '#e3b341', '4': '#b6f36a', '5': '#5ef2ff', '6': '#a371f7' }   // nyx §2.4
@@ -37,18 +37,28 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
       style: Object.keys(vars).length ? (vars as CSSProperties) : undefined,
     }
   })
+  // 006 — resolve an edge endpoint's port id to its {side, t} so the edge component anchors at the dot
+  // (the arrowhead seats inside) without depending on React Flow re-measuring a moved handle.
+  const portIndex = new Map<string, Map<string, ConnectionPort>>()
+  for (const n of doc.nodes) if (n.meta?.ports?.length) portIndex.set(n.id, new Map(n.meta.ports.map((p) => [p.id, p])))
+  const portST = (nodeId: string, portId?: string): { side: Side; t: number } | undefined => {
+    const p = portId ? portIndex.get(nodeId)?.get(portId) : undefined
+    return p ? { side: p.side, t: p.t } : undefined
+  }
   const edges = doc.edges.map<RFEdge>((e) => ({
     id: e.id, source: e.fromNode, target: e.toNode,
-    // A pinned side maps to its handle; a floating end (no side) leaves the handle undefined so the edge
-    // component recomputes a center-anchored endpoint (005-edges). Markers/stroke/path all live in the
-    // component now (it owns per-edge color + configurable end shapes), so no markerEnd here.
-    sourceHandle: e.fromSide, targetHandle: e.toSide,
+    // 006 — an edge anchors to its connection port (handle id == port id). A port-less legacy edge falls
+    // back to the pinned side, else to the floating center-anchor in the component. Markers/stroke/path
+    // all live in the component (it owns per-edge color + configurable end shapes), so no markerEnd here.
+    sourceHandle: e.fromPort ?? e.fromSide, targetHandle: e.toPort ?? e.toSide,
     type: 'labeled', label: e.label,
     data: {
-      origin: e.meta?.origin ?? 'user', rel: e.meta?.rel,                 // v2 — rel drives typed-edge styling
+      origin: e.meta?.origin ?? 'user', rel: e.meta?.rel, edgeType: e.meta?.edgeType,   // 006 — edgeType drives typed styling
       routing: e.meta?.routing, line: e.meta?.line, labelT: e.meta?.labelT, // 005-edges — per-edge style
       points: e.meta?.points,                                             // 005-edges — manual line waypoints
       color: e.color, fromSide: e.fromSide, toSide: e.toSide, fromEnd: e.fromEnd, toEnd: e.toEnd,
+      fromPort: e.fromPort, toPort: e.toPort,                             // 006 — port ids (geometry source of truth)
+      fromPortST: portST(e.fromNode, e.fromPort), toPortST: portST(e.toNode, e.toPort), // 006 — resolved {side,t} for rendering
     },
     selectable: true,                                  // explicit (was relying on RF defaults) — Phase 2
     deletable: true,

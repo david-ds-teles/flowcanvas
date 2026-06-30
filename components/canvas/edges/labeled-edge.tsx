@@ -13,11 +13,13 @@ import {
 } from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
 import type {
-  EdgeOrigin, RelationshipType, EdgeRouting, EdgeLineStyle, EdgeEnd, Side, CanvasColor,
+  EdgeOrigin, RelationshipType, EdgeType, EdgeRouting, EdgeLineStyle, EdgeEnd, Side, CanvasColor,
 } from '@/lib/canvas/jsoncanvas'
-import { RELATIONSHIP_TYPES, EDGE_ROUTINGS, EDGE_LINE_STYLES, EDGE_ENDS } from '@/lib/canvas/jsoncanvas'
+import { EDGE_TYPES, EDGE_TYPE_STYLE, EDGE_ROUTINGS, EDGE_LINE_STYLES, EDGE_ENDS } from '@/lib/canvas/jsoncanvas'
 import { colorVar } from '@/lib/canvas/adapter'
-import { rectIntersectionToPoint, sideOf, nearestT, nearestSegmentIndex, type Rect, type Point } from '@/lib/canvas/edge-geometry'
+import { rectIntersectionToPoint, sideOf, nearestT, nearestSegmentIndex, snapAngle, type Rect, type Point } from '@/lib/canvas/edge-geometry'
+import { portPoint } from '@/lib/canvas/ports'
+import { ColorPicker } from '@/components/ui/color-picker'
 import { edgeMarkerUrl, EdgeEndMarker } from './edge-markers'
 
 // Provenance → default stroke (design § Design System): links muted + dashed, user solid indigo, agent
@@ -37,6 +39,7 @@ const SIDE_TO_POS: Record<Side, Position> = {
 type EdgeData = {
   origin?: EdgeOrigin
   rel?: RelationshipType
+  edgeType?: EdgeType    // 006 — semantic flow type; resolves default {color,line,head} via EDGE_TYPE_STYLE
   routing?: EdgeRouting
   line?: EdgeLineStyle
   labelT?: number
@@ -46,15 +49,14 @@ type EdgeData = {
   fromEnd?: EdgeEnd
   toEnd?: EdgeEnd
   points?: Point[]
+  fromPortST?: { side: Side; t: number }   // 006 — resolved port {side,t} (adapter); endpoint anchors here
+  toPortST?: { side: Side; t: number }
 }
 
 // Human labels for the pickers (the enum values stay the wire/agent contract).
 const ROUTING_LABEL: Record<EdgeRouting, string> = { bezier: 'Curve', smoothstep: 'Angle', straight: 'Straight' }
 const LINE_LABEL: Record<EdgeLineStyle, string> = { solid: 'Solid', dashed: 'Dashed', dotted: 'Dotted' }
 const END_LABEL: Record<EdgeEnd, string> = { none: 'None', arrow: 'Arrow', 'arrow-open': 'Open', circle: 'Circle', diamond: 'Diamond' }
-// Color swatches: the six nyx presets ('1'..'6', mapped to hex by colorVar) + an "auto" chip (clears color).
-const SWATCHES: CanvasColor[] = ['1', '2', '3', '4', '5', '6']
-
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t))
 
 // Detached-path helpers — measure a label point / sample the path WITHOUT inserting into the DOM
@@ -161,30 +163,33 @@ function EdgeLabelEditor({ id, initial, x, y }: { id: string; initial: string; x
   )
 }
 
-// Typed-relationship picker (Decision 1/7) — a curated rel grid + a free-form label field.
-function RelPicker({ id, rel, label, x, y, onClose }: { id: string; rel: RelationshipType; label: string; x: number; y: number; onClose: () => void }) {
-  const setEdgeRel = useCanvasStore((s) => s.setEdgeRel)
+// 006 — flow-type picker (replaces the rel picker, Decision 2): the EdgeType set + a free-form label
+// field. Setting a type applies its legend default (color/line/head) and clears superseded overrides.
+function EdgeTypePicker({ id, edgeType, label, x, y, onClose }: { id: string; edgeType: EdgeType; label: string; x: number; y: number; onClose: () => void }) {
+  const setEdgeType = useCanvasStore((s) => s.setEdgeType)
   const relabelEdge = useCanvasStore((s) => s.relabelEdge)
   const [text, setText] = useState(label)
   return (
     <div
-      id={`fc-rel-picker-${id}`}
+      id={`fc-type-picker-${id}`}
+      // `fc-relpick*` is a STABLE CSS HANDLE kept across the rel→type rename — its rules are reused
+      // verbatim and renaming would churn the stylesheet for no functional gain (006 QA Finding 1).
       className="fc-relpick nodrag nopan"
-      data-testid="edge-rel-picker"
+      data-testid="edge-type-picker"
       style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="fc-relpick__grid">
-        {RELATIONSHIP_TYPES.map((r) => (
+        {EDGE_TYPES.map((t) => (
           <button
-            key={r}
+            key={t}
             type="button"
             className="fc-relpick__opt"
-            data-testid="edge-rel-option"
-            aria-pressed={r === rel}
-            onClick={() => setEdgeRel(id, r)}
+            data-testid="edge-type-option"
+            aria-pressed={t === edgeType}
+            onClick={() => setEdgeType(id, t)}
           >
-            {r}
+            {EDGE_TYPE_STYLE[t].label}
           </button>
         ))}
       </div>
@@ -248,28 +253,13 @@ function EdgeStylePanel({ id, data, x, y }: { id: string; data: EdgeData; x: num
       </div>
       <div className="fc-edgestyle__row">
         <span className="fc-edgestyle__lbl">Color</span>
-        <div className="fc-edgestyle__swatches">
-          <button
-            type="button"
-            className="fc-edgestyle__sw fc-edgestyle__sw--auto"
-            data-testid="edge-color-auto"
-            aria-pressed={data.color == null}
-            title="Auto (by provenance)"
-            onClick={() => setEdgeColor(id, undefined)}
-          >A</button>
-          {SWATCHES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="fc-edgestyle__sw"
-              data-testid={`edge-color-${c}`}
-              aria-pressed={data.color === c}
-              title={`Color ${c}`}
-              style={{ background: colorVar(c) }}
-              onClick={() => setEdgeColor(id, c)}
-            />
-          ))}
-        </div>
+        {/* 006 — the shared reusable color picker; clear reverts to the flow-type default colour. */}
+        <ColorPicker
+          value={data.color}
+          onChange={(c) => setEdgeColor(id, c)}
+          onClear={() => setEdgeColor(id, undefined)}
+          label="Edge colour"
+        />
       </div>
       <div className="fc-edgestyle__row">
         <span className="fc-edgestyle__lbl">Ends</span>
@@ -319,11 +309,11 @@ function EdgeStylePanel({ id, data, x, y }: { id: string; data: EdgeData; x: num
   )
 }
 
-type Panel = 'none' | 'rel' | 'style'
+type Panel = 'none' | 'type' | 'style'
 
-// Selected-edge action bar (Decision 2) — rel ▾ · style ▾ · ✎ Label · ✕. Portaled just below the label
+// Selected-edge action bar (Decision 2) — type ▾ · style ▾ · ✎ Label · ✕. Portaled just below the label
 // pill; the only delete surface for an edge.
-function EdgeActionBar({ id, x, y, panel, onRel, onStyle, onLabel }: { id: string; x: number; y: number; panel: Panel; onRel: () => void; onStyle: () => void; onLabel: () => void }) {
+function EdgeActionBar({ id, x, y, panel, onType, onStyle, onLabel }: { id: string; x: number; y: number; panel: Panel; onType: () => void; onStyle: () => void; onLabel: () => void }) {
   const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
   return (
     <div
@@ -332,7 +322,7 @@ function EdgeActionBar({ id, x, y, panel, onRel, onStyle, onLabel }: { id: strin
       style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
       onClick={(e) => e.stopPropagation()}
     >
-      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-rel" aria-expanded={panel === 'rel'} aria-controls={`fc-rel-picker-${id}`} title="Set relationship type" onClick={onRel}>rel ▾</button>
+      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-type" aria-expanded={panel === 'type'} aria-controls={`fc-type-picker-${id}`} title="Set flow type" onClick={onType}>type ▾</button>
       <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-style" aria-expanded={panel === 'style'} aria-controls={`fc-edge-style-${id}`} title="Edge style — routing, color, line, ends, sides" onClick={onStyle}>style ▾</button>
       <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-label" title="Edit label" aria-label="Edit label" onClick={onLabel}>✎ Label</button>
       <button type="button" className="fc-edge-actions__btn fc-edge-actions__btn--del" data-testid="edge-delete" title="Delete this connection" aria-label="Delete connection" onClick={() => removeEdgeWriteback(id)}>✕</button>
@@ -345,7 +335,10 @@ export const LabeledEdge = memo(function LabeledEdge({
 }: EdgeProps) {
   const d = (data ?? {}) as EdgeData
   const origin = (d.origin ?? 'user') as EdgeOrigin
-  const rel = (d.rel ?? 'related') as RelationshipType
+  // 006 — the edge's semantic flow type drives its default {color,line,head} via EDGE_TYPE_STYLE.
+  const edgeType = (d.edgeType ?? 'reference') as EdgeType
+  const ts = EDGE_TYPE_STYLE[edgeType]
+  const typeLabel = ts.label
   const routing = (d.routing ?? 'smoothstep') as EdgeRouting   // 005-edges — orthogonal is the clean default
   const derived = origin === 'links'
   const points = useMemo(() => d.points ?? [], [d.points])
@@ -372,10 +365,12 @@ export const LabeledEdge = memo(function LabeledEdge({
   let sx = sourceX, sy = sourceY, sPos = sourcePosition
   let tx = targetX, ty = targetY, tPos = targetPosition
   if (srcRect && tgtRect) {
-    const srcAim: Point = points.length ? points[0] : centerOf(tgtRect)
-    const tgtAim: Point = points.length ? points[points.length - 1] : centerOf(srcRect)
-    if (!fromPinned) { const p = rectIntersectionToPoint(srcRect, srcAim); sx = p.x; sy = p.y; sPos = SIDE_TO_POS[sideOf(srcRect, p)] }
-    if (!toPinned) { const p = rectIntersectionToPoint(tgtRect, tgtAim); tx = p.x; ty = p.y; tPos = SIDE_TO_POS[sideOf(tgtRect, p)] }
+    // 006 — anchor each endpoint at its connection PORT (dot) so the arrowhead seats inside it. A port-less
+    // edge (ref-nav before normalize, or legacy) falls back to the 005 floating-perimeter math.
+    if (d.fromPortST) { const p = portPoint(srcRect, { id: '', side: d.fromPortST.side, t: d.fromPortST.t }); sx = p.x; sy = p.y; sPos = SIDE_TO_POS[d.fromPortST.side] }
+    else if (!fromPinned) { const aim: Point = points.length ? points[0] : centerOf(tgtRect); const p = rectIntersectionToPoint(srcRect, aim); sx = p.x; sy = p.y; sPos = SIDE_TO_POS[sideOf(srcRect, p)] }
+    if (d.toPortST) { const p = portPoint(tgtRect, { id: '', side: d.toPortST.side, t: d.toPortST.t }); tx = p.x; ty = p.y; tPos = SIDE_TO_POS[d.toPortST.side] }
+    else if (!toPinned) { const aim: Point = points.length ? points[points.length - 1] : centerOf(srcRect); const p = rectIntersectionToPoint(tgtRect, aim); tx = p.x; ty = p.y; tPos = SIDE_TO_POS[sideOf(tgtRect, p)] }
   }
 
   const [path, midX, midY] = useMemo(() => {
@@ -394,12 +389,14 @@ export const LabeledEdge = memo(function LabeledEdge({
   const labelX = labelPt.x
   const labelY = labelPt.y
 
-  // Stroke: explicit color overrides provenance default; line style → dash; selection thickens.
-  const stroke = colorVar(d.color) ?? STROKE[origin] ?? STROKE.user
-  const line = (d.line ?? (derived ? 'dashed' : 'solid')) as EdgeLineStyle
+  // 006 — resolve style: explicit per-edge override → flow-type default (EDGE_TYPE_STYLE) → provenance.
+  const stroke = colorVar(d.color) ?? colorVar(ts.color) ?? STROKE[origin] ?? STROKE.user
+  const line = (d.line ?? ts.line ?? (derived ? 'dashed' : 'solid')) as EdgeLineStyle
   const dash = line === 'dashed' ? '7 5' : line === 'dotted' ? '1.5 5' : undefined
-  const markerStartUrl = edgeMarkerUrl(id, 'start', d.fromEnd ?? 'none')
-  const markerEndUrl = edgeMarkerUrl(id, 'end', d.toEnd ?? 'arrow')
+  const fromEndShape = d.fromEnd ?? ts.fromEnd
+  const toEndShape = d.toEnd ?? ts.toEnd
+  const markerStartUrl = edgeMarkerUrl(id, 'start', fromEndShape)
+  const markerEndUrl = edgeMarkerUrl(id, 'end', toEndShape)
 
   const [panel, setPanel] = useState<Panel>('none')
   // Close the popovers when the edge is deselected (render-phase reset — the React-sanctioned alternative
@@ -413,19 +410,21 @@ export const LabeledEdge = memo(function LabeledEdge({
 
   // Live waypoints from the store (avoids stale-closure during a drag).
   const livePoints = (): Point[] => useCanvasStore.getState().doc?.edges.find((e) => e.id === id)?.meta?.points ?? []
-  const startDrag = (e: React.PointerEvent, onMove: (fp: Point) => void) => {
+  const startDrag = (e: React.PointerEvent, onMove: (fp: Point, shift: boolean) => void) => {
     if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
-    const move = (ev: PointerEvent) => onMove(screenToFlowPosition({ x: ev.clientX, y: ev.clientY }))
+    const move = (ev: PointerEvent) => onMove(screenToFlowPosition({ x: ev.clientX, y: ev.clientY }), ev.shiftKey)
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
-  // Drag an existing waypoint; double-click removes it.
-  const moveWaypoint = (j: number) => (e: React.PointerEvent) => startDrag(e, (fp) => {
+  // Drag an existing waypoint; double-click removes it. Hold Shift → snap the incoming segment to 45° (006 snapAngle).
+  const moveWaypoint = (j: number) => (e: React.PointerEvent) => startDrag(e, (fp, shift) => {
     const next = livePoints().slice()
-    next[j] = { x: Math.round(fp.x), y: Math.round(fp.y) }
+    const prev: Point = j === 0 ? { x: sx, y: sy } : next[j - 1]
+    const p = shift ? snapAngle(prev, fp) : fp
+    next[j] = { x: Math.round(p.x), y: Math.round(p.y) }
     setEdgeWaypoints(id, next)
   })
   const removeWaypoint = (j: number) => (e: React.MouseEvent) => {
@@ -458,7 +457,10 @@ export const LabeledEdge = memo(function LabeledEdge({
       const fp = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
       const arr = livePoints().slice()
       if (seg >= 0 && seg < arr.length) {
-        arr[seg] = { x: Math.round(fp.x), y: Math.round(fp.y) }
+        // Hold Shift while bending the line → snap the segment from its previous point to 45° (006 snapAngle).
+        const prev: Point = seg === 0 ? { x: sx, y: sy } : arr[seg - 1]
+        const p = ev.shiftKey ? snapAngle(prev, fp) : fp
+        arr[seg] = { x: Math.round(p.x), y: Math.round(p.y) }
         setEdgeWaypoints(id, arr)
       }
     }
@@ -494,8 +496,8 @@ export const LabeledEdge = memo(function LabeledEdge({
       {/* Per-edge marker defs, colored to match the stroke (no shared context-stroke → no black heads). */}
       {(markerStartUrl || markerEndUrl) && (
         <defs>
-          <EdgeEndMarker edgeId={id} which="start" end={d.fromEnd ?? 'none'} color={stroke} />
-          <EdgeEndMarker edgeId={id} which="end" end={d.toEnd ?? 'arrow'} color={stroke} />
+          <EdgeEndMarker edgeId={id} which="start" end={fromEndShape} color={stroke} />
+          <EdgeEndMarker edgeId={id} which="end" end={toEndShape} color={stroke} />
         </defs>
       )}
       <BaseEdge
@@ -511,25 +513,25 @@ export const LabeledEdge = memo(function LabeledEdge({
         <EdgeLabelEditor id={id} initial={text} x={labelX} y={labelY} />
       ) : (
         <EdgeLabelRenderer>
-          {/* Typed-edge pill — rel eyebrow + free-form label. Click → rel picker · double-click → quick
-              label edit · drag → slide the label along the line (move it where it reads). */}
+          {/* 006 — flow-type pill: type eyebrow + free-form label. Click → type picker · double-click →
+              quick label edit · drag → slide the label along the line (move it where it reads). */}
           <div
             className={`fc-edge-label fc-edge-label--${origin} nodrag nopan`}
-            data-testid="edge-rel-pill"
-            aria-expanded={panel === 'rel'}
-            aria-controls={`fc-rel-picker-${id}`}
+            data-testid="edge-type-pill"
+            aria-expanded={panel === 'type'}
+            aria-controls={`fc-type-picker-${id}`}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all', cursor: 'grab' }}
-            title="Click: relationship · double-click: edit label · drag: move label along the line"
+            title="Click: flow type · double-click: edit label · drag: move label along the line"
             onPointerDown={onLabelPointerDown}
             onClick={(e) => {
               e.stopPropagation()
               if (draggedRef.current) { draggedRef.current = false; return }
-              setPanel((p) => (p === 'rel' ? 'none' : 'rel'))
+              setPanel((p) => (p === 'type' ? 'none' : 'type'))
             }}
             onDoubleClick={(e) => { e.stopPropagation(); setPanel('none'); setEditingEdge(id) }}
           >
             {derived && <span className="fc-edge-label__lock" aria-label="derived from links">🔒</span>}
-            <span className="fc-edge-label__rel">{rel}</span>
+            <span className="fc-edge-label__rel">{typeLabel}</span>
             {text !== '' && <span className="fc-edge-label__text">{text}</span>}
           </div>
 
@@ -554,12 +556,12 @@ export const LabeledEdge = memo(function LabeledEdge({
               x={labelX}
               y={labelY + 24}
               panel={panel}
-              onRel={() => setPanel((p) => (p === 'rel' ? 'none' : 'rel'))}
+              onType={() => setPanel((p) => (p === 'type' ? 'none' : 'type'))}
               onStyle={() => setPanel((p) => (p === 'style' ? 'none' : 'style'))}
               onLabel={() => { setPanel('none'); setEditingEdge(id) }}
             />
           )}
-          {panel === 'rel' && <RelPicker id={id} rel={rel} label={text} x={labelX} y={labelY + (selected ? 56 : 28)} onClose={() => setPanel('none')} />}
+          {panel === 'type' && <EdgeTypePicker id={id} edgeType={edgeType} label={text} x={labelX} y={labelY + (selected ? 56 : 28)} onClose={() => setPanel('none')} />}
           {panel === 'style' && <EdgeStylePanel id={id} data={d} x={labelX} y={labelY + (selected ? 56 : 28)} />}
         </EdgeLabelRenderer>
       )}

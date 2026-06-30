@@ -1,10 +1,9 @@
 'use client'
 import { memo } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { type NodeProps } from '@xyflow/react'
 import type { CanvasNode } from '@/lib/canvas/jsoncanvas'
 import { nodeKind } from '@/lib/canvas/jsoncanvas'
-
-const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
+import { PortHandles } from './port-handles'
 
 // Catch-all for nodeKinds without a dedicated component: `group` (JSONCanvas grouping) and
 // `file` (a file node whose extension is neither markdown nor an allowed image, e.g. .pdf/.ts).
@@ -25,10 +24,8 @@ function Inner({ data }: NodeProps) {
       <span className="fc-fallback__kind">{kind}</span>
       <span className="fc-fallback__label">{label}</span>
     </div>
-    {/* handles outside the card so all sides stay grabbable (see markdown-node) */}
-    {SIDES.map((p) => (
-      <Handle key={p} type="source" position={p} id={p} />
-    ))}
+    {/* connection ports outside the card so all sides stay grabbable (see markdown-node) */}
+    <PortHandles node={node} />
     </>
   )
 }

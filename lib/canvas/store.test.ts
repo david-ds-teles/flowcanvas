@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import type { FlowcanvasDoc } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasEdge } from './jsoncanvas'
 import { useCanvasStore } from './store'
 
 // v2: onConnect / removeEdgeWriteback no longer touch the fs — the Phase-8 links: write-back is retired
@@ -27,21 +27,23 @@ beforeEach(() => {
 })
 
 describe('store / onConnect (v2 — typed user edges)', () => {
-  it('mints a typed user edge (rel:related, empty label) and opens its inline editor — no fs write-back', () => {
+  it('mints a typed user edge (edgeType:reference, empty label) anchored to created ports, opens its inline editor — no fs write-back', () => {
     useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     const { doc, dirty, editingEdgeId } = useCanvasStore.getState()
     const minted = doc!.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
-    // 005-edges — new connections FLOAT by default: the drag handle is ignored for anchoring, so no
-    // fromSide/toSide is pinned (re-pinnable later via the Style panel).
-    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
-    expect(minted.fromSide).toBeUndefined()
-    expect(minted.toSide).toBeUndefined()
+    // 006 — connections anchor to DOTS (ports): the side handle creates a port on that side, the edge
+    // references it by id (arrowhead seats in the dot). Default flow type is 'reference' (neutral).
+    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', label: '', meta: { origin: 'user', edgeType: 'reference' } })
+    const b = doc!.nodes.find((n) => n.id === 'b')!
+    const a = doc!.nodes.find((n) => n.id === 'a')!
+    expect(b.meta?.ports?.some((p) => p.id === minted.fromPort && p.side === 'right')).toBe(true)
+    expect(a.meta?.ports?.some((p) => p.id === minted.toPort && p.side === 'left')).toBe(true)
     expect(minted.id.startsWith('e-')).toBe(true)   // a minted user edge, not a deterministic lk: id
     expect(editingEdgeId).toBe(minted.id)           // inline label editor opens
     expect(dirty).toBe(true)
   })
 
-  it('mints the same typed user edge for a non-file endpoint (uniform v2 behavior)', () => {
+  it('mints the same typed user edge for a non-file endpoint (uniform behavior)', () => {
     useCanvasStore.setState({ doc: { ...seed(),
       nodes: [
         { id: 't', type: 'text', text: 'note', x: 0, y: 0, width: 100, height: 100, meta: { origin: 'user' } },
@@ -51,7 +53,9 @@ describe('store / onConnect (v2 — typed user edges)', () => {
     } })
     useCanvasStore.getState().onConnect({ source: 't', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     const minted = useCanvasStore.getState().doc!.edges.find((e) => e.fromNode === 't' && e.toNode === 'a')!
-    expect(minted).toMatchObject({ label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
+    expect(minted).toMatchObject({ label: '', meta: { origin: 'user', edgeType: 'reference' } })
+    expect(minted.fromPort).toBeDefined()
+    expect(minted.toPort).toBeDefined()
     expect(useCanvasStore.getState().editingEdgeId).toBe(minted.id)
   })
 
@@ -65,6 +69,53 @@ describe('store / onConnect (v2 — typed user edges)', () => {
     useCanvasStore.getState().onConnect({ source: 'a', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     expect(useCanvasStore.getState().doc!.edges).toHaveLength(1) // unchanged — no self-edge minted
     expect(useCanvasStore.getState().editingEdgeId).toBeNull()
+  })
+})
+
+describe('store / connection ports (006)', () => {
+  it('onConnect reuses an existing dot when the handle is a port id (no new dot)', () => {
+    const pid = useCanvasStore.getState().addPort('b', 'right', 0.5)   // a pre-existing dot on b's right
+    const before = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'b')!.meta!.ports!.length
+    useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: pid, targetHandle: 'left' })
+    const doc = useCanvasStore.getState().doc!
+    const minted = doc.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
+    expect(minted.fromPort).toBe(pid)                                                   // reused, not recreated
+    expect(doc.nodes.find((n) => n.id === 'b')!.meta!.ports!.length).toBe(before)       // no extra dot on b
+  })
+
+  it('addPort mints a clamped dot and returns its id; movePort slides it', () => {
+    const id = useCanvasStore.getState().addPort('a', 'top', 1.4)                       // t clamped to 1
+    const a1 = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'a')!
+    expect(a1.meta!.ports!.find((p) => p.id === id)).toMatchObject({ side: 'top', t: 1 })
+    useCanvasStore.getState().movePort('a', id, 'bottom', 0.25)
+    const a2 = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'a')!
+    expect(a2.meta!.ports!.find((p) => p.id === id)).toMatchObject({ side: 'bottom', t: 0.25 })
+  })
+
+  it('onConnect spreads a second created dot to a different t on the same side ("more than one dot per side")', () => {
+    useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'top', targetHandle: 'left' })
+    useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'top', targetHandle: 'left' })
+    const topPorts = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'b')!.meta!.ports!.filter((p) => p.side === 'top')
+    expect(topPorts.length).toBe(2)                  // two dots on b's top side
+    expect(topPorts[0].t).not.toBe(topPorts[1].t)    // spread, not stacked
+  })
+})
+
+describe('store / setEdgeType (006 — flow typing)', () => {
+  it('sets the flow type and clears the per-edge style overrides it supersedes', () => {
+    const edge: CanvasEdge = {
+      id: 'e1', fromNode: 'a', toNode: 'b', color: '3', fromEnd: 'circle', toEnd: 'diamond',
+      meta: { origin: 'user', line: 'dashed', edgeType: 'reference' },
+    }
+    useCanvasStore.setState({ doc: { ...seed(), edges: [edge] } })
+    useCanvasStore.getState().setEdgeType('e1', 'request')
+    const e = useCanvasStore.getState().doc!.edges.find((x) => x.id === 'e1')!
+    expect(e.meta?.edgeType).toBe('request')   // type applied
+    expect(e.color).toBeUndefined()            // overrides cleared → the type default {color,line,head} shows
+    expect(e.fromEnd).toBeUndefined()
+    expect(e.toEnd).toBeUndefined()
+    expect(e.meta?.line).toBeUndefined()
+    expect(useCanvasStore.getState().dirty).toBe(true)
   })
 })
 

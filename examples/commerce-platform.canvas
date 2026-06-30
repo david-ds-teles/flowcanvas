@@ -62,7 +62,19 @@
             "edge"
           ],
           "description": "Public entry point — TLS termination, auth, request fan-out."
-        }
+        },
+        "ports": [
+          {
+            "id": "p-99458a37",
+            "side": "right",
+            "t": 0.8977272727272729
+          },
+          {
+            "id": "p-c5735096",
+            "side": "right",
+            "t": 0.5113636363636364
+          }
+        ]
       }
     },
     {
@@ -89,7 +101,19 @@
             "security"
           ],
           "description": "Issues and verifies session tokens."
-        }
+        },
+        "ports": [
+          {
+            "id": "p-57fbe247",
+            "side": "left",
+            "t": 0.48776223776223776
+          },
+          {
+            "id": "p-00b13c28",
+            "side": "bottom",
+            "t": 0.5
+          }
+        ]
       }
     },
     {
@@ -119,7 +143,29 @@
             "examples/commerce-platform/commerce-design.md",
             "examples/commerce-platform/runbook.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-9cbaf5fb",
+            "side": "left",
+            "t": 0.12878787878787876
+          },
+          {
+            "id": "p-76443898",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-4fac6e6d",
+            "side": "right",
+            "t": 0.4695652173913042
+          },
+          {
+            "id": "p-92a393eb",
+            "side": "right",
+            "t": 0.14492753623188398
+          }
+        ]
       }
     },
     {
@@ -146,7 +192,19 @@
             "pci"
           ],
           "description": "Wraps the external Stripe API; isolates PCI scope."
-        }
+        },
+        "ports": [
+          {
+            "id": "p-5bdf5f89",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-00fa5fa0",
+            "side": "bottom",
+            "t": 0.832738095238095
+          }
+        ]
       }
     },
     {
@@ -168,7 +226,14 @@
             "postgres"
           ],
           "description": "System of record for orders."
-        }
+        },
+        "ports": [
+          {
+            "id": "p-bec8dcb6",
+            "side": "left",
+            "t": 0.8804347826086956
+          }
+        ]
       }
     },
     {
@@ -190,7 +255,14 @@
             "kafka"
           ],
           "description": "Carries domain events between services."
-        }
+        },
+        "ports": [
+          {
+            "id": "p-88413782",
+            "side": "left",
+            "t": 0.532608695652174
+          }
+        ]
       }
     },
     {
@@ -217,7 +289,14 @@
             "examples/commerce-platform/order-service.md",
             "examples/commerce-platform/payment-service.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-09cff2c9",
+            "side": "top",
+            "t": 0.5
+          }
+        ]
       }
     },
     {
@@ -255,7 +334,14 @@
       "height": 90,
       "color": "6",
       "meta": {
-        "origin": "user"
+        "origin": "user",
+        "ports": [
+          {
+            "id": "p-323aa1cf",
+            "side": "top",
+            "t": 0.2519230769230769
+          }
+        ]
       }
     }
   ],
@@ -268,8 +354,11 @@
       "label": "POST /orders",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-99458a37",
+      "toPort": "p-9cbaf5fb"
     },
     {
       "id": "e-order-pay",
@@ -279,8 +368,11 @@
       "label": "charge",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-76443898",
+      "toPort": "p-5bdf5f89"
     },
     {
       "id": "e-order-bus",
@@ -290,8 +382,11 @@
       "label": "order.created",
       "meta": {
         "origin": "agent",
-        "rel": "produces"
-      }
+        "rel": "produces",
+        "edgeType": "data-flow"
+      },
+      "fromPort": "p-4fac6e6d",
+      "toPort": "p-88413782"
     },
     {
       "id": "e-order-db",
@@ -301,8 +396,11 @@
       "label": "depends on",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-92a393eb",
+      "toPort": "p-bec8dcb6"
     },
     {
       "id": "e-auth-gw",
@@ -312,8 +410,11 @@
       "label": "verifies",
       "meta": {
         "origin": "user",
-        "rel": "informs"
-      }
+        "rel": "informs",
+        "edgeType": "event"
+      },
+      "fromPort": "p-57fbe247",
+      "toPort": "p-c5735096"
     },
     {
       "id": "e-pay-stripe",
@@ -323,8 +424,11 @@
       "label": "depends on",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-00fa5fa0",
+      "toPort": "p-323aa1cf"
     },
     {
       "id": "e-order-design",
@@ -334,8 +438,11 @@
       "label": "derives from",
       "meta": {
         "origin": "import",
-        "rel": "derives-from"
-      }
+        "rel": "derives-from",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-76443898",
+      "toPort": "p-09cff2c9"
     },
     {
       "id": "e-auth-design",
@@ -345,18 +452,21 @@
       "label": "derives from",
       "meta": {
         "origin": "import",
-        "rel": "derives-from"
-      }
+        "rel": "derives-from",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-00b13c28",
+      "toPort": "p-09cff2c9"
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.4",
+    "schemaVersion": "0.5",
     "session": {
       "title": "Commerce Platform",
       "intent": "Commerce platform — decomposed architecture (v2 System Design Studio demo)",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-30T09:43:25.504Z",
-      "revision": 4,
+      "updatedAt": "2026-06-30T12:55:25.343Z",
+      "revision": 5,
       "coreDocPath": "examples/commerce-platform/commerce-design.md"
     },
     "comments": [

@@ -100,3 +100,20 @@ export function nearestT(points: Point[], p: Point): number {
   }
   return bestI / (points.length - 1)
 }
+
+/** Default Shift-snap increment (degrees) — 45° gives horizontal, vertical, AND diagonals. */
+export const SNAP_STEP_DEG = 45
+
+/**
+ * Snap the angle of the segment prev→p to the nearest `stepDeg` multiple, preserving its length.
+ * Used while Shift is held during a waypoint create/drag so adjacent segments align to clean angles.
+ */
+export function snapAngle(prev: Point, p: Point, stepDeg: number = SNAP_STEP_DEG): Point {
+  const dx = p.x - prev.x
+  const dy = p.y - prev.y
+  const len = Math.hypot(dx, dy)
+  if (len === 0) return { x: p.x, y: p.y }
+  const step = (stepDeg * Math.PI) / 180
+  const snapped = Math.round(Math.atan2(dy, dx) / step) * step
+  return { x: prev.x + Math.cos(snapped) * len, y: prev.y + Math.sin(snapped) * len }
+}

@@ -1,0 +1,83 @@
+/* 006-semantic-edges — the on-canvas flow-type legend (doubles as the edge-type picker) + the shared
+   reusable color picker (edges + node-format-bar). nyx glass, consistent with the other studio partials. */
+
+/* ── On-canvas legend / type picker ─────────────────────────────────────────── */
+.fc-legend {
+  position: absolute;
+  left: 12px;
+  top: 12px;               /* top corner — avoids RF Controls (bottom-left) + MiniMap (bottom-right) and never falls below the fold */
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px;
+  border-radius: var(--radius-control, 10px);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.7);
+  user-select: none;
+}
+.fc-legend__title {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.fc-legend__rows { display: flex; flex-direction: column; gap: 1px; }
+.fc-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.fc-legend__row:disabled { cursor: default; opacity: 0.82; }
+.fc-legend__row:not(:disabled):hover { background: rgba(128, 131, 255, 0.12); }
+.fc-legend__row.is-active { border-color: var(--color-primary); background: rgba(128, 131, 255, 0.16); }
+.fc-legend__row:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.fc-legend__swatch { flex: 0 0 auto; }
+.fc-legend__label { font-family: var(--font-jetbrains-mono); letter-spacing: 0.01em; }
+
+/* ── Shared reusable color picker (components/ui/color-picker.tsx) ───────────── */
+.fc-colorpicker { display: inline-flex; align-items: center; gap: 4px; }
+.fc-colorpicker__chip {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.12s ease;
+}
+.fc-colorpicker__chip:hover { transform: scale(1.12); }
+.fc-colorpicker__chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--color-surface-highest), 0 0 0 3.5px var(--color-primary); }
+.fc-colorpicker__chip:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.fc-colorpicker__custom { position: relative; width: 18px; height: 18px; border-radius: 5px; overflow: hidden; cursor: pointer; border: 1px dashed var(--color-outline-variant); display: inline-grid; place-items: center; }
+.fc-colorpicker__swatch { position: absolute; inset: 0; }
+.fc-colorpicker__custom::after { content: "+"; position: relative; font-size: 12px; line-height: 1; color: var(--color-text-secondary); }
+.fc-colorpicker__custom input[type="color"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: none; padding: 0; }
+.fc-colorpicker__clear {
+  width: 18px; height: 18px;
+  display: inline-grid; place-items: center;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.fc-colorpicker__clear:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); }
+
+/* node-format-bar colour groups — a leading glyph distinguishes the text vs fill picker. */
+.fc-fmt-group--color { gap: 5px; }
+.fc-fmt-collabel { font-family: var(--font-jetbrains-mono); font-size: 11px; color: var(--color-text-secondary); width: 14px; text-align: center; }
+.fc-fmt-collabel--fill { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--color-outline-variant); background: linear-gradient(135deg, var(--color-primary), var(--color-neon-cyan)); }

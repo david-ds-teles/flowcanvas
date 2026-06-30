@@ -60,9 +60,9 @@ describe('GET /api/canvas', () => {
     const res = await canvasGET(get(`/api/canvas?path=${encodeURIComponent(DEMO)}`))
     expect(res.status).toBe(200)
     const { doc } = await res.json()
-    expect(doc.flowcanvas.schemaVersion).toBe('0.4')   // 005-edges: load migrates + persists 0.4 (floats edges) for every opened board
+    expect(doc.flowcanvas.schemaVersion).toBe('0.5')   // 006: the demo board upgraded to 0.5 (ports seeded, rel→edgeType) on open; GET returns the persisted doc as-is
     expect(doc.nodes.length).toBeGreaterThan(10)
-    expect(doc.edges.some((e: { meta?: { rel?: string } }) => e.meta?.rel === 'calls')).toBe(true)
+    expect(doc.edges.some((e: { meta?: { rel?: string } }) => e.meta?.rel === 'calls')).toBe(true)   // rel kept readable one version alongside edgeType
   })
   it('rejects a non-.canvas path (400) and a path escape (400)', async () => {
     expect((await canvasGET(get('/api/canvas?path=README.md'))).status).toBe(400)

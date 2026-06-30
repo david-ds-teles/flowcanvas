@@ -1,14 +1,15 @@
 import { create, type StateCreator } from 'zustand'
 import type { Connection } from '@xyflow/react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta, Side, EdgeRouting, EdgeLineStyle, EdgeEnd } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta, Side, EdgeRouting, EdgeLineStyle, EdgeEnd, ConnectionPort, EdgeType } from './jsoncanvas'
 import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
 import { deriveLinkEdges } from './edges'
+import { autoPort } from './ports'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
 import type { AgentResponse, DesignBrief, MergeReport } from './brief'
 import { diffDocs } from './review'
 import type { ReviewState, ReviewDiff } from './review'
 import { buildSourceIndex, normPath, citedDocPaths } from './spine'
-import { migrateDoc } from './migrate'
+import { migrateDoc, normalizePorts } from './migrate'
 import { parseFlowcanvasDoc } from './validate'
 import { organizeByType as organizeByTypePure } from './layout'
 import { instantiateTemplate } from './templates'
@@ -75,6 +76,7 @@ interface CanvasState {
   setNodeAlign: (id: string, align?: NodeMeta['align'], valign?: NodeMeta['valign']) => void
   relabelEdge: (id: string, label: string) => void
   setEdgeRel: (id: string, rel: RelationshipType) => void          // v2: typed-edge rel picker (Phase 6)
+  setEdgeType: (id: string, type: EdgeType) => void                // 006: flow type — applies legend defaults, clears superseded overrides
   // ─── 005-edges — per-edge visual style (mirrored to the agent contract; see [[agent-feature-parity]]) ───
   setEdgeRouting: (id: string, routing: EdgeRouting) => void       // path style: curve / angle / straight
   setEdgeLine: (id: string, line: EdgeLineStyle) => void           // stroke dash: solid / dashed / dotted
@@ -83,6 +85,9 @@ interface CanvasState {
   setEdgeSide: (id: string, which: 'from' | 'to', side?: Side) => void      // pin an endpoint to a side; undefined ⇒ float
   setEdgeLabelT: (id: string, t: number) => void                   // 0..1 label position along the path (drag-to-move)
   setEdgeWaypoints: (id: string, points: { x: number; y: number }[]) => void  // manual line bends ([] clears → auto-route)
+  // 006 — connection ports (dots). A port is a stable anchor on a node side; edges reference it by id.
+  addPort: (nodeId: string, side: Side, t: number) => string                   // mint a new dot; returns its id
+  movePort: (nodeId: string, portId: string, side: Side, t: number) => void    // slide a dot (Alt-drag); anchored edges follow
   setEditingEdge: (id: string | null) => void
   setMode: (mode: CanvasMode) => void
   openReader: (id: string) => void
@@ -126,6 +131,48 @@ const edgeId = () => `e-${crypto.randomUUID().slice(0, 8)}`
 const commentId = () => `c-${crypto.randomUUID().slice(0, 8)}`
 /** Short random suffix for a user-created node id. */
 const nodeId = () => `n-${crypto.randomUUID().slice(0, 8)}`
+const portIdMint = () => `p-${crypto.randomUUID().slice(0, 8)}`
+
+// ─── 006 — connection-port placement (pure helpers for onConnect / addPort) ───
+// Distinct name from migrate.ts's reuse tolerance (different purpose): this guards SLOT FREEDOM when
+// spreading dots along a side, and dedup of an auto/body-drop dot against a near-existing one.
+const PORT_SLOT_TOL = 0.06
+/** Preferred t-slots tried in order so repeated "create" connections spread dots along a side. */
+const PORT_T_SLOTS = [0.5, 0.3, 0.7, 0.2, 0.8, 0.15, 0.85, 0.4, 0.6, 0.1, 0.9]
+
+/** First slot on `side` not already occupied by a port (within PORT_SLOT_TOL); 0.5 if all are taken. */
+function firstFreeT(ports: ConnectionPort[], side: Side): number {
+  const taken = ports.filter((p) => p.side === side).map((p) => p.t)
+  return PORT_T_SLOTS.find((t) => !taken.some((u) => Math.abs(u - t) < PORT_SLOT_TOL)) ?? 0.5
+}
+
+/**
+ * Resolve one connection endpoint to a port id, creating a port when the user dropped on a side "add"
+ * handle (handle id is a Side, spread to a free slot) or on the node body (handle null ⇒ geometric
+ * autoPort facing the other node, reusing a near-existing dot rather than stacking). Reuses the dot when
+ * the handle id is an existing port. Returns the port id + updated nodes.
+ */
+function portForConnect(
+  nodes: CanvasNode[], targetNodeId: string, handle: string | null | undefined, otherNode: CanvasNode,
+): { portId: string; nodes: CanvasNode[] } {
+  const node = nodes.find((n) => n.id === targetNodeId)!
+  const ports = node.meta?.ports ?? []
+  if (handle && ports.some((p) => p.id === handle)) return { portId: handle, nodes }   // reuse the dot dropped on
+  const onSide = handle === 'top' || handle === 'right' || handle === 'bottom' || handle === 'left'
+  let side: Side, t: number
+  if (onSide) {
+    side = handle as Side
+    t = firstFreeT(ports, side)
+  } else {
+    const auto = autoPort(node, otherNode)
+    side = auto.side; t = auto.t
+    const hit = ports.find((p) => p.side === side && Math.abs(p.t - t) <= PORT_SLOT_TOL)
+    if (hit) return { portId: hit.id, nodes }   // reuse a nearby existing dot instead of stacking a duplicate
+  }
+  const port: ConnectionPort = { id: portIdMint(), side, t }
+  const nextNodes = nodes.map((n) => (n.id === targetNodeId ? { ...n, meta: { ...n.meta, ports: [...ports, port] } } : n))
+  return { portId: port.id, nodes: nextNodes }
+}
 
 /** Hydrate file nodes' markdown frontmatter into `meta` + bodies map; returns the next nodes + bodies. */
 async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>) {
@@ -199,13 +246,17 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     // 004 Phase 5 — one shared ladder for load + import: migrateDoc 0.1→0.2 (bake derived links: edges,
     // reading the now-hydrated frontmatter) → 0.3 (no-op version bump). Boards persist '0.3'.
     const { doc: migratedDoc, migrated } = migrateDoc({ ...doc, nodes })
+    // 006 — guarantee every edge endpoint resolves to a ConnectionPort so the renderer reads ports only
+    // (Decision 4). Migrated boards are already seeded; this heals hand/agent edges created at 0.5.
+    const ported = normalizePorts(migratedDoc)
+    const portsSeeded = ported !== migratedDoc
     let reviewState: ReviewState | null = null
-    if (migratedDoc.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
+    if (ported.flowcanvas.session.pendingReview) reviewState = await api.getReview(path).catch(() => null)
     // #2 / 005-D4 — auto-bind the living spine: when no core doc is bound and the board cites exactly one
     // source doc that EXISTS on disk, adopt it as session.coreDocPath (persisted on the next save) so the
     // spine appears with no manual pick. A cited-but-MISSING doc is left unbound on purpose — the spine
     // then surfaces a clear "spec not found" message (the agent referenced a doc it never wrote).
-    let next = migratedDoc
+    let next = ported
     let autobound = false
     if (!next.flowcanvas.session.coreDocPath) {
       const cited = citedDocPaths(nodes)
@@ -222,7 +273,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
       coreDocBody: coreBody, coreDocDraft: coreBody, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
       __hist: 'reset',                                            // #1 — a board switch starts a fresh undo history
     })
-    if (migrated || autobound) await get().save()   // persist the migrate upgrade and/or auto-bound core doc once
+    if (migrated || autobound || portsSeeded) await get().save()   // persist the migrate upgrade, auto-bound core doc, and/or seeded ports once
     const rev = get().doc?.flowcanvas.session.revision ?? next.flowcanvas.session.revision
     void api.putActive({ canvasRef: path, baseRevision: rev, intent: next.flowcanvas.session.intent ?? '' })
       .catch((e) => console.error('putActive failed', e))
@@ -248,15 +299,21 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
   onConnect(conn: Connection) {
     const { doc } = get()
     if (!doc || !conn.source || !conn.target || conn.source === conn.target) return
+    const src = doc.nodes.find((n) => n.id === conn.source)
+    const tgt = doc.nodes.find((n) => n.id === conn.target)
+    if (!src || !tgt) return
+    // 006 — connections anchor to DOTS (ports). The handle the user dragged from / dropped on is either an
+    // existing port (reuse the dot) or a side "add" handle (create a new dot on that side); the arrowhead
+    // then seats in the dot because the RF handle id equals the port id. Default flow type is 'reference'
+    // (neutral) — set the meaning from the legend afterward (Phase 3).
+    const a = portForConnect(doc.nodes, conn.source, conn.sourceHandle, tgt)
+    const b = portForConnect(a.nodes, conn.target, conn.targetHandle, src)
     const id = edgeId()
-    // 005-edges — new connections FLOAT by default (no pinned side): the rendered edge anchors to the
-    // node centers and meets each perimeter where the line crosses it, cutting the reading noise the
-    // handle-anchored edges caused. The Style panel can pin a side per edge afterward.
     const edge: CanvasEdge = {
-      id, fromNode: conn.source, toNode: conn.target,
-      label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' },
+      id, fromNode: conn.source, toNode: conn.target, fromPort: a.portId, toPort: b.portId,
+      label: '', meta: { origin: 'user', edgeType: 'reference' },
     }
-    set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
+    set({ doc: { ...doc, nodes: b.nodes, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
   },
   // Remove an edge from the doc so the deletion is durable (it neither resurrects on the next
   // controlled-state sync nor survives a save). v2: no `links:` write-back (Decision 4).
@@ -405,7 +462,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     const doc: FlowcanvasDoc = {
       nodes: [], edges: [],
       flowcanvas: {
-        schemaVersion: '0.4',
+        schemaVersion: '0.5',
         session: { title: 'Untitled board', intent: '', createdAt: now, updatedAt: now, revision: 0 },
         comments: [],
       },
@@ -540,6 +597,25 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     })
     set({ doc: { ...doc, edges }, dirty: true })
   },
+  // 006 — set an edge's semantic flow type. Applies the legend default by CLEARING the per-edge style
+  // overrides the type supersedes (color, line, fromEnd, toEnd) so the edge immediately reads as its type;
+  // the reusable color picker can re-override colour afterward (design Decision 3). `edgeType` resolves to
+  // `EDGE_TYPE_STYLE[type]` in the renderer + adapter.
+  setEdgeType(id: string, type: EdgeType) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => {
+      if (e.id !== id) return e
+      const meta = { ...e.meta, edgeType: type }
+      delete meta.line
+      const next: CanvasEdge = { ...e, meta }
+      delete next.color
+      delete next.fromEnd
+      delete next.toEnd
+      return next
+    })
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
   // ─── 005-edges — per-edge visual style. Each maps to a Style-panel control; the agent reaches the same
   // fields through the contract (AgentEdge), keeping human/agent parity ([[agent-feature-parity]]). ───
   setEdgeRouting(id: string, routing: EdgeRouting) {
@@ -606,6 +682,29 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
       return { ...e, meta }
     })
     set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // 006 — mint a new connection dot on a node side; returns its id (callers wire an edge endpoint to it).
+  addPort(nodeId, side, t) {
+    const { doc } = get()
+    if (!doc) return ''
+    const id = portIdMint()
+    const port: ConnectionPort = { id, side, t: Math.max(0, Math.min(1, t)) }
+    const nodes = doc.nodes.map((n) => (n.id === nodeId ? { ...n, meta: { ...n.meta, ports: [...(n.meta?.ports ?? []), port] } } : n))
+    set({ doc: { ...doc, nodes }, dirty: true })
+    return id
+  },
+  // 006 — slide an existing dot along the node perimeter (Alt-drag). Every edge anchored to it follows,
+  // since the renderer resolves the endpoint from the port's {side, t} (adapter → edge data).
+  movePort(nodeId, portId, side, t) {
+    const { doc } = get()
+    if (!doc) return
+    const tt = Math.max(0, Math.min(1, t))
+    const nodes = doc.nodes.map((n) => {
+      if (n.id !== nodeId || !n.meta?.ports) return n
+      const ports = n.meta.ports.map((p) => (p.id === portId ? { ...p, side, t: tt } : p))
+      return { ...n, meta: { ...n.meta, ports } }
+    })
+    set({ doc: { ...doc, nodes }, dirty: true })
   },
   setEditingEdge(id: string | null) {
     set({ editingEdgeId: id })
@@ -848,7 +947,9 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     const rel: RelationshipType = 'references'
     const edge: CanvasEdge = {
       id: edgeId(), fromNode: sourceNodeId, toNode: targetId,
-      label: 'references', toEnd: 'arrow', meta: { origin: 'user', rel },
+      // 006 — carry edgeType so the ref-nav edge styles consistently (else it falls to the 'reference'
+      // default only via the resolver; setting it explicitly keeps the contract uniform with onConnect).
+      label: 'references', toEnd: 'arrow', meta: { origin: 'user', rel, edgeType: 'reference' },
     }
     set({ doc: { ...cur, edges: [...cur.edges, edge] }, selectedIds: [targetId], focusNodeId: targetId, dirty: true })
   },

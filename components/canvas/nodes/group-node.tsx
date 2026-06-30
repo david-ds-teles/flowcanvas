@@ -1,12 +1,12 @@
 'use client'
 import { memo, useState, useRef, useEffect, type CSSProperties } from 'react'
-import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react'
+import { NodeResizer, type NodeProps } from '@xyflow/react'
 import type { GroupNode as CanvasGroupNode, NodeShape } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { useShiftKey } from './use-shift-key'
 import { NodeFormatBar } from './node-format-bar'
+import { PortHandles } from './port-handles'
 
-const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left]
 const SHAPES: { key: NodeShape; glyph: string; label: string }[] = [
   { key: 'rectangle', glyph: '▭', label: 'Rectangle' },
   { key: 'ellipse', glyph: '◯', label: 'Ellipse' },
@@ -127,7 +127,7 @@ function Inner({ id, selected, data }: NodeProps) {
         </div>
       </div>
 
-      {SIDES.map((p) => <Handle key={p} type="source" position={p} id={p} />)}
+      <PortHandles node={node} />
     </>
   )
 }

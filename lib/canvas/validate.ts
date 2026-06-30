@@ -21,7 +21,10 @@ export const flowcanvasDocSchema = z.object({
   nodes: z.array(node),
   edges: z.array(z.object({ id: z.string(), fromNode: z.string(), toNode: z.string() }).passthrough()),
   flowcanvas: z.object({
-    schemaVersion: z.enum(['0.1', '0.2', '0.3', '0.4']),
+    // 006: new edge fields (fromPort/toPort/meta.edgeType) + node meta.ports are NOT modeled here —
+    // they ride the existing .passthrough() on the edge object + nodeMeta, by design (the import
+    // validator preserves unmodeled fields; it is not a write-time normalizer).
+    schemaVersion: z.enum(['0.1', '0.2', '0.3', '0.4', '0.5']),
     session: z.object({ createdAt: z.string(), updatedAt: z.string(), revision: z.number() }).passthrough(),
     comments: z.array(z.unknown()),
   }).passthrough(),

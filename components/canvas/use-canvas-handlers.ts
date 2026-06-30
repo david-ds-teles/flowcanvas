@@ -13,6 +13,7 @@ import {
 import { toReactFlow } from '@/lib/canvas/adapter'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { isFileNode, nodeKind } from '@/lib/canvas/jsoncanvas'
+import { sideAndT } from '@/lib/canvas/ports'
 
 /**
  * All React Flow wiring for the canvas, extracted from `canvas-shell.tsx` (Phase 8, Fix 1) so the
@@ -30,7 +31,8 @@ export function useCanvasHandlers() {
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const openReader = useCanvasStore((s) => s.openReader)
-  const { getInternalNode } = useReactFlow()
+  const movePort = useCanvasStore((s) => s.movePort)
+  const { getInternalNode, screenToFlowPosition } = useReactFlow()
 
   const { nodes: rfNodes, edges: rfEdges } = useMemo(
     () => (doc ? toReactFlow(doc) : { nodes: [], edges: [] }),
@@ -95,6 +97,34 @@ export function useCanvasHandlers() {
       return changed ? next : prev
     })
   }, [selectedIds, setNodes])
+
+  // 006 — Alt-drag a connection dot to slide it along its node side (drag = connect, Alt-drag = move).
+  // A single window CAPTURE-phase listener runs before React Flow's handle pointerdown, so calling
+  // stopPropagation suppresses the connection-start and we drive movePort instead. Edges anchored to the
+  // dot follow because the renderer resolves the endpoint from the port {side,t} (adapter → edge data).
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (!e.altKey || e.button !== 0) return
+      const el = (e.target as HTMLElement | null)?.closest?.('.fc-port[data-fc-portid]') as HTMLElement | null
+      if (!el) return
+      const portId = el.dataset.fcPortid, nodeId = el.dataset.fcNodeid
+      if (!portId || !nodeId) return
+      e.preventDefault(); e.stopPropagation()
+      const move = (ev: PointerEvent) => {
+        const internal = getInternalNode(nodeId)
+        const w = internal?.measured?.width, h = internal?.measured?.height
+        if (!internal || !w || !h) return
+        const r = { x: internal.internals.positionAbsolute.x, y: internal.internals.positionAbsolute.y, width: w, height: h }
+        const { side, t } = sideAndT(r, screenToFlowPosition({ x: ev.clientX, y: ev.clientY }))
+        movePort(nodeId, portId, side, t)
+      }
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    return () => window.removeEventListener('pointerdown', onDown, true)
+  }, [getInternalNode, screenToFlowPosition, movePort])
 
   // A 'remove' edge change (Delete/Backspace on a selected edge) writes the deletion back to the doc
   // and, for a file↔file edge, strips the link from the source `.md` (Fix 5) before the base handler

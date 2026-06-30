@@ -64,6 +64,12 @@ describe('buildBrief', () => {
     expect(buildBrief(doc, 'b.canvas', new Map(), 'brief-x', 'now').intent).toBe('')
   })
 
+  it('echoes meta.edgeType so the agent reads the flow type (006 parity)', () => {
+    const doc = seed()
+    doc.edges = [{ id: 'e1', fromNode: 'n-design', toNode: 'n-plan', meta: { origin: 'user', edgeType: 'event' } }]
+    expect(buildBrief(doc, 'b.canvas', new Map(), 'brief-et', 'now').edges[0]).toMatchObject({ id: 'e1', edgeType: 'event' })
+  })
+
   it('scope-aware submit: a non-empty briefScope narrows nodes and drops out-of-scope edges + comments', () => {
     const doc = seed()
     doc.flowcanvas.session.briefScope = ['n-design']            // select only the design node
@@ -210,6 +216,22 @@ describe('v2 extraction surfaces', () => {
     const { next } = applyResponse(seed(), typed, counter(), 'now')
     expect(next.edges.find((e) => e.id === 'ag-rel1')).toMatchObject({ label: 'depends on', meta: { origin: 'agent', rel: 'depends-on' } })
     expect(next.edges.find((e) => e.id === 'ag-rel2')).toMatchObject({ label: 'related', meta: { origin: 'agent', rel: 'related' } })
+  })
+
+  it('threads agent edgeType onto created + updated edges (006 parity); created without it defaults to reference', () => {
+    const create: AgentResponse = { responseVersion: '0.1', briefId: 'brief-77a1', summary: '',
+      upsertEdges: [
+        { id: 'ag-et1', fromNode: 'n-design', toNode: 'n-note', edgeType: 'request' },   // explicit type
+        { id: 'ag-et2', fromNode: 'n-design', toNode: 'n-img' },                          // no type → 'reference'
+      ] }
+    const created = applyResponse(seed(), create, counter(), 'now').next
+    expect(created.edges.find((e) => e.id === 'ag-et1')!.meta).toMatchObject({ origin: 'agent', edgeType: 'request' })
+    expect(created.edges.find((e) => e.id === 'ag-et2')!.meta?.edgeType).toBe('reference')
+    // update an existing edge's flow type
+    const update: AgentResponse = { responseVersion: '0.1', briefId: 'brief-77a1', summary: '',
+      upsertEdges: [{ id: 'lk:n-design->n-plan', fromNode: 'n-design', toNode: 'n-plan', edgeType: 'dependency' }] }
+    const updated = applyResponse(seed(), update, counter(), 'now').next
+    expect(updated.edges.find((e) => e.id === 'lk:n-design->n-plan')!.meta?.edgeType).toBe('dependency')
   })
 
   it('preserves an existing group label when the agent updates the group without a label', () => {

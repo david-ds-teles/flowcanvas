@@ -11,7 +11,7 @@ function Inner({ id, selected, data }: NodeProps) {
   const name = node.file.split('/').pop() ?? node.file
   const [errored, setErrored] = useState(false)
   return (
-    <NodeResizeFrame id={id} selected={!!selected} minWidth={160} minHeight={120}>
+    <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={160} minHeight={120}>
       <div className="fc-node fc-node--img">
         <div className="fc-node__imgwrap">
           {errored ? (

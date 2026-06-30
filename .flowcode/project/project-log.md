@@ -14,6 +14,17 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [PLAN COMPLETE] 006-semantic-edges — Semantic Edges & Connection Ports — 2026-06-30
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Delivered:** Reworked the canvas edge system into three operator-locked specs + Shift-snap, schema `0.4 → 0.5`, full agent parity: dot-anchored **connection ports** (always-visible reusable dots · reuse-or-create on connect · Alt-drag to move · arrowhead seats IN the dot — replaces 005 floating endpoints), a reusable **`<ColorPicker>`** (edges + node text/fill), and **flow-typed edges** (an `EdgeType` taxonomy bound to one `EDGE_TYPE_STYLE` legend driving color/line/head, with an on-canvas legend that doubles as the type picker) + **Shift-snap** 45° line angles. New pure `lib/canvas/ports.ts`; new `components/canvas/{legend,nodes/port-handles}.tsx` + `components/ui/color-picker.tsx`. Boards upgrade + seed ports on open; agents reach `edgeType` via brief/generation-kit/MCP. Built on 005-edges.
+**Phases:** 4/4 — all complete (Schema & Pure-Lib Foundation · Ports Rendering & Interaction · Semantic Typing, Legend UI & ColorPicker · Agent Parity, Contract & Verification).
+**Artifacts:** `006-semantic-edges-{technical-overview,changelog,test-notes,qa-report,ui-design}.md`; 2 new + 9 refreshed module docs; `project-overview.md` propagated (schema `0.5`); showcase `examples/commerce-platform.canvas` (→ `0.5`).
+**Gates:** tsc 0 · lint 0 · vitest 239/239 · build ok · smoke:mcp PASS (8 tools) · smoke:render PASS · live CDP four-spec PASS (ports 5/5 · typed+legend+ColorPicker 6/6 · Shift-snap) · reviews PASS (Code Explorer audit 34/34 spec-match; plan-completion review in qa-report).
+**Follow-ups:** retire `meta.rel` one version after `0.5`; optional CSS rename of the stable `fc-relpick*`/`fc-edge-label__rel` handles; optional `EdgeLegend` single-`useStore` micro-opt. Commit held — operator controls commits; the working tree also carries open-migrated boards (`flowcanvas.canvas`, `boards/msgflow-mvp.canvas` → `0.5`).
+
+---
+
 ## [QUICKFIX] MCP board creation — agent can create a board from scratch; writes require an explicit canvasRef (anti-clobber) — 2026-06-30
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>

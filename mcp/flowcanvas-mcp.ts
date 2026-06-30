@@ -77,15 +77,15 @@ async function getCanvasDoc(ref: string): Promise<FlowcanvasDoc | null> {
   return doc;
 }
 
-/** A fresh empty board (schema 0.4) — the from-scratch starting point when apply_response targets a
- *  canvasRef that does not exist yet. Mirrors store.newBoard so an agent-created board is identical
- *  to a human File→New. */
+/** A fresh empty board (schema 0.5) — the from-scratch starting point when apply_response targets a
+ *  canvasRef that does not exist yet. Mirrors store.newBoard (006: born at 0.5) so an agent-created board
+ *  is identical to a human File→New. */
 function emptyBoard(title: string, now: string): FlowcanvasDoc {
   return {
     nodes: [],
     edges: [],
     flowcanvas: {
-      schemaVersion: "0.4",
+      schemaVersion: "0.5",
       session: { title, intent: "", createdAt: now, updatedAt: now, revision: 0 },
       comments: [],
     },

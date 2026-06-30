@@ -62,7 +62,7 @@ function Inner({ id, selected, data }: NodeProps) {
   const anchor = node.meta?.source?.anchor
 
   return (
-    <NodeResizeFrame id={id} selected={!!selected} minWidth={180} minHeight={96}>
+    <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={180} minHeight={96}>
       <div
         className={cn('fc-cmp', meta ? `fc-cmp--${kind}` : 'fc-cmp--unknown')}
         data-testid="component-node"

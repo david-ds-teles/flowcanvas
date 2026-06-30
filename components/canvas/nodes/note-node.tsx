@@ -37,7 +37,7 @@ function Inner({ id, selected, data }: NodeProps) {
   }
 
   return (
-    <NodeResizeFrame id={id} selected={!!selected} minWidth={180} minHeight={120}>
+    <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={180} minHeight={120}>
       {selected && <NodeFormatBar id={id} node={node} />}
       <div className="fc-node--note" style={noteStyle} onDoubleClick={() => { setDraft(node.text); setEditing(true) }}>
         <span className="fc-note__kicker">note</span>
