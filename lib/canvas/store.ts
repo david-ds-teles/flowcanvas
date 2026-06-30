@@ -20,6 +20,12 @@ import * as api from '../api'
 /** Canvas interaction mode — drives the toolbar's mode group and the comment layer's click capture. */
 export type CanvasMode = 'select' | 'connect' | 'comment'
 
+/** 007 — an armed click-to-connect: the source is picked and a cursor-following line is drawing, waiting
+ *  for the user to click a target dot/node (land) or press Esc / click empty space (cancel). `fromHandle`
+ *  is an existing port id OR a Side string (a hover "add" handle) — the actual dot is only minted on land,
+ *  so an aborted arm never leaves a stray dot. */
+export type PendingConnection = { fromNode: string; fromHandle: string }
+
 /** Reader drawer width preset — drawer (440px) · half (50vw) · full (100vw). */
 export type ReaderSize = 'drawer' | 'half' | 'full'
 
@@ -30,6 +36,7 @@ interface CanvasState {
   dirty: boolean
   mode: CanvasMode                   // UI-only: select / connect / comment (transient, never persisted)
   editingEdgeId: string | null       // UI-only: edge whose label is being edited inline (transient)
+  connecting: PendingConnection | null  // 007: armed click-to-connect — source dot picked, cursor-line drawing (transient)
   readerNodeId: string | null        // UI-only: markdown node open in the reader drawer (transient)
   readerSize: ReaderSize             // UI-only: reader width preset (transient, never persisted)
   selectedIds: string[]              // UI-only: ids in the current multi-selection (transient, never persisted)
@@ -47,6 +54,12 @@ interface CanvasState {
   bodyFor: (id: string) => string | undefined
   toggleCollapsed: (id: string) => void
   onConnect: (conn: Connection) => void
+  // 007 — click-to-connect (replaces drag-to-connect). beginConnect arms from a source dot (existing
+  // port id) or a side "add" handle (a Side string → mints a centered dot); completeConnect lands on a
+  // target dot / side / node body (null handle → geometric autoPort); cancelConnect aborts (Esc / empty).
+  beginConnect: (nodeId: string, handle: string) => void
+  completeConnect: (nodeId: string, handle: string | null) => void
+  cancelConnect: () => void
   removeEdgeWriteback: (id: string) => void
   removeNode: (id: string) => void                                                 // delete a node + its edges/comments (orphan group children)
   newBoard: () => Promise<void>                                                    // create + adopt a fresh empty board
@@ -175,6 +188,12 @@ function portForConnect(
   return { portId: port.id, nodes: nextNodes }
 }
 
+/** A fresh user-drawn edge anchored to two ports. Default flow type is the neutral 'reference' (the
+ *  meaning is set from the legend afterward). Shared by onConnect (legacy drag) and completeConnect (click). */
+function makeUserEdge(fromNode: string, fromPort: string, toNode: string, toPort: string): CanvasEdge {
+  return { id: edgeId(), fromNode, toNode, fromPort, toPort, label: '', meta: { origin: 'user', edgeType: 'reference' } }
+}
+
 /** Hydrate file nodes' markdown frontmatter into `meta` + bodies map; returns the next nodes + bodies. */
 async function hydrateFiles(nodes: CanvasNode[], bodies: Record<string, string>) {
   const files = nodes.filter(isFileNode)
@@ -251,7 +270,7 @@ const withHistory =
   }
 
 export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
-  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null, revealCommentsNodeId: null, past: [], future: [],
+  path: null, doc: null, bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, connecting: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null, revealCommentsNodeId: null, past: [], future: [],
   coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
   bodyFor: (id) => get().bodies[id],
   // Canvas-authoritative load (Decision 4): doc.edges from disk are truth — no per-load reconcile.
@@ -287,7 +306,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     const coreDocPath = next.flowcanvas.session.coreDocPath
     const coreBody = coreDocPath ? await api.readFileApi(coreDocPath).catch(() => null) : null
     set({
-      path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [],
+      path, doc: next, bodies, dirty: false, reviewState, focusNodeId: null, selectedIds: [], connecting: null,
       coreDocBody: coreBody, coreDocDraft: coreBody, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
       __hist: 'reset',                                            // #1 — a board switch starts a fresh undo history
     })
@@ -326,12 +345,35 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     // (neutral) — set the meaning from the legend afterward (Phase 3).
     const a = portForConnect(doc.nodes, conn.source, conn.sourceHandle, tgt)
     const b = portForConnect(a.nodes, conn.target, conn.targetHandle, src)
-    const id = edgeId()
-    const edge: CanvasEdge = {
-      id, fromNode: conn.source, toNode: conn.target, fromPort: a.portId, toPort: b.portId,
-      label: '', meta: { origin: 'user', edgeType: 'reference' },
-    }
-    set({ doc: { ...doc, nodes: b.nodes, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
+    const edge = makeUserEdge(conn.source, a.portId, conn.target, b.portId)
+    set({ doc: { ...doc, nodes: b.nodes, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: edge.id })
+  },
+  // 007 — arm a connection from a source. `handle` is an existing port id (reuse the dot) or a Side string
+  // from a hover "add" handle. Pure UI set (no dot minted yet — that happens on land, so an aborted arm
+  // leaves nothing behind); the overlay draws a cursor-following line from the resolved source point.
+  beginConnect(nodeId: string, handle: string) {
+    const { doc } = get()
+    if (!doc || !doc.nodes.some((n) => n.id === nodeId)) return
+    set({ connecting: { fromNode: nodeId, fromHandle: handle } })
+  },
+  // 007 — land the armed connection on a target. The target `handle` is a port id, a Side string, or null
+  // (clicked the node body → geometric autoPort facing the source); BOTH endpoint dots are minted/reused
+  // here. Self-connections are rejected; the new edge opens its inline label editor (type/style stay
+  // changeable afterward via the legend).
+  completeConnect(nodeId: string, handle: string | null) {
+    const { doc, connecting } = get()
+    if (!doc || !connecting || nodeId === connecting.fromNode) { set({ connecting: null }); return }
+    const src = doc.nodes.find((n) => n.id === connecting.fromNode)
+    const tgt = doc.nodes.find((n) => n.id === nodeId)
+    if (!src || !tgt) { set({ connecting: null }); return }
+    const a = portForConnect(doc.nodes, connecting.fromNode, connecting.fromHandle, tgt)
+    const b = portForConnect(a.nodes, nodeId, handle, src)
+    const edge = makeUserEdge(connecting.fromNode, a.portId, nodeId, b.portId)
+    set({ doc: { ...doc, nodes: b.nodes, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: edge.id, connecting: null })
+  },
+  // 007 — abort the armed connection (Esc, click on empty space, or click back on the source).
+  cancelConnect() {
+    if (get().connecting) set({ connecting: null })
   },
   // Remove an edge from the doc so the deletion is durable (it neither resurrects on the next
   // controlled-state sync nor survives a save). v2: no `links:` write-back (Decision 4).
@@ -485,7 +527,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
         comments: [],
       },
     }
-    set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], readerNodeId: null,
+    set({ path, doc, bodies: {}, dirty: false, reviewState: null, focusNodeId: null, selectedIds: [], connecting: null, readerNodeId: null,
       coreDocBody: null, coreDocDraft: null, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [], __hist: 'reset' })
     doc.flowcanvas.session.revision = await api.saveCanvas(path, doc)
     if (typeof window !== 'undefined') {

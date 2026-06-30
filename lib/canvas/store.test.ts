@@ -24,7 +24,7 @@ function seed(): FlowcanvasDoc {
 }
 
 beforeEach(() => {
-  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null })
+  useCanvasStore.setState({ path: 'x.canvas', doc: seed(), bodies: {}, dirty: false, mode: 'select', editingEdgeId: null, connecting: null, readerNodeId: null, readerSize: 'drawer', selectedIds: [], reviewState: null, focusNodeId: null })
 })
 
 describe('store / onConnect (v2 — typed user edges)', () => {
@@ -99,6 +99,69 @@ describe('store / connection ports (006)', () => {
     const topPorts = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'b')!.meta!.ports!.filter((p) => p.side === 'top')
     expect(topPorts.length).toBe(2)                  // two dots on b's top side
     expect(topPorts[0].t).not.toBe(topPorts[1].t)    // spread, not stacked
+  })
+})
+
+describe('store / click-to-connect (007)', () => {
+  it('beginConnect arms from a side handle WITHOUT minting a dot; completeConnect lands the edge with both ports', () => {
+    useCanvasStore.getState().beginConnect('b', 'right')
+    const armed = useCanvasStore.getState()
+    expect(armed.connecting).toEqual({ fromNode: 'b', fromHandle: 'right' })
+    expect(armed.doc!.nodes.find((n) => n.id === 'b')!.meta?.ports ?? []).toHaveLength(0)  // no dot yet (deferred to land)
+
+    useCanvasStore.getState().completeConnect('a', 'left')
+    const { doc, connecting, editingEdgeId, dirty } = useCanvasStore.getState()
+    expect(connecting).toBeNull()                                                          // disarmed on land
+    const minted = doc!.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
+    expect(minted).toMatchObject({ label: '', meta: { origin: 'user', edgeType: 'reference' } })
+    const b = doc!.nodes.find((n) => n.id === 'b')!
+    const a = doc!.nodes.find((n) => n.id === 'a')!
+    expect(b.meta!.ports!.some((p) => p.id === minted.fromPort && p.side === 'right')).toBe(true)
+    expect(a.meta!.ports!.some((p) => p.id === minted.toPort && p.side === 'left')).toBe(true)
+    expect(editingEdgeId).toBe(minted.id)                                                  // inline label editor opens
+    expect(dirty).toBe(true)
+  })
+
+  it('beginConnect reuses an existing dot id as the source port on land (no extra dot)', () => {
+    const pid = useCanvasStore.getState().addPort('b', 'top', 0.5)
+    const before = useCanvasStore.getState().doc!.nodes.find((n) => n.id === 'b')!.meta!.ports!.length
+    useCanvasStore.getState().beginConnect('b', pid)
+    useCanvasStore.getState().completeConnect('a', 'left')
+    const doc = useCanvasStore.getState().doc!
+    const minted = doc.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
+    expect(minted.fromPort).toBe(pid)                                                       // source dot reused
+    expect(doc.nodes.find((n) => n.id === 'b')!.meta!.ports!.length).toBe(before)           // no extra dot on b
+  })
+
+  it('completeConnect on the node BODY (null handle) lands on a geometric autoPort facing the source', () => {
+    useCanvasStore.getState().beginConnect('a', 'right')
+    useCanvasStore.getState().completeConnect('b', null)                                    // clicked b's body
+    const doc = useCanvasStore.getState().doc!
+    // the seed already carries a links a->b edge, so select the freshly-minted USER edge specifically
+    const minted = doc.edges.find((e) => e.fromNode === 'a' && e.toNode === 'b' && e.meta?.origin === 'user')!
+    const tp = doc.nodes.find((n) => n.id === 'b')!.meta!.ports!.find((p) => p.id === minted.toPort)!
+    expect(tp.side).toBe('left')                                                            // b sits right of a → ray enters b's left
+  })
+
+  it('completeConnect rejects a self-connection and disarms (no edge minted)', () => {
+    const edgesBefore = useCanvasStore.getState().doc!.edges.length
+    useCanvasStore.getState().beginConnect('a', 'right')
+    useCanvasStore.getState().completeConnect('a', 'left')                                  // landed back on the source node
+    expect(useCanvasStore.getState().doc!.edges).toHaveLength(edgesBefore)                  // unchanged — no self-edge
+    expect(useCanvasStore.getState().connecting).toBeNull()                                 // disarmed
+  })
+
+  it('cancelConnect aborts an armed connection without mutating the doc (no history churn)', () => {
+    useCanvasStore.getState().beginConnect('a', 'right')
+    const docRef = useCanvasStore.getState().doc
+    useCanvasStore.getState().cancelConnect()
+    expect(useCanvasStore.getState().connecting).toBeNull()
+    expect(useCanvasStore.getState().doc).toBe(docRef)                                      // same reference — pure UI reset
+  })
+
+  it('beginConnect on a missing node is a no-op (stays disarmed)', () => {
+    useCanvasStore.getState().beginConnect('zzz', 'right')
+    expect(useCanvasStore.getState().connecting).toBeNull()
   })
 })
 

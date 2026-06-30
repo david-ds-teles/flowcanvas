@@ -12,7 +12,8 @@
     "gen:contract": "tsx scripts/gen-contract.ts",
     "smoke:mcp": "node scripts/smoke-mcp.mjs",
     "smoke:render": "node scripts/smoke-render.mjs",
-    "smoke": "node scripts/smoke-mcp.mjs && node scripts/smoke-render.mjs"
+    "smoke": "node scripts/smoke-mcp.mjs && node scripts/smoke-render.mjs",
+    "verify:connect": "node scripts/verify-connect.mjs"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",

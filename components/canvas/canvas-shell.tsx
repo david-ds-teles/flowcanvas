@@ -29,6 +29,7 @@ import { ComponentNode } from './nodes/component-node'
 import { LabeledEdge } from './edges/labeled-edge'
 import { CommentLayer } from './comment-layer'
 import { EdgeLegend } from './legend'
+import { ConnectionOverlay } from './connection-overlay'
 import { CanvasToolbar } from './canvas-toolbar'
 import { Dropzone } from './dropzone'
 import { TemplateDropLayer } from './template-drop'
@@ -94,6 +95,7 @@ function CanvasFlow() {
   const doc = useCanvasStore((s) => s.doc)
   const load = useCanvasStore((s) => s.load)
   const mode = useCanvasStore((s) => s.mode)
+  const connecting = useCanvasStore((s) => s.connecting)
   const readerNodeId = useCanvasStore((s) => s.readerNodeId)
   const closeReader = useCanvasStore((s) => s.closeReader)
   const openReader = useCanvasStore((s) => s.openReader)
@@ -279,7 +281,7 @@ function CanvasFlow() {
         {/* CENTER canvas */}
         <div className="fc-studio__center">
           <ReactFlow
-            className={mode === 'connect' ? 'fc-rf--connect' : undefined}
+            className={cn(mode === 'connect' && 'fc-rf--connect', connecting && 'fc-rf--connecting') || undefined}
             nodes={rfNodes}
             edges={handlers.edges}
             onNodesChange={handlers.onNodesChange}
@@ -311,6 +313,7 @@ function CanvasFlow() {
             <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--color-grid)" />
             <Controls />
             <MiniMap nodeColor="#8083ff" nodeStrokeColor="#5ef2ff" maskColor="rgba(11,19,38,0.72)" pannable zoomable />
+            <ConnectionOverlay />   {/* 007 — animated cursor-following line while a connection is armed */}
           </ReactFlow>
 
           <Dropzone />

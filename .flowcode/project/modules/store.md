@@ -280,8 +280,8 @@ addPort(nodeId: string, side: Side, t: number): string
 
 // lib/canvas/store.ts:678
 movePort(nodeId: string, portId: string, side: Side, t: number): void
-// Slide an existing dot to a new {side, t} (Alt-drag). Every edge whose fromPort or toPort equals
-// portId follows automatically — the renderer resolves the endpoint from the port's {side, t}.
+// Slide an existing dot to a new {side, t} (007: plain DRAG of the dot — no longer Alt). Every edge whose
+// fromPort or toPort equals portId follows automatically — the renderer resolves the endpoint from {side, t}.
 ```
 
 Private helpers (not exported; used only within `onConnect`):
@@ -664,3 +664,14 @@ Phase 3 adds the `setEdgeType` action and makes `navigateRef` carry `meta.edgeTy
 - `setEdgeType(id, type)` (`store.ts:604`): new public action — sets `meta.edgeType` to the chosen `EdgeType` (`'data-flow'|'request'|'response'|'event'|'dependency'|'reference'`) and **clears** the four per-edge overrides that the type supersedes (`color`, `meta.line`, `fromEnd`, `toEnd`), so the edge immediately reads its semantic defaults from `EDGE_TYPE_STYLE[type]` in the renderer/adapter. The reusable `<ColorPicker>` can re-override `color` afterward (design Decision 3) — that is why only these four fields are cleared and not `color` permanently.
 - `navigateRef` (`store.ts:952`): the reference edge it mints now also carries `meta.edgeType: 'reference'` in addition to `rel: 'references'`. This makes ref-nav edges consistent with `onConnect`-drawn edges, which have always set `edgeType` since Phase 1.
 - `EdgeType` is imported from `lib/canvas/jsoncanvas.ts:3` (already present in the import line; no new import added).
+
+## Update 2026-06-30 — 007 click-to-connect (transient `connecting` state + 3 actions)
+
+The [QUICKFIX] connection-UX rework replaces React-Flow drag-to-connect with click-to-connect; the store gained one transient field and three actions (the geometry/persistence model is unchanged — ports + `makeUserEdge`).
+
+- `connecting: PendingConnection | null` — new transient UI state (`{ fromNode: string; fromHandle: string }`, exported type). Set while a connection is armed (a source dot/side was clicked and the cursor line is drawing). Defaulted `null`; reset on every board `load`/`openBoard`; never persisted; not part of undo history (it never mutates `doc`).
+- `beginConnect(nodeId, handle)` — arm a connection. `handle` is an existing port id (reuse) or a `Side` string (a hover "add" handle). **Mints no dot** — it only sets `connecting`, so an aborted arm leaves nothing behind.
+- `completeConnect(nodeId, handle)` — land the armed connection. `handle` is a target port id, a `Side`, or `null` (node body → geometric `autoPort` facing the source). Resolves BOTH endpoint ports here via `portForConnect`, mints the edge via the shared `makeUserEdge`, opens its inline label editor, clears `connecting`. Self-connections are rejected (disarms).
+- `cancelConnect()` — abort the arm (Esc / click empty space / click back on the source). Pure UI reset; leaves `doc` untouched (`===` identity preserved → no history churn).
+- `onConnect` was refactored onto the shared private `makeUserEdge(fromNode, fromPort, toNode, toPort)` helper (no behaviour change) so the legacy drag path and the new click path mint identical edges.
+- Driven by the canvas-level pointer listener in `use-canvas-handlers.ts` (tap = arm/land, drag a real dot = `movePort`, Esc = cancel) and visualised by the new `components/canvas/connection-overlay.tsx`. No schema change; agent parity unaffected (`ports` + `edgeType` were already in the contract).

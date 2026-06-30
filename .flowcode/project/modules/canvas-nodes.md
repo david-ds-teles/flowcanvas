@@ -111,9 +111,11 @@ export function CanvasMarkdown({
 // ── 006-semantic-edges ──────────────────────────────────────────────────────
 
 // port-handles.tsx:25 — renders one always-visible dot per node.meta.ports entry (Handle id = port id,
-// positioned at {side,t} via inline offset CSS) PLUS four faint side "add" handles (id = the Side).
-// Dot carries data-fc-portid / data-fc-nodeid for the Alt-drag capture listener in use-canvas-handlers.
-// commentMode suppression is handled one level up in NodeResizeFrame.
+// positioned at {side,t} via inline offset CSS) PLUS four hover-revealed side "add" handles (id = the Side).
+// 007: each carries data-fc-nodeid (+ data-fc-portid on real dots, data-fc-side on add handles) for the
+// canvas-level pointer listener in use-canvas-handlers — TAP a dot/side to arm a connection, TAP a target
+// to land, DRAG a real dot to slide it along the border (replaces 006's drag-to-connect + Alt-drag-to-move).
+// The armed cursor line is drawn by connection-overlay.tsx. commentMode suppression is one level up in NodeResizeFrame.
 export function PortHandles({ node }: { node: CanvasNode }): JSX.Element
 
 // node-frame.tsx:9-16 — props for the shared resize+port wrapper; all non-group card nodes pass these.
@@ -435,3 +437,24 @@ Cross-reference full project gates in `.flowcode/quality-checks/quality-gates.md
 
 - ~~`NodeResizeFrame` leaf-node migration pending.~~ [RESOLVED 006-semantic-edges] All five leaf nodes (`MarkdownNode`, `ImageNode`, `LinkChipNode`, `NoteNode`, `FallbackNode`) now use `NodeResizeFrame` with a `node` prop; `GroupNode` and `FallbackNode` render `<PortHandles>` directly. No inline `SIDES.map()` blocks remain in any node file.
 - The `import` origin label sub-element rule (`.fc-edge-label--import .fc-edge-label__rel`) lives in `app/styles/studio-shell.css:126` rather than `app/styles/edges.css` where the other origin modifier classes sit. A future style consolidation pass should move it.
+
+## Update 2026-06-30 — ComponentNode renders its spec body inline
+
+`component-node.tsx` previously showed only glyph + name + kind eyebrow + a one-line role + `§source` chip;
+the rich `.md` body was reachable only via the reader (double-click). Operator wanted the widget itself to
+be detail-rich. It now renders the file node's full body INLINE: when `node.type === 'file'` and `bodyFor(id)`
+is non-empty, it draws a scrollable `<div className="fc-cmp__body nodrag nowheel">` containing
+`<CanvasMarkdown>{body}</CanvasMarkdown>` (the lightweight react-markdown renderer) instead of the one-line
+`.fc-cmp__role` (which remains the fallback for non-file/empty widgets). New CSS in `app/styles/nodes.css`
+(`.fc-cmp__body`): scrollable region (`overflow-y:auto`, `overscroll-behavior:contain`), `**labels**` (`strong`)
+tinted with the kind accent `--kc`, `code` chips, thin kind-tinted scrollbar. Generated component cards are
+sized ~360×280 so the detail is visible on the canvas. Pairs with the richer card content from
+`generation-kit.md` and the thin-card warning in `brief.md`.
+
+**Drag + contrast (operator follow-up, same day):** the body div carries `nowheel` only — NOT `nodrag`
+(an early version had `nodrag`, which made the card undraggable from the body and fought the inner scroll).
+So a press-drag anywhere on the card moves the node (RF), the wheel scrolls the body (`nowheel`), and
+`user-select:none` stops a text-selection fight. The `§source` chip keeps `nodrag nopan`. Readability:
+`.fc-cmp__h` is a kind-tinted near-solid **header contrast band** (`color-mix(--kc 18%, rgba(9,13,24,.92))`,
+1px accent border, 9px radius) and the card base fill was raised from `.55` to `.9` opacity so the glass
+widget is legible over the canvas. CDP-verified: an inner component moves from a body press-drag.

@@ -31,6 +31,9 @@ export function useCanvasHandlers() {
   const selectedIds = useCanvasStore((s) => s.selectedIds)
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
   const movePort = useCanvasStore((s) => s.movePort)
+  const beginConnect = useCanvasStore((s) => s.beginConnect)
+  const completeConnect = useCanvasStore((s) => s.completeConnect)
+  const cancelConnect = useCanvasStore((s) => s.cancelConnect)
   const { getInternalNode, screenToFlowPosition } = useReactFlow()
 
   const { nodes: rfNodes, edges: rfEdges } = useMemo(
@@ -97,33 +100,80 @@ export function useCanvasHandlers() {
     })
   }, [selectedIds, setNodes])
 
-  // 006 — Alt-drag a connection dot to slide it along its node side (drag = connect, Alt-drag = move).
-  // A single window CAPTURE-phase listener runs before React Flow's handle pointerdown, so calling
-  // stopPropagation suppresses the connection-start and we drive movePort instead. Edges anchored to the
-  // dot follow because the renderer resolves the endpoint from the port {side,t} (adapter → edge data).
+  // 007 — click-to-connect + drag-to-move on connection dots. A single window CAPTURE-phase pointerdown
+  // listener runs before React Flow's handle logic, so we own the gesture entirely (stopPropagation
+  // suppresses RF's drag-connect and node selection). It replaces 006's drag-to-connect + Alt-drag-to-move:
+  //   • not armed — TAP a dot/side handle ⇒ beginConnect (arm); DRAG a real dot ⇒ movePort along the border.
+  //   • armed (connecting != null) — the next pointerdown LANDS or CANCELS: on a target dot/side ⇒ land there;
+  //     on a target node body ⇒ land via autoPort; on the source node or empty space ⇒ cancel.
+  // Edges anchored to a dot follow it because the renderer resolves the endpoint from the port {side,t}.
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
-      if (!e.altKey || e.button !== 0) return
-      const el = (e.target as HTMLElement | null)?.closest?.('.fc-port[data-fc-portid]') as HTMLElement | null
-      if (!el) return
-      const portId = el.dataset.fcPortid, nodeId = el.dataset.fcNodeid
-      if (!portId || !nodeId) return
+      if (e.button !== 0) return
+      const st = useCanvasStore.getState()
+      const target = e.target as HTMLElement | null
+      const portEl = target?.closest?.('.fc-port[data-fc-portid]') as HTMLElement | null
+      const addEl = target?.closest?.('.fc-port-add') as HTMLElement | null
+
+      // ── armed: this pointerdown decides the landing ──
+      if (st.connecting) {
+        e.preventDefault(); e.stopPropagation()
+        if (portEl?.dataset.fcNodeid && portEl.dataset.fcPortid) { completeConnect(portEl.dataset.fcNodeid, portEl.dataset.fcPortid); return }
+        if (addEl?.dataset.fcNodeid && addEl.dataset.fcSide) { completeConnect(addEl.dataset.fcNodeid, addEl.dataset.fcSide); return }
+        const nodeId = (target?.closest?.('.react-flow__node') as HTMLElement | null)?.dataset.id
+        if (nodeId) completeConnect(nodeId, null)   // node body → autoPort (self-connect guarded in store)
+        else cancelConnect()                         // empty pane / chrome → give up
+        return
+      }
+
+      // ── not armed: a dot or side "add" handle starts the gesture ──
+      if (!portEl && !addEl) return
+      const el = (portEl ?? addEl)!
+      const nodeId = el.dataset.fcNodeid
+      if (!nodeId) return
       e.preventDefault(); e.stopPropagation()
+      const portId = portEl?.dataset.fcPortid
+      const side = addEl?.dataset.fcSide
+      const start = { x: e.clientX, y: e.clientY }
+      let dragging = false
       const move = (ev: PointerEvent) => {
+        if (!dragging && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return
+        dragging = true
+        if (!portId) return   // side "add" handles aren't draggable — a tap connects from the side centre
         const internal = getInternalNode(nodeId)
         const w = internal?.measured?.width, h = internal?.measured?.height
         if (!internal || !w || !h) return
         const r = { x: internal.internals.positionAbsolute.x, y: internal.internals.positionAbsolute.y, width: w, height: h }
-        const { side, t } = sideAndT(r, screenToFlowPosition({ x: ev.clientX, y: ev.clientY }))
-        movePort(nodeId, portId, side, t)
+        const { side: s, t } = sideAndT(r, screenToFlowPosition({ x: ev.clientX, y: ev.clientY }))
+        // Free along the border by default ("anywhere"); hold Shift to snap to magnet points — the side
+        // centre (0.5) and its two corners (0 / 1), mirroring the Shift-snap on edge bends.
+        const snapped = ev.shiftKey ? [0, 0.5, 1].reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a), 0.5) : t
+        movePort(nodeId, portId, s, snapped)
       }
-      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+      const up = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        if (!dragging) beginConnect(nodeId, portId ?? side!)   // a clean tap arms the connection
+      }
       window.addEventListener('pointermove', move)
       window.addEventListener('pointerup', up)
     }
     window.addEventListener('pointerdown', onDown, true)
     return () => window.removeEventListener('pointerdown', onDown, true)
-  }, [getInternalNode, screenToFlowPosition, movePort])
+  }, [getInternalNode, screenToFlowPosition, movePort, beginConnect, completeConnect, cancelConnect])
+
+  // 007 — Esc aborts the armed connection (and closes an open inline edge-label editor) so the
+  // cursor-following line never gets stuck when the user changes their mind mid-connection.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const st = useCanvasStore.getState()
+      if (st.connecting) { e.preventDefault(); cancelConnect() }
+      else if (st.editingEdgeId) setEditingEdge(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [cancelConnect, setEditingEdge])
 
   // A 'remove' edge change (Delete/Backspace on a selected edge) writes the deletion back to the doc
   // and, for a file↔file edge, strips the link from the source `.md` (Fix 5) before the base handler

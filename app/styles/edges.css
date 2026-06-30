@@ -122,31 +122,138 @@
 /* Off-screen holder for the shared <marker> defs (configurable arrowheads; edges reference url(#id)). */
 .fc-edge-markers { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 
-/* 006 — connection ports. The per-port dots (.fc-port) are ALWAYS visible (subtle filled) so edges
-   clearly anchor to real, reusable, movable dots and the arrowhead seats inside. The four faint side
-   "add" handles (.fc-port-add) stay hidden at rest and fade in on node hover / connect mode (so any node,
-   even one with no ports yet, can start a connection — which creates a dot on that side) — board reads clean. */
+/* 006/007 — connection ports. The per-port dots (.fc-port) — where existing edges attach — are ALWAYS
+   visible and grabbable (drag to slide along the border, click to start a new connection). The four side
+   "add" handles (.fc-port-add, centred on each side) START a new connection and stay hidden at rest,
+   revealing on node hover / connect mode / while a connection is armed (.fc-rf--connecting). 007 gestures:
+   click a dot or side to arm · click a target dot/node to land · drag a dot to move it · Esc to cancel. */
 .react-flow .react-flow__handle { transition: opacity .12s ease, background .14s ease, box-shadow .14s ease; }
-.react-flow .react-flow__handle.fc-port-add { opacity: 0; }
-.react-flow .react-flow__node:hover .react-flow__handle.fc-port-add,
-.react-flow .react-flow__handle.fc-port-add:hover,
-.react-flow .react-flow__handle.fc-port-add.connectingfrom,
-.react-flow .react-flow__handle.fc-port-add.connectingto,
-.fc-rf--connect .react-flow__handle.fc-port-add { opacity: 1; }
 
-/* Always-visible port dot — subtler than the loud connect handle; brightens on hover, cyan on valid drop. */
-.react-flow .react-flow__handle.fc-port {
-  opacity: 1;
-  width: 9px;
-  height: 9px;
+/* The four side "add" handles (centred on each side) START a NEW connection. Hidden at rest; reveal on node
+   hover, in connect mode, and across the board while a connection is armed. Dashed to read as "add here". */
+.react-flow .react-flow__handle.fc-port-add {
+  opacity: 0;
+  width: 12px;
+  height: 12px;
   background: var(--color-surface-highest);
-  border: 1.5px solid var(--color-primary);
+  border: 1.5px dashed var(--color-primary);
   box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55);
   cursor: crosshair;
 }
-.react-flow .react-flow__handle.fc-port:hover { background: var(--color-primary); box-shadow: 0 0 10px -1px var(--color-primary); }
-.react-flow .react-flow__handle.fc-port.connectingto,
-.react-flow .react-flow__handle.fc-port.valid { background: var(--color-neon-cyan); border-color: var(--color-neon-cyan); }
+.react-flow .react-flow__node:hover .react-flow__handle.fc-port-add,
+.react-flow .react-flow__handle.fc-port-add:hover,
+.fc-rf--connect .react-flow__handle.fc-port-add,
+.fc-rf--connecting .react-flow__handle.fc-port-add { opacity: 1; }
+
+/* 007 — the connection dot. ALWAYS visible (the operator's "the connection starts from a circle") and the
+   thing you GRAB to slide along the border. A 22px TRANSPARENT hit pad (research: 24–32px target) paints a
+   10px visible dot via ::before; cursor:grab/grabbing signals draggability. Click it to start a NEW
+   connection, drag it to reposition. NB: never override `transform` — React Flow uses it to centre the handle
+   on its side; we animate the ::before (scale + box-shadow ring) so the dot stays anchored to its perimeter. */
+.react-flow .react-flow__handle.fc-port {
+  opacity: 1;
+  width: 22px;
+  height: 22px;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  cursor: grab;
+}
+.react-flow .react-flow__handle.fc-port:active { cursor: grabbing; }
+.react-flow .react-flow__handle.fc-port::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--color-surface-highest);
+  border: 1.5px solid var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55);
+  transition: background .14s ease, box-shadow .14s ease, transform .12s ease, border-color .14s ease;
+}
+.react-flow .react-flow__handle.fc-port:hover::before {
+  background: var(--color-primary);
+  box-shadow: 0 0 11px -1px var(--color-primary);
+  transform: scale(1.25);
+}
+
+/* While armed, a hovered target dot pulses cyan + grows — the "a connection is about to happen" cue. The
+   .fc-port dot pulses via its ::before; the dashed "add" handle (no ::before) pulses on the element itself. */
+.react-flow.fc-rf--connecting .react-flow__node:hover .react-flow__handle.fc-port::before,
+.react-flow.fc-rf--connecting .react-flow__handle.fc-port:hover::before {
+  background: var(--color-neon-cyan);
+  border-color: var(--color-neon-cyan);
+  transform: scale(1.4);
+  animation: fc-port-pulse 1.1s ease-in-out infinite;
+}
+.react-flow.fc-rf--connecting .react-flow__node:hover .react-flow__handle.fc-port-add,
+.react-flow.fc-rf--connecting .react-flow__handle.fc-port-add:hover {
+  background: var(--color-neon-cyan);
+  border-color: var(--color-neon-cyan);
+  border-style: solid;
+  animation: fc-port-pulse 1.1s ease-in-out infinite;
+}
+@keyframes fc-port-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55), 0 0 0 0 rgba(94, 242, 255, 0.55); }
+  50%      { box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55), 0 0 0 8px rgba(94, 242, 255, 0); }
+}
+
+/* 007 — the armed connection line (cursor-following, drawn in flow space by ConnectionOverlay). A soft
+   halo under marching-ants core + glowing endpoints; the motion IS the "drawing a connection" feel. */
+.fc-connline__halo { stroke: rgba(94, 242, 255, 0.22); stroke-width: 7; stroke-linecap: round; }
+.fc-connline__core {
+  stroke: var(--color-neon-cyan);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 5;
+  filter: drop-shadow(0 0 4px rgba(94, 242, 255, 0.7));
+  animation: fc-dashflow 0.5s linear infinite;
+}
+.fc-connline__src { fill: var(--color-neon-cyan); }
+.fc-connline__tip { fill: var(--color-neon-cyan); filter: drop-shadow(0 0 7px var(--color-neon-cyan)); }
+@keyframes fc-dashflow { to { stroke-dashoffset: -22; } }
+
+/* Screen-fixed hint while connecting — tells the user how to land or bail (Esc). */
+.fc-connhint {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+  background: rgba(13, 21, 40, 0.92);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: fc-connhint-in 0.18s ease;
+}
+.fc-connhint kbd {
+  font: inherit;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(94, 242, 255, 0.1);
+  color: var(--color-neon-cyan);
+}
+@keyframes fc-connhint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(7px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc-connline__core { animation: none; }
+  .fc-rf--connecting .react-flow__node:hover .react-flow__handle.fc-port,
+  .fc-rf--connecting .react-flow__node:hover .react-flow__handle.fc-port-add { animation: none; }
+}
 
 /* The per-edge Style panel (routing · line · color · end markers · pinned sides), portaled below the bar. */
 .fc-edgestyle {
