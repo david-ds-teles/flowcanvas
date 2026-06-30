@@ -29,6 +29,7 @@ import type {
   EdgeRouting,
   EdgeLineStyle,
   EdgeEnd,
+  GroupNode,
 } from './jsoncanvas'
 import { nodeKind, REL_LABELS } from './jsoncanvas'
 import { extractRefs, type DocRef } from './refs'
@@ -131,7 +132,7 @@ export interface AgentEdge {
   line?: EdgeLineStyle                   // 'solid' (default) | 'dashed' | 'dotted'
   color?: CanvasColor                    // hex "#RRGGBB" or preset "1".."6"; omit ⇒ provenance default
   fromEnd?: EdgeEnd                      // start marker shape; omit ⇒ 'none'
-  toEnd?: EdgeEnd                        // end marker shape; omit ⇒ 'arrow'
+  toEnd?: EdgeEnd                        // end marker shape; omit ⇒ the edgeType legend default
   labelT?: number                        // 0..1 label position along the path; omit ⇒ 0.5
   points?: { x: number; y: number }[]    // manual line waypoints (absolute canvas coords); omit ⇒ auto-route
 }
@@ -163,6 +164,7 @@ export interface MergeReport {
   updated: { nodes: number; edges: number }
   removed: { nodes: number; edges: number }
   conflicts: string[]             // node ids edited locally since baseRevision (last-writer-wins)
+  warnings: string[]              // 006-sync — load-bearing visual rules the round skipped (empty groups, legend-overriding edge ends, no notes); surfaced to the agent so it self-corrects
 }
 
 // ─────────────────────────── The Agent Contract ───────────────────────────
@@ -315,6 +317,60 @@ function nodeFromAgent(an: AgentNode, id: string, existing?: CanvasNode): Canvas
 
 const sigOf = (parentId: string | null, author: string, text: string) => `${parentId}|${author}|${text}`
 
+// 006-sync — px slack when inferring group membership from geometry (a child placed roughly inside a
+// boundary box but with no parentId is the "forgot parentId" case the brasilog board exhibited).
+const CONTAINMENT_SLACK = 8
+
+/**
+ * Server-side safety net (the spec is served live, but spec-served ≠ spec-followed). Repairs + audits the
+ * merged board against the load-bearing VISUAL rules an agent commonly skips:
+ *   • repair — infer a missing parentId from geometric containment (smallest enclosing group wins), so a
+ *     child dropped inside a boundary still belongs to it even when the agent forgot parentId.
+ *   • audit  — collect human-readable warnings for empty boundary groups, edges whose explicit end marker
+ *     overrides the semantic edgeType legend, and a component board with no design-note callouts.
+ * Pure. The warnings ride back in the MergeReport so the agent self-corrects on the next round.
+ */
+function enforceBoardQuality(nodes: CanvasNode[], edges: CanvasEdge[]): { nodes: CanvasNode[]; warnings: string[] } {
+  const warnings: string[] = []
+  const groups = nodes.filter((n): n is GroupNode => n.type === 'group')
+  const encloses = (g: GroupNode, n: CanvasNode): boolean =>
+    n.x >= g.x - CONTAINMENT_SLACK &&
+    n.y >= g.y - CONTAINMENT_SLACK &&
+    n.x + n.width <= g.x + g.width + CONTAINMENT_SLACK &&
+    n.y + n.height <= g.y + g.height + CONTAINMENT_SLACK
+
+  // Repair: a parentless leaf fully inside exactly the smallest enclosing group adopts that group.
+  const repaired = nodes.map((n) => {
+    if (n.type === 'group' || n.parentId) return n
+    const host = groups
+      .filter((g) => g.id !== n.id && encloses(g, n))
+      .sort((a, b) => a.width * a.height - b.width * b.height)[0]
+    return host ? { ...n, parentId: host.id } : n
+  })
+
+  // Audit 1: empty boundary groups (after repair) render as empty floating boxes.
+  const members = new Map<string, number>()
+  for (const n of repaired) if (n.parentId) members.set(n.parentId, (members.get(n.parentId) ?? 0) + 1)
+  for (const g of groups) {
+    if (!members.get(g.id)) {
+      warnings.push(`Boundary group ${g.label ? `"${g.label}"` : g.id} has no member nodes — set parentId on its children, or drop the group (it renders as an empty box).`)
+    }
+  }
+
+  // Audit 2: edges that pin an explicit end marker while carrying an edgeType — the marker overrides the legend.
+  const overriders = edges.filter((e) => e.meta?.edgeType && (e.fromEnd || e.toEnd)).length
+  if (overriders > 0) {
+    warnings.push(`${overriders} edge(s) set fromEnd/toEnd while also carrying edgeType — the explicit marker overrides the semantic legend head (e.g. an "event" loses its diamond). Omit fromEnd/toEnd unless an edge genuinely needs a non-standard marker.`)
+  }
+
+  // Audit 3: a component board with no notes — the key decisions/constraints are unstated.
+  if (repaired.some((n) => n.type !== 'group' && n.meta?.kind) && !repaired.some((n) => n.type === 'text')) {
+    warnings.push('Board has typed components but no notes — add type:"text" callouts for key decisions, constraints, or a legend.')
+  }
+
+  return { nodes: repaired, warnings }
+}
+
 /**
  * Pure merge: apply an `AgentResponse` onto a doc, returning the next doc + a report.
  * Idempotent — applying the same response twice yields the same doc:
@@ -337,6 +393,7 @@ export function applyResponse(
     updated: { nodes: 0, edges: 0 },
     removed: { nodes: 0, edges: 0 },
     conflicts: [],
+    warnings: [],
   }
 
   // (3) Upsert nodes — key by id; existing → shallow-merge geometry/content + origin:'agent'.
@@ -373,10 +430,11 @@ export function applyResponse(
         fromNode: ae.fromNode, toNode: ae.toNode,
         fromSide: ae.fromSide ?? existing.fromSide, toSide: ae.toSide ?? existing.toSide,
         label: ae.label ?? existing.label ?? REL_LABELS[rel],
-        // 005-edges — agent restyle (parity); each field falls back to the existing value when omitted
+        // 005-edges — agent restyle (parity); each field falls back to the existing value when omitted.
+        // toEnd: no default — omit lets the renderer use the edgeType legend head (006 fix).
         ...(ae.color !== undefined ? { color: ae.color } : {}),
         ...(ae.fromEnd !== undefined ? { fromEnd: ae.fromEnd } : {}),
-        toEnd: ae.toEnd ?? existing.toEnd ?? 'arrow',
+        ...(ae.toEnd !== undefined ? { toEnd: ae.toEnd } : {}),
         meta: {
           ...existing.meta, origin: 'agent', rel,
           ...(ae.edgeType !== undefined ? { edgeType: ae.edgeType } : {}),   // 006 — flow type (agent parity)
@@ -402,7 +460,8 @@ export function applyResponse(
       label: ae.label ?? REL_LABELS[relNew],
       ...(ae.color !== undefined ? { color: ae.color } : {}),
       ...(ae.fromEnd !== undefined ? { fromEnd: ae.fromEnd } : {}),
-      toEnd: ae.toEnd ?? 'arrow',
+      // toEnd: no default — omit lets the renderer use the edgeType legend head (006 fix).
+      ...(ae.toEnd !== undefined ? { toEnd: ae.toEnd } : {}),
       meta: {
         origin: 'agent', rel: relNew,
         edgeType: ae.edgeType ?? 'reference',   // 006 — flow type (agent parity); default neutral like human onConnect
@@ -444,10 +503,14 @@ export function applyResponse(
   // (7) Removals last — explicit lists only (never auto-remove anything not named here).
   const rmN = new Set(resp.removeNodeIds ?? [])
   const rmE = new Set(resp.removeEdgeIds ?? [])
-  const nextNodes = nodes.filter((n) => !rmN.has(n.id))
+  const survivingNodes = nodes.filter((n) => !rmN.has(n.id))
   const nextEdges = edges.filter((e) => !rmE.has(e.id))
-  report.removed.nodes = nodes.length - nextNodes.length
+  report.removed.nodes = nodes.length - survivingNodes.length
   report.removed.edges = edges.length - nextEdges.length
+
+  // (7c) Quality net — repair missing parentId by containment + audit the load-bearing visual rules.
+  const { nodes: nextNodes, warnings } = enforceBoardQuality(survivingNodes, nextEdges)
+  report.warnings = warnings
 
   // (7b) Core spec doc — bind the spine to it ONLY (operator 2026-06-30 reversed: the core doc is the
   // living spine, NEVER a duplicate canvas card). The agent declares coreDocPath; we persist it on the

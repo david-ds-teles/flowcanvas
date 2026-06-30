@@ -14,6 +14,24 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [QUICKFIX] Agent generation quality — compliance-forced spec · server-side quality net · visible contract sync — 2026-06-30
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Root cause:** Operator-reported low-quality agent boards (`boards/brasilog-design.canvas`): boundary groups with **0** member nodes (no `parentId`), all 12 edges forced to `toEnd:"arrow"` (overriding the semantic legend), zero notes. Verified **not** a stale-MCP/deployment lag — `.mcp.json` runs `npx tsx mcp/flowcanvas-mcp.ts` against the working tree, so a respawned sidecar serves the live `kitSections()`. The agent received the current spec and ignored the load-bearing **visual** rules buried in dense prose. Spec-served ≠ spec-followed ([[mcp-spec-served-not-followed]]).
+**Fix:** (A) `generation-kit.ts` — rewrote `SYSTEM_PROMPT` (visual-diagram, use-all-resources framing) + front-loaded a RETURN CHECKLIST (parentId mandatory · omit fromEnd/toEnd · notes · coreDocPath) at the head of the schema contract. (B) `brief.ts` `applyResponse` — server-side quality net: infer a missing `parentId` by geometric containment, and new `MergeReport.warnings[]` flagging empty boundary groups, legend-overriding edge ends, and note-less component boards (returned over MCP so the agent self-corrects). (C) Visible sync — `buildContractDoc()` single source + `npm run gen:contract` + `contract-sync.test.ts` (fails the build on doc drift) + an MCP startup spec fingerprint. (D, separate commit) `canvas-shell.tsx` — read specs in place: single-click a file/component node → core spine (highlight its section); double-click → reader (debounced) ([[markdown-component-click-spec]]).
+**Affected:** `lib/canvas/{brief,generation-kit}.ts` · new `scripts/gen-contract.ts` · new `lib/canvas/contract-sync.test.ts` · `lib/canvas/brief.test.ts` (+4) · `mcp/flowcanvas-mcp.ts` · `docs/flowcanvas-agent-contract.md` · `package.json` · `components/canvas/{canvas-shell,use-canvas-handlers}.tsx`. Bundles the prior uncommitted "MCP/agent spec sync" quickfix (same files). Gates: tsc 0 · lint 0 · vitest 245/245 (+6) · smoke:mcp 16/16 · contract-drift PASS. **D NOT yet gesture-verified** (no Playwright/CDP in env) — pending per [[verify-interactions-end-to-end]]. Untracked scratch boards (`brasilog-design.*`, `untitled-*.canvas`) left out. Commit to `main` per the repo's solo direct-to-main pattern.
+
+---
+
+## [QUICKFIX] MCP/agent spec sync — groups parentId, edge legend heads, node content, notes, tool desc — 2026-06-30
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Root cause:** 4-way desync between canvas features (006) and the generation kit/MCP spec. (1) `applyResponse` hardcoded `toEnd:'arrow'` default on every new/updated edge, overriding the edgeType legend for event (diamond), request (open-arrow), and reference (circle) ends. (2) `GROUPS` section missing from the generation kit — agents created boundary groups but never set `parentId` on children → nodes floated outside the boundary. (3) `apply_response` MCP tool description claimed "places a readable markdown card" for `coreDocPath` but the implementation (reversed 2026-06-30) never does. (4) Spec gaps: no `fromPort`/`toPort` warning, node files too sparse (name only, no spec body), no canvas notes guidance.
+**Fix:** `brief.ts` — removed `?? 'arrow'` default from both the new-edge and update-edge paths (renderer already resolves via `EDGE_TYPE_STYLE[edgeType].toEnd`). `generation-kit.ts` — added GROUPS section with mandatory-parentId rule + coordinate guidance, strengthened EXTRACTION node-file body rule (2–4 spec sentences), added "Do NOT set fromPort/toPort", sharpened fromEnd/toEnd "OMIT BOTH" rule, added CANVAS NOTES section, rewrote worked example to show parentId nesting and no explicit end markers. `mcp/flowcanvas-mcp.ts` — fixed `coreDocPath` tool description (spine pane, not a card). `docs/flowcanvas-agent-contract.md` — regenerated from updated `kitSections()`.
+**Affected:** `lib/canvas/brief.ts` · `lib/canvas/generation-kit.ts` · `mcp/flowcanvas-mcp.ts` · `docs/flowcanvas-agent-contract.md`. Gates: 239/239 vitest ✓.
+
+---
+
 ## [PLAN COMPLETE] 006-semantic-edges — Semantic Edges & Connection Ports — 2026-06-30
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>

@@ -379,3 +379,50 @@ describe('005-edges agent style parity', () => {
     expect(next.edges.find((x) => x.id === 'ag-bend')!.meta?.points).toEqual([{ x: 120, y: 40 }])
   })
 })
+
+describe('006-sync server-side quality net (applyResponse)', () => {
+  it('infers a missing parentId from geometric containment (child box inside a group box)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'group + inside child, no parentId',
+      upsertNodes: [
+        { id: 'ag-grp', type: 'group', label: 'Backend', x: 0, y: 0, width: 400, height: 300, kind: 'boundary' },
+        { id: 'ag-svc', type: 'file', file: 'b.nodes/svc.md', x: 40, y: 60, width: 200, height: 120, kind: 'service' },
+      ],
+    }
+    const { next, report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.nodes.find((n) => n.id === 'ag-svc')!.parentId).toBe('ag-grp')   // adopted by containment
+    expect(report.warnings).toEqual([])                                          // group has a member; nothing to flag
+  })
+
+  it('warns when a boundary group ends up with no members (child placed outside it)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'empty group (brasilog pattern)',
+      upsertNodes: [
+        { id: 'ag-grp', type: 'group', label: 'Ingestão', x: 0, y: 0, width: 400, height: 300, kind: 'boundary' },
+        { id: 'ag-svc', type: 'file', file: 'x.md', x: 900, y: 60, width: 200, height: 120, kind: 'service' },
+      ],
+    }
+    const { next, report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.nodes.find((n) => n.id === 'ag-svc')!.parentId).toBeUndefined()  // not contained ⇒ not adopted
+    expect(report.warnings.some((w) => w.includes('"Ingestão" has no member nodes'))).toBe(true)
+  })
+
+  it('warns when an edge pins fromEnd/toEnd while carrying an edgeType (overrides the legend)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'arrow forced over event legend',
+      upsertEdges: [{ id: 'ag-ev', fromNode: 'n-plan', toNode: 'n-img', edgeType: 'event', toEnd: 'arrow' }],
+    }
+    const { report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(report.warnings.some((w) => /1 edge\(s\) set fromEnd\/toEnd/.test(w))).toBe(true)
+  })
+
+  it('warns when a component board has no notes', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'components, note removed',
+      upsertNodes: [{ id: 'ag-svc', type: 'file', file: 'x.md', x: 900, y: 60, width: 200, height: 120, kind: 'service' }],
+      removeNodeIds: ['n-note'],
+    }
+    const { report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(report.warnings.some((w) => w.includes('no notes'))).toBe(true)
+  })
+})

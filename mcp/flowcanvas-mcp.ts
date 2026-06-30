@@ -11,7 +11,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { buildBrief, applyResponse } from "../lib/canvas/brief";
 import type { AgentResponse } from "../lib/canvas/brief";
 import { buildKit } from "../lib/canvas/generation-kit";
@@ -185,7 +185,9 @@ server.registerTool(
   {
     description:
       "Apply an AgentResponse to a board: merge nodes/edges/comments via the pure idempotent merge, " +
-      "write any generated markdown files, and persist the .canvas (revision + 1). Returns a MergeReport. " +
+      "write any generated markdown files, and persist the .canvas (revision + 1). Returns a MergeReport " +
+      "whose `warnings[]` flags load-bearing visual-rule violations (empty boundary groups, edge markers " +
+      "overriding the semantic legend, missing notes) — if non-empty, fix them in a follow-up call. " +
       "A canvasRef to a path that does not exist yet is CREATED as a fresh board (and surfaced to the app). " +
       "canvasRef is REQUIRED — there is no active-board fallback for writes, so a generation never " +
       "overwrites the board the human has open.",
@@ -216,8 +218,8 @@ server.registerTool(
             .string()
             .optional()
             .describe(
-              "Root-relative path of the core spec doc. The tool binds it as the living spine AND places " +
-                "a readable markdown card for it on the canvas — do NOT add your own node for it."
+              "Root-relative path of the core spec doc. The tool binds it as the living spine pane " +
+                "(a docked doc view — NOT a canvas card). Do NOT add a upsertNodes entry for it."
             ),
         })
         .describe("AgentResponse object matching the v0.1 agent contract."),
@@ -514,7 +516,10 @@ server.registerResource(
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`Flowcanvas MCP server running on stdio (base: ${BASE})`);
+  // Spec fingerprint — `tsx` serves the live working-tree contract, so this hash tells the operator
+  // exactly which generation kit this sidecar is serving (and flags a forgotten restart after a spec edit).
+  const specHash = createHash("sha256").update(buildKit()).digest("hex").slice(0, 12);
+  console.error(`Flowcanvas MCP server running on stdio (base: ${BASE}; generation-kit ${specHash})`);
 }
 
 main().catch((e) => {

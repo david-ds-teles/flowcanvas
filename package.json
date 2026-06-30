@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "mcp": "tsx mcp/flowcanvas-mcp.ts",
+    "gen:contract": "tsx scripts/gen-contract.ts",
     "smoke:mcp": "node scripts/smoke-mcp.mjs",
     "smoke:render": "node scripts/smoke-render.mjs",
     "smoke": "node scripts/smoke-mcp.mjs && node scripts/smoke-render.mjs"

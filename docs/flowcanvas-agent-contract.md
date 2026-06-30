@@ -1,6 +1,16 @@
-<!-- GENERATED — do not hand-edit. Source of truth: kitSections().schemaContract in lib/canvas/generation-kit.ts. Regenerate via the same. -->
+<!-- GENERATED — do not hand-edit. Source of truth: buildContractDoc() in lib/canvas/generation-kit.ts. Run `npm run gen:contract` to regenerate. -->
 
 # Flowcanvas Agent Contract
+
+RETURN CHECKLIST — every board MUST satisfy ALL of these (this is how the board is read; the server
+re-checks them and reports violations back to you):
+  [ ] Every component node has meta.kind + a <=40-char label + meta.source.anchor.
+  [ ] Every subsystem is a type:"group" boundary, and EVERY member node sets parentId to it.
+  [ ] Child node boxes sit visually INSIDE their group box (absolute coords; see GROUPS).
+  [ ] Edges carry edgeType ONLY — fromEnd/toEnd OMITTED so the legend drives color+line+head.
+  [ ] At least one type:"text" note captures a key decision / constraint / legend.
+  [ ] coreDocPath is set, and every meta.source.path points to that one EXISTING doc.
+A board that skips parentId, forces arrowheads, or has no notes is INCOMPLETE — fix it before returning.
 
 Return exactly one JSON object matching AgentResponse — no prose, no code fence, nothing outside it.
 Echo briefId from the brief (it is the concurrency token).
@@ -22,16 +32,28 @@ CORE SPEC DOC (the board's single source of truth — REQUIRED):
   coreDocPath, or the "<board-stem>.md" you just wrote). NEVER cite a doc path you did not create: a
   dangling source path leaves the board with no readable specification.
 
-EXTRACTION (core spec doc -> typed system-design board, NOT document cards):
+EXTRACTION (core spec doc → typed system-design board, NOT document cards):
 - Map each component to one node, stamp meta.kind (see COMPONENT KINDS), and give it a "label": a short
-  human name (<= 40 chars). Map each subsystem cluster to a group node (type:"group", label + optional
-  shape, set members' parentId to it). A system/trust container is a group with meta.kind:"boundary".
-  Map each documented relationship/arrow to a typed edge.
+  human name (<= 40 chars). Map each documented relationship/arrow to a typed edge. Map each subsystem
+  cluster to a group node (see GROUPS below — parentId is mandatory for every member node).
 - Decompose node content into small generated .md files (one per node) under
   "<board-stem>.nodes/<slug>.md". Each MUST carry frontmatter with name: (the component display name),
-  a one-line description:, and source: { path:"<core spec doc>", anchor } — so the widget shows a real
-  name and role, never a bare slug.
-- Never inline document prose into the .canvas.
+  a one-line description:, and source: { path:"<core spec doc>", anchor }. The file BODY must include
+  the relevant spec content extracted from that section — at minimum 2–4 sentences covering the
+  component's role, technology choice, and key behaviour — so the canvas card shows real spec, not a
+  bare name. Never inline document prose into the .canvas.
+
+GROUPS (subsystem boundaries — parentId is MANDATORY on every member):
+- For each subsystem cluster, create one type:"group" node with label and meta.kind:"boundary" (for a
+  trust or system container).
+- EVERY node inside a group MUST have parentId set to that group's id. A node without parentId is a
+  top-level node that floats OUTSIDE the group on the canvas — it will not appear inside the boundary.
+- Child node coordinates are ABSOLUTE canvas coords. Position each child so its bounding box falls
+  INSIDE the group box (child.x >= group.x + ~40px padding, child.x + child.width <= group.x +
+  group.width - 40px; same rule on y with extra top headroom for the group label). The layout engine
+  resizes groups to enclose their children — size the group generously.
+- Use containment (parentId) for "contains" relationships, not an edge.
+
 TYPED EDGES (flow type — the PRIMARY edge meaning; the board is read by color/line/head):
 - Set edgeType from [data-flow, request, response, event, dependency, reference]. It drives the edge's
   default color + line + arrowhead via the legend. Pick the one matching the documented arrow:
@@ -44,16 +66,26 @@ TYPED EDGES (flow type — the PRIMARY edge meaning; the board is read by color/
   grey · dashed · arrow; reference = grey · dotted · circle.
 - rel (LEGACY, optional): the older taxonomy [references, depends-on, implements, derives-from, calls,
   produces, informs, related] is still accepted and maps to an edgeType — prefer edgeType.
+
 EDGE STYLE (optional, per edge — OVERRIDES the edgeType legend default; omit any to keep the type's style):
 - color: hex "#RRGGBB" or a preset "1".."6"; omit ⇒ the edgeType's legend color.
 - line: "solid" | "dashed" | "dotted"; omit ⇒ the edgeType's legend line.
-- fromEnd / toEnd: marker per end — "none" | "arrow" | "arrow-open" | "circle" | "diamond"; omit ⇒ the edgeType's legend heads.
+- fromEnd / toEnd: marker per end — "none" | "arrow" | "arrow-open" | "circle" | "diamond"; OMIT BOTH
+  to let the edgeType legend control the head shapes (this is the default — the legend MUST drive
+  arrowheads; only set these when a specific edge genuinely needs a non-standard marker).
 - routing: "smoothstep" (default, right-angle — cleanest for a system diagram) | "bezier" (curve) | "straight".
 - fromSide / toSide: pin an endpoint to "top"|"right"|"bottom"|"left". OMIT BOTH to let the edge attach at a
   connection dot facing the other node (the default — cleaner, fewer crossings). Pin only when a specific
   side genuinely reads better.
+- Do NOT set fromPort / toPort — the system manages connection ports automatically. Use fromSide/toSide
+  to pin a side, or omit both for auto-routing.
 - labelT: 0..1 label position along the line (0.5 = midpoint); set it to move a label off a busy crossing.
 - points: array of {x,y} waypoints (absolute canvas coords) the line bends through; omit ⇒ auto-route.
+
+CANVAS NOTES (design callouts):
+- Add type:"text" nodes for key design decisions, constraints, or legend callouts that don't map to a
+  component. Set the text field to a concise markdown snippet. Position near the relevant area of the board.
+- Example: a "⚡ Async — max retry 3" note beside a queue, or a "Legend: cyan=data-flow …" overview note.
 
 COMPONENT KINDS (set meta.kind on a node; absent ⇒ a plain card):
 - service   — a runtime process that executes logic (API, microservice, worker, gateway, function).
@@ -72,3 +104,4 @@ SECTION ANCHORS (provenance, bidirectional linking):
   extracted node so it links back to the doc section it came from.
 - The anchor MUST be the github-slugger slug of the heading text (lowercase, spaces→"-",
   punctuation dropped). e.g. "## Order lifecycle" ⇒ "order-lifecycle".
+
