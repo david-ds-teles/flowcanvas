@@ -279,3 +279,27 @@ The `apply_response` tool input schema gains `coreDocPath?: string`. Previously 
 `coreDocPath` (the root cause of the MCP path never binding the spine or placing the core-doc card). It is
 now threaded into the pure `applyResponse` (binds `session.coreDocPath` + mints the core-doc canvas card)
 and into `organizeByType(next.nodes, next…coreDocPath)` so the card pins leftmost on first extraction.
+
+## Update 2026-06-30 — apply_response creates boards; explicit canvasRef required for writes
+
+Closes the board-creation parity gap (a human does File→New; the agent had no way to create a `.canvas`
+over MCP — `apply_response` 404'd on a missing file and `write_file` is `.md`-only).
+
+- **From-scratch create.** `apply_response` no longer GETs through `apiGet` (which throws on 404). It uses a
+  new 404-aware `getCanvasDoc(ref)` (returns `null` on a missing file) and, when null, starts from
+  `emptyBoard(stem, now)` — a fresh `schemaVersion:'0.4'` doc mirroring `store.newBoard`. It stamps
+  `session.lastBriefId = response.briefId` on a created board (keeps the round non-stale with no prior
+  `get_board`), runs the existing empty-board auto-organize, persists, and POSTs `/api/canvas/active` so the
+  app surfaces the new board. An edit to an existing board leaves the active pointer untouched.
+- **Writes require an explicit `canvasRef`.** `apply_response` no longer calls `resolveRef` — an omitted
+  `canvasRef` throws (`"apply_response requires an explicit canvasRef…"`) instead of latching onto the
+  active board (which had overwritten `examples/commerce-platform.canvas`). `canvasRef` stays zod-`.optional()`
+  so the handler's actionable message fires rather than a terse zod `Required`. Read-only `get_board` keeps
+  the `resolveRef` active-board fallback.
+- **Contract surfaces.** `generation-kit.ts` `MCP_HOW_TO` adds step 0 (pick the target path; new path ⇒
+  created; explicit-ref rule) and the `apply_response` tool/`canvasRef` descriptions document create-on-new
+  + required-for-writes. `docs/flowcanvas-agent-contract.md` is unaffected (it renders from `schemaContract`,
+  not the MCP how-to).
+- **Coverage.** `scripts/smoke-mcp.mjs` gains a from-scratch create assertion (apply to a non-existent
+  `canvasRef` → board created + persisted) and an anti-clobber assertion (write with no `canvasRef` →
+  rejected). Active-board pointer is captured pre-run and restored in cleanup. Smoke now 16 checks.

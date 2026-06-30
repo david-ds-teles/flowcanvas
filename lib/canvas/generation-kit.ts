@@ -81,14 +81,21 @@ a typed edge; every subsystem is a group (a boundary group for a trust/system co
 the AgentResponse JSON defined by the schema contract below.`
 
 const MCP_HOW_TO = `MCP LOOP (connected harness):
-1. get_board → the DesignBrief (nodes/edges/comments + intent + responseContract + coreDocPath).
-2. If coreDocPath is set, read_file(coreDocPath) for the full living core markdown. If it is NOT set, you
-   will author the core spec doc in step 4 before decomposing.
+0. Pick the target board path (canvasRef). To CREATE a new board, choose a fresh path like
+   "boards/<name>.canvas" — apply_response creates it if it does not exist. To edit the board the human
+   has open, call get_active_board first and use the canvasRef it returns. Every write (apply_response)
+   REQUIRES an explicit canvasRef — there is no implicit "active board" for writes, so a generation can
+   never overwrite the wrong board.
+1. EXISTING board: get_board(canvasRef) → the DesignBrief (nodes/edges/comments + intent +
+   responseContract + coreDocPath). NEW board: skip get_board — there is nothing to read yet.
+2. If coreDocPath is set, read_file(coreDocPath) for the full living core markdown. If it is NOT set
+   (a new board / inline prompt), you will author the core spec doc in step 4 before decomposing.
 3. Reason: decompose into typed components (meta.kind + label + meta.source).
 4. write_file the core spec "<board-stem>.md" FIRST (only when there was no coreDocPath), then each
    derived "<board-stem>.nodes/<slug>.md" (.md/.mdx only) with name:/description:/source: frontmatter.
-5. apply_response(AgentResponse) — echo briefId; set coreDocPath; the tool merges + persists + bumps the
-   revision (and binds coreDocPath as the living spine — the core doc is the spine, never a canvas card).`
+5. apply_response({ canvasRef, response }) — echo briefId (any value for a brand-new board); set
+   coreDocPath; the tool CREATES the board if the path is new, merges + persists + bumps the revision
+   (and binds coreDocPath as the living spine — the core doc is the spine, never a canvas card).`
 
 const WORKED_EXAMPLE = `WORKED EXAMPLE — input "## Order lifecycle\\nCheckout calls Payments, which writes Orders DB."
 (no coreDocPath in the brief: author the core spec "board.md", set it as coreDocPath, and every node cites

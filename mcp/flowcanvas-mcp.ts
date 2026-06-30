@@ -53,7 +53,8 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Resolve the `canvasRef`: use the given value or fall back to the active-board pointer. */
+/** Resolve the `canvasRef`: use the given value or fall back to the active-board pointer.
+ *  READ-ONLY tools only (get_board) — writes require an explicit ref (see apply_response). */
 async function resolveRef(canvasRef?: string): Promise<string> {
   if (canvasRef) return canvasRef;
   const data = await apiGet<ActiveBoard | { active: null }>("/api/canvas/active");
@@ -61,6 +62,34 @@ async function resolveRef(canvasRef?: string): Promise<string> {
     throw new Error("No active board — open a board in Flowcanvas first, then retry.");
   }
   return data.canvasRef;
+}
+
+/** GET the board doc, or null when the file does not exist yet (HTTP 404) — lets apply_response
+ *  create a board from scratch instead of 404ing. Throws on any other failure. */
+async function getCanvasDoc(ref: string): Promise<FlowcanvasDoc | null> {
+  const res = await fetch(`${BASE}/api/canvas?path=${encodeURIComponent(ref)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(detail.error ?? `${res.status} ${res.statusText}`);
+  }
+  const { doc } = (await res.json()) as { doc: FlowcanvasDoc };
+  return doc;
+}
+
+/** A fresh empty board (schema 0.4) — the from-scratch starting point when apply_response targets a
+ *  canvasRef that does not exist yet. Mirrors store.newBoard so an agent-created board is identical
+ *  to a human File→New. */
+function emptyBoard(title: string, now: string): FlowcanvasDoc {
+  return {
+    nodes: [],
+    edges: [],
+    flowcanvas: {
+      schemaVersion: "0.4",
+      session: { title, intent: "", createdAt: now, updatedAt: now, revision: 0 },
+      comments: [],
+    },
+  };
 }
 
 // ── MCP server ──────────────────────────────────────────────────────────────
@@ -155,15 +184,19 @@ server.registerTool(
   "apply_response",
   {
     description:
-      "Apply an AgentResponse to the board: merge nodes/edges/comments via the " +
-      "pure idempotent merge, write any generated markdown files, and persist the " +
-      "merged .canvas (revision + 1). Returns a MergeReport.",
+      "Apply an AgentResponse to a board: merge nodes/edges/comments via the pure idempotent merge, " +
+      "write any generated markdown files, and persist the .canvas (revision + 1). Returns a MergeReport. " +
+      "A canvasRef to a path that does not exist yet is CREATED as a fresh board (and surfaced to the app). " +
+      "canvasRef is REQUIRED — there is no active-board fallback for writes, so a generation never " +
+      "overwrites the board the human has open.",
     inputSchema: {
       canvasRef: z
         .string()
         .optional()
         .describe(
-          "Root-relative path to the .canvas file. Omit to use the active-board pointer."
+          "Root-relative path to the .canvas file (REQUIRED for writes — the handler rejects an omitted " +
+            "ref rather than falling back to the open board). A NEW path (e.g. 'boards/foo.canvas') is " +
+            "created as a fresh board; an existing path is edited in place."
         ),
       response: z
         .object({
@@ -192,16 +225,33 @@ server.registerTool(
   },
   async ({ canvasRef, response }) => {
     try {
-      const ref = await resolveRef(canvasRef);
-      const { doc } = await apiGet<{ doc: FlowcanvasDoc }>(
-        `/api/canvas?path=${encodeURIComponent(ref)}`
-      );
+      // Writes REQUIRE an explicit canvasRef — no silent active-board fallback. This is what prevents a
+      // generation from clobbering whatever board the human happens to have open (the active-board latch
+      // that overwrote examples/commerce-platform.canvas). To edit the open board, the agent calls
+      // get_active_board first and passes the canvasRef it returns.
+      if (!canvasRef) {
+        throw new Error(
+          "apply_response requires an explicit canvasRef. Pass a NEW path (e.g. 'boards/foo.canvas') to " +
+            "create a board, or an existing path to edit one. Call get_active_board to target the open board."
+        );
+      }
+      const ref = canvasRef;
+      const now = new Date().toISOString();
+
+      // Create-from-scratch: a canvasRef to a not-yet-existent file starts from a fresh empty board
+      // (identical to File→New) instead of 404ing — closing the human/agent board-creation parity gap.
+      const existing = await getCanvasDoc(ref);
+      const created = existing === null;
+      const stem = ref.split("/").pop()?.replace(/\.(canvas|json)$/, "") ?? "board";
+      const doc = existing ?? emptyBoard(stem, now);
+      // A brand-new board has no prior get_board, so stamp the echoed briefId to keep the round non-stale.
+      if (created) doc.flowcanvas.session.lastBriefId = response.briefId;
 
       const { next, report } = applyResponse(
         doc,
         response as unknown as AgentResponse,
         (prefix) => prefix + rid(),
-        new Date().toISOString()
+        now
       );
 
       // #7/#8 — first extraction (the board was empty) → auto-arrange the merged board into readable
@@ -223,7 +273,21 @@ server.registerTool(
       }
 
       // Persist the merged canvas (server bumps the revision)
-      await apiPost<{ ok: true; revision: number }>("/api/canvas", { path: ref, doc: next });
+      const { revision } = await apiPost<{ ok: true; revision: number }>("/api/canvas", {
+        path: ref,
+        doc: next,
+      });
+
+      // Surface a newly-created board to the app by pointing the active-board pointer at it, so the
+      // operator can open and iterate on what the agent just generated. An edit to an existing board
+      // leaves the active pointer untouched (it never yanks the operator off the board they have open).
+      if (created) {
+        await apiPost("/api/canvas/active", {
+          canvasRef: ref,
+          baseRevision: revision,
+          intent: next.flowcanvas.session.intent ?? "",
+        }).catch((e) => console.error("apply_response: failed to set active board:", e));
+      }
 
       return { content: [{ type: "text" as const, text: JSON.stringify(report) }] };
     } catch (e) {

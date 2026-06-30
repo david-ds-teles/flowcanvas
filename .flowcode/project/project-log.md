@@ -14,6 +14,17 @@ links: [.flowcode/templates/project-log-template.md, .flowcode/plans/plan-instru
 
 ---
 
+## [QUICKFIX] MCP board creation — agent can create a board from scratch; writes require an explicit canvasRef (anti-clobber) — 2026-06-30
+
+**Dev:** david-ds-teles <david.ds.teles@gmail.com>
+**Related:** standalone (closes the create-a-board half of the [[agent-feature-parity]] gap; theme-aligned with draft `007-live-agent-canvas`)
+**What:** `apply_response` now (a) **creates the board** when `canvasRef` points to a path that does not exist yet — starts from a fresh empty `0.4` board (mirrors `store.newBoard`), merges, auto-organizes, persists, and registers it as the active board so the app surfaces it; and (b) **requires an explicit `canvasRef`** for any write — the silent active-board fallback (`resolveRef`) is gone for writes, kept only for read-only `get_board`. New 404-aware `getCanvasDoc` + `emptyBoard` helpers; `generation-kit.ts` MCP-loop how-to + tool descriptions teach the create flow and the explicit-ref rule.
+**Why:** The agent could not create a `.canvas` over MCP (a human does File→New; `apply_response` 404'd on a missing file and `write_file` is `.md`-only), and an omitted `canvasRef` silently latched onto the open board — which overwrote `examples/commerce-platform.canvas` during a BL-001 run. Operator: "a new file is just a new canvas; the agent should create/update it as trivially as any file."
+**Impact:** A board is now created + populated in **one** `apply_response` call against a new path; a generation can never clobber the board the human has open. No schema change. **Live agent tools pick this up only after the flowcanvas MCP sidecar respawns** (tsx, no build → a session/MCP restart).
+**Files:** `mcp/flowcanvas-mcp.ts`, `lib/canvas/generation-kit.ts`, `scripts/smoke-mcp.mjs` (+2 create/anti-clobber assertions), module doc `mcp-sidecar.md`. Gates: tsc 0 · lint 0 · smoke:mcp 16/16 (incl. from-scratch create + no-ref rejection) · smoke:render PASS · vitest 232/233 (the 1 fail is pre-existing 006 `0.5`-vs-`0.4` drift on `commerce-platform.canvas`, untouched here). Commit held — intermixed with the in-progress 005/006 working tree (operator controls commits).
+
+---
+
 ## [QUICKFIX] Free-form edge styling — routing · color · line · markers · sides · movable label · draggable line, with full agent parity — 2026-06-30
 
 **Dev:** david-ds-teles <david.ds.teles@gmail.com>
