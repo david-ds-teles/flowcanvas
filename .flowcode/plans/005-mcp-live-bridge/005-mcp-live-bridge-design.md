@@ -1,7 +1,7 @@
 ---
 name: 005-mcp-live-bridge-design
 description: Design artifact for the MCP-Native Live Bridge — reframe the 004 generation loop into a live, bidirectional, design-together MCP bridge for plan 005-mcp-live-bridge.
-status: draft
+status: aborted
 tags: [design, architecture, decisions, mcp, generation-loop]
 links: [.flowcode/plans/005-mcp-live-bridge/005-mcp-live-bridge-plan.md, .flowcode/plans/005-mcp-live-bridge/005-mcp-live-bridge-ui-design.md]
 ---
@@ -11,10 +11,26 @@ links: [.flowcode/plans/005-mcp-live-bridge/005-mcp-live-bridge-plan.md, .flowco
 - Reframe the 004 generation loop into an MCP-native **live** bridge: the agent self-serves over the existing MCP tools, its changes apply **live** with visible attribution, and you design either from a markdown doc or from an inline prompt — the copy-paste Generation Kit drops to a labeled non-MCP fallback.
 - Scope — in: live-apply engine, node-origin attribution + last-round pulse, optional non-blocking change-review, from-scratch doc-backed entry, kit demotion + MCP headline; out: in-app prompt box, create-board MCP tool, schema bump, per-change undo (BL-008).
 - Key architecture decisions: cockpit → the agent's own MCP chat; apply mode → live + persistent agent tint + last-round pulse; from-scratch → doc-backed (agent writes the core doc, then decomposes); board bootstrap → require a board open; kit → keep as a labeled fallback.
-- Status draft; author human (scope) + `flowcode:designer-agent` (technical depth); dated 2026-06-29.
+- Status **ABORTED 2026-06-30** (was draft; never planned or executed); author human (scope) + `flowcode:designer-agent` (technical depth); dated 2026-06-29.
 - Sibling plan: `005-mcp-live-bridge-plan.md` (created after this design is approved).
 
 ---
+
+> **✗ ABORTED — 2026-06-30 (david-ds-teles).** Design-only draft; never planned, never executed. A code-grounded re-analysis finds it **unnecessary as a plan**: the MCP round-trip it builds on already shipped (plan 004), and its substantive decisions already landed via two post-design direct-builds (the 2026-06-29 8-fix UX bugfix and the 2026-06-30 core-doc bugfix). What remained un-built is quickfix-scale **local** polish — and the "live" layer is a web-app disk-poll auto-refresh, **not** anything MCP-native, so the "MCP-Native Live Bridge" title over-frames it. The Vision-B *direction* was sound; the *plan* is redundant. Kept on disk as history; not deleted. See the per-decision tally below.
+
+### Abort Analysis — 2026-06-30 (design vs. shipped code)
+
+| Decision | Status today | Evidence |
+|----------|--------------|----------|
+| D1 cockpit = harness chat | **Shipped/moot** — no in-app chat; off-workflow `agent-fab` deleted | project-log 2026-06-29 |
+| D2 always-on live auto-apply | **Un-built (only real nugget)** — `use-round-ready.ts` polls only while `pendingReview` + manual reload; a harness-driven round (no in-app Submit) never sets `pendingReview`, so it never surfaces live | `components/canvas/use-round-ready.ts:27,45` |
+| D3 agent node tint + last-round pulse | **Un-built** — adapter threads edge origin only; no `fc-rf--agent`/`fc-rf--round`, no `agent-bridge.css` | `lib/canvas/adapter.ts:48` |
+| D4 from-scratch synth + auto-bind coreDocPath | **Shipped** — FROM-SCRATCH contract in `generation-kit.ts`; `store.load` auto-binds the sole cited doc (tagged "005-D4") | `lib/canvas/generation-kit.ts:20-31`, `lib/canvas/store.ts:204-216` |
+| D5 require board open; no `create_board` | **Shipped/moot** — reality; no tool added | `mcp/flowcanvas-mcp.ts` |
+| D6 demote kit; passive MCP-bridge headline | **Partly moot / cosmetic** — worst kit entry (FAB) already gone; the "headline" is passive status the design admits the app can't truly probe | project-log 2026-06-29; § Decision 6 |
+| D7 no schema bump (`0.3` stays) | **Premise stale** — board schema is now `0.4` (edges quickfix), unrelated to this plan | `lib/canvas/jsoncanvas.ts:188` |
+
+> **Residual nugget (not silently dropped):** **D2** always-on live-apply is the one piece with genuine user value — without it a harness-driven round needs a manual reload to appear. It is local-poll plumbing (≈1 file), not MCP, and is parked here for a future quickfix decision, not carried as a plan.
 
 > **✓ DIRECTION RESOLVED (2026-06-29).** An earlier review pushed for an in-app MCP *cockpit* (a chat panel inside Flowcanvas, model wired over MCP). A research spike disproved that wiring: MCP sampling is host-tool-initiated only, is unsupported by Claude Code, and is being deprecated (SEP-2322); MCP never vends a model (see § Research References). The operator therefore **locked Vision B — "agent-driven canvas": Flowcanvas is the live visual surface for the agent the operator already drives over MCP (Claude Code / Cursor); there is no in-app chat and no in-app model.** Decision 1 below (cockpit = the agent's own MCP chat) is the correct, now research-justified choice, and D2–D7 stand as the "watch it happen" layer. An in-app cockpit with its own configured/local model is a *different product* (Vision A), deferred and out of scope here.
 

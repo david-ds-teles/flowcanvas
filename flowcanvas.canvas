@@ -82,7 +82,19 @@
             "docs/architecture/adapter.md",
             "docs/architecture/edges.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-fe9e0b27",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-3e8f363f",
+            "side": "bottom",
+            "t": 0.650523560209424
+          }
+        ]
       }
     },
     {
@@ -114,7 +126,19 @@
             "docs/architecture/schema.md",
             "docs/architecture/api.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-62e02ed2",
+            "side": "right",
+            "t": 0.7285714285714285
+          },
+          {
+            "id": "p-82f61a91",
+            "side": "bottom",
+            "t": 0.5
+          }
+        ]
       }
     },
     {
@@ -146,7 +170,19 @@
             "docs/architecture/schema.md",
             "docs/architecture/canvas-shell.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-c40246f5",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-cac747c1",
+            "side": "top",
+            "t": 0.7853260869565217
+          }
+        ]
       }
     },
     {
@@ -165,7 +201,24 @@
           "path": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md",
           "anchor": "decision-6-edge-derivation-provenance"
         },
-        "frontmatter": {}
+        "frontmatter": {},
+        "ports": [
+          {
+            "id": "p-3cf37fd7",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-fc3fef19",
+            "side": "top",
+            "t": 0.6902173913043479
+          },
+          {
+            "id": "p-21663be1",
+            "side": "right",
+            "t": 0.9608695652173916
+          }
+        ]
       }
     },
     {
@@ -199,7 +252,19 @@
             "docs/architecture/frontmatter.md",
             "docs/architecture/store.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-0086d2ab",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-37da13dc",
+            "side": "top",
+            "t": 0.642663043478261
+          }
+        ]
       }
     },
     {
@@ -235,7 +300,44 @@
             "docs/architecture/edges.md",
             "docs/architecture/api.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-2a25bfc3",
+            "side": "bottom",
+            "t": 0.21467391304347813
+          },
+          {
+            "id": "p-4f00728d",
+            "side": "bottom",
+            "t": 0.3573369565217391
+          },
+          {
+            "id": "p-574f5b2a",
+            "side": "bottom",
+            "t": 0.3097826086956521
+          },
+          {
+            "id": "p-9fbf2110",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-9b05781e",
+            "side": "right",
+            "t": 0.5
+          },
+          {
+            "id": "p-1ee20b1f",
+            "side": "bottom",
+            "t": 0.7717391304347828
+          },
+          {
+            "id": "p-361ecdfb",
+            "side": "bottom",
+            "t": 0.6811594202898552
+          }
+        ]
       }
     },
     {
@@ -268,7 +370,29 @@
             "docs/architecture/fs-guard.md",
             "docs/architecture/frontmatter.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-5fb8f9a3",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-b5036b8a",
+            "side": "right",
+            "t": 0.26
+          },
+          {
+            "id": "p-54fbf4ba",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-5df3d702",
+            "side": "left",
+            "t": 0.27142857142857146
+          }
+        ]
       }
     },
     {
@@ -299,7 +423,14 @@
           "links": [
             "docs/architecture/api.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-2d252c8e",
+            "side": "top",
+            "t": 0.5
+          }
+        ]
       }
     },
     {
@@ -332,7 +463,19 @@
             "docs/architecture/store.md",
             "docs/architecture/reader.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-c69bbb56",
+            "side": "left",
+            "t": 0.5
+          },
+          {
+            "id": "p-728d2c4f",
+            "side": "bottom",
+            "t": 0.5
+          }
+        ]
       }
     },
     {
@@ -365,7 +508,19 @@
             "docs/architecture/canvas-shell.md",
             "docs/architecture/api.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-4d5a54b9",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-f5d3f7d9",
+            "side": "left",
+            "t": 0.74
+          }
+        ]
       }
     },
     {
@@ -398,7 +553,14 @@
             "docs/architecture/brief.md",
             "docs/architecture/store.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-1d9cb1d8",
+            "side": "top",
+            "t": 0.2282608695652172
+          }
+        ]
       }
     },
     {
@@ -430,7 +592,14 @@
             "docs/architecture/store.md",
             "docs/architecture/schema.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-ad31d358",
+            "side": "top",
+            "t": 0.3188405797101448
+          }
+        ]
       }
     },
     {
@@ -458,7 +627,19 @@
           "links": [
             "001-initial-architecture-plan.md"
           ]
-        }
+        },
+        "ports": [
+          {
+            "id": "p-ab2105d2",
+            "side": "top",
+            "t": 0.33521631303389354
+          },
+          {
+            "id": "p-c33b2d19",
+            "side": "left",
+            "t": 0.07901337792642117
+          }
+        ]
       }
     },
     {
@@ -510,8 +691,11 @@
       "label": "uses types",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-c40246f5",
+      "toPort": "p-fe9e0b27"
     },
     {
       "id": "e-brief-schema",
@@ -521,8 +705,11 @@
       "label": "uses types",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-0086d2ab",
+      "toPort": "p-fe9e0b27"
     },
     {
       "id": "e-edges-schema",
@@ -532,8 +719,11 @@
       "label": "uses types",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-3cf37fd7",
+      "toPort": "p-fe9e0b27"
     },
     {
       "id": "e-store-adapter",
@@ -543,8 +733,11 @@
       "label": "toReactFlow",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-2a25bfc3",
+      "toPort": "p-cac747c1"
     },
     {
       "id": "e-store-brief",
@@ -554,8 +747,11 @@
       "label": "buildBrief · applyResponse",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-4f00728d",
+      "toPort": "p-37da13dc"
     },
     {
       "id": "e-store-edges",
@@ -565,8 +761,11 @@
       "label": "deriveLinkEdges",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-574f5b2a",
+      "toPort": "p-fc3fef19"
     },
     {
       "id": "e-store-api",
@@ -576,8 +775,11 @@
       "label": "GET/POST fs",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-9fbf2110",
+      "toPort": "p-5fb8f9a3"
     },
     {
       "id": "e-shell-store",
@@ -587,8 +789,11 @@
       "label": "subscribe",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-c69bbb56",
+      "toPort": "p-9b05781e"
     },
     {
       "id": "e-shell-reader",
@@ -598,8 +803,11 @@
       "label": "opens",
       "meta": {
         "origin": "user",
-        "rel": "related"
-      }
+        "rel": "related",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-728d2c4f",
+      "toPort": "p-4d5a54b9"
     },
     {
       "id": "e-reader-api",
@@ -609,8 +817,11 @@
       "label": "render md",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-f5d3f7d9",
+      "toPort": "p-b5036b8a"
     },
     {
       "id": "e-export-store",
@@ -620,8 +831,11 @@
       "label": "brief · apply",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-1d9cb1d8",
+      "toPort": "p-1ee20b1f"
     },
     {
       "id": "e-comments-store",
@@ -631,8 +845,11 @@
       "label": "comment actions",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-ad31d358",
+      "toPort": "p-361ecdfb"
     },
     {
       "id": "e-api-guard",
@@ -642,8 +859,11 @@
       "label": "guardPath",
       "meta": {
         "origin": "user",
-        "rel": "depends-on"
-      }
+        "rel": "depends-on",
+        "edgeType": "dependency"
+      },
+      "fromPort": "p-54fbf4ba",
+      "toPort": "p-2d252c8e"
     },
     {
       "id": "e-api-frontmatter",
@@ -653,8 +873,11 @@
       "label": "gray-matter parse",
       "meta": {
         "origin": "user",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-5df3d702",
+      "toPort": "p-62e02ed2"
     },
     {
       "id": "e-brief-frontmatter",
@@ -664,8 +887,11 @@
       "label": "embeds fm+body",
       "meta": {
         "origin": "user",
-        "rel": "references"
-      }
+        "rel": "references",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-0086d2ab",
+      "toPort": "p-82f61a91"
     },
     {
       "id": "e-schema-design",
@@ -675,8 +901,11 @@
       "label": "Decision 1",
       "meta": {
         "origin": "import",
-        "rel": "derives-from"
-      }
+        "rel": "derives-from",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-3e8f363f",
+      "toPort": "p-ab2105d2"
     },
     {
       "id": "e-edges-design",
@@ -686,18 +915,21 @@
       "label": "Decision 6",
       "meta": {
         "origin": "import",
-        "rel": "derives-from"
-      }
+        "rel": "derives-from",
+        "edgeType": "reference"
+      },
+      "fromPort": "p-21663be1",
+      "toPort": "p-c33b2d19"
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.4",
+    "schemaVersion": "0.5",
     "session": {
       "title": "Flowcanvas — Initial Architecture (001)",
       "intent": "what is this all about?",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-30T10:24:49.137Z",
-      "revision": 4,
+      "updatedAt": "2026-06-30T14:48:40.101Z",
+      "revision": 5,
       "pendingReview": false,
       "coreDocPath": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md"
     },

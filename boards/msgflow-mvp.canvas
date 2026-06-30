@@ -55,7 +55,14 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "problem-statement"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-22d5811d",
+            "side": "bottom",
+            "t": 0.24662377544692476
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/customer.md"
@@ -81,15 +88,27 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "decision-7-human-escalation"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-4ce14d3e",
+            "side": "left",
+            "t": 0.6819054272661205
+          },
+          {
+            "id": "p-c26267a5",
+            "side": "left",
+            "t": 0.6147342995169083
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/business-owner.md"
     },
     {
       "id": "ag-ext-zavu",
-      "x": 40,
-      "y": 500,
+      "x": -339.73739032886624,
+      "y": 739.6128920525318,
       "width": 200,
       "height": 140,
       "meta": {
@@ -107,7 +126,29 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "decision-1-whatsapp-channel"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-63cacc3c",
+            "side": "top",
+            "t": 0.7956055953119211
+          },
+          {
+            "id": "p-5bbff31d",
+            "side": "right",
+            "t": 0.017026828940759384
+          },
+          {
+            "id": "p-f0257c65",
+            "side": "right",
+            "t": 0.44135901942812633
+          },
+          {
+            "id": "p-c1db4a30",
+            "side": "right",
+            "t": 0.34408106234332486
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/zavu-bsp.md"
@@ -133,7 +174,14 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "decision-3-llm--agent-orchestration"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-ede68e03",
+            "side": "top",
+            "t": 0.03557312252964431
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/openrouter-llm.md"
@@ -160,7 +208,24 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "api--interface-contracts"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-8c470eda",
+            "side": "bottom",
+            "t": 0.06864408663441186
+          },
+          {
+            "id": "p-f609458b",
+            "side": "right",
+            "t": 0.4704433497536948
+          },
+          {
+            "id": "p-bb4c4663",
+            "side": "bottom",
+            "t": 0.5069444444444445
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/webhook-handler.md"
@@ -187,7 +252,19 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "api--interface-contracts"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-c3b65b46",
+            "side": "right",
+            "t": 0.3819875776397518
+          },
+          {
+            "id": "p-d6c30748",
+            "side": "bottom",
+            "t": 0.5132575757575758
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/oauth-handler.md"
@@ -214,7 +291,24 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "technology-stack"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-e9c64c4b",
+            "side": "left",
+            "t": 0.5316091954022989
+          },
+          {
+            "id": "p-99efd420",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-ee4f0381",
+            "side": "bottom",
+            "t": 0.6977272727272728
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/redis-arq-queue.md"
@@ -241,7 +335,24 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "technical-design"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-2e0cc32f",
+            "side": "top",
+            "t": 0.5
+          },
+          {
+            "id": "p-b707aeb0",
+            "side": "right",
+            "t": 0.527093596059113
+          },
+          {
+            "id": "p-0034033c",
+            "side": "bottom",
+            "t": 0.12878787878787895
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/arq-worker.md"
@@ -268,7 +379,39 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "module-boundaries"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-84517b7e",
+            "side": "left",
+            "t": 0.47413793103448254
+          },
+          {
+            "id": "p-1042887e",
+            "side": "right",
+            "t": 0.13265306122448983
+          },
+          {
+            "id": "p-804af8f4",
+            "side": "right",
+            "t": 0.3775510204081634
+          },
+          {
+            "id": "p-510bc2ec",
+            "side": "right",
+            "t": 0.607142857142857
+          },
+          {
+            "id": "p-19cd32fb",
+            "side": "right",
+            "t": 0.8670212765957445
+          },
+          {
+            "id": "p-1e04aee8",
+            "side": "left",
+            "t": 0.9913793103448277
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/langgraph-agent.md"
@@ -295,7 +438,19 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "api--interface-contracts"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-77a47a82",
+            "side": "top",
+            "t": 0.9856459330143542
+          },
+          {
+            "id": "p-34c91dec",
+            "side": "left",
+            "t": 0.5645050786290605
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/channel-adapter.md"
@@ -322,7 +477,29 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "retrieval--knowledge-ingestion-rag"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-a917cf71",
+            "side": "top",
+            "t": 0.25833333333333336
+          },
+          {
+            "id": "p-910f5b85",
+            "side": "right",
+            "t": 0.07142857142857154
+          },
+          {
+            "id": "p-2a0fde2f",
+            "side": "bottom",
+            "t": 0.5
+          },
+          {
+            "id": "p-3d52d92b",
+            "side": "left",
+            "t": 0.539473684210526
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/knowledge-ingester.md"
@@ -349,7 +526,14 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "retrieval--knowledge-ingestion-rag"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-f0d08135",
+            "side": "top",
+            "t": 0.5
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/tei-sidecar.md"
@@ -376,7 +560,24 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "data-models"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-9adda68f",
+            "side": "top",
+            "t": 0.814102564102564
+          },
+          {
+            "id": "p-549e2082",
+            "side": "top",
+            "t": 0.4935897435897435
+          },
+          {
+            "id": "p-5087a25f",
+            "side": "right",
+            "t": 0.451127819548872
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/postgresql.md"
@@ -403,7 +604,14 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "decision-5-calendar-capability"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-7b68f8c3",
+            "side": "left",
+            "t": 0.948979591836735
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-calendar.md"
@@ -430,7 +638,19 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "retrieval--knowledge-ingestion-rag"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-4681c7e8",
+            "side": "left",
+            "t": 0.6496598639455783
+          },
+          {
+            "id": "p-9fd7ac03",
+            "side": "bottom",
+            "t": 0.022727272727272728
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-drive.md"
@@ -457,7 +677,14 @@
             "path": "boards/msgflow-mvp.md",
             "anchor": "decision-6-price-source"
           }
-        }
+        },
+        "ports": [
+          {
+            "id": "p-092952ff",
+            "side": "left",
+            "t": 0.34285714285714336
+          }
+        ]
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-sheets.md"
@@ -472,8 +699,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-22d5811d",
+      "toPort": "p-63cacc3c"
     },
     {
       "id": "ag-e02",
@@ -483,8 +713,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-5bbff31d",
+      "toPort": "p-8c470eda"
     },
     {
       "id": "ag-e03",
@@ -494,8 +727,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "produces"
-      }
+        "rel": "produces",
+        "edgeType": "data-flow"
+      },
+      "fromPort": "p-f609458b",
+      "toPort": "p-e9c64c4b"
     },
     {
       "id": "ag-e04",
@@ -505,8 +741,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-99efd420",
+      "toPort": "p-2e0cc32f"
     },
     {
       "id": "ag-e05",
@@ -516,8 +755,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-b707aeb0",
+      "toPort": "p-84517b7e"
     },
     {
       "id": "ag-e06",
@@ -527,8 +769,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-1042887e",
+      "toPort": "p-7b68f8c3"
     },
     {
       "id": "ag-e07",
@@ -538,8 +783,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-804af8f4",
+      "toPort": "p-4681c7e8"
     },
     {
       "id": "ag-e08",
@@ -549,8 +797,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-510bc2ec",
+      "toPort": "p-092952ff"
     },
     {
       "id": "ag-e09",
@@ -560,8 +811,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-19cd32fb",
+      "toPort": "p-ede68e03"
     },
     {
       "id": "ag-e10",
@@ -571,8 +825,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-1e04aee8",
+      "toPort": "p-77a47a82"
     },
     {
       "id": "ag-e11",
@@ -582,8 +839,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-34c91dec",
+      "toPort": "p-f0257c65"
     },
     {
       "id": "ag-e12",
@@ -593,8 +853,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-63cacc3c",
+      "toPort": "p-22d5811d"
     },
     {
       "id": "ag-e13",
@@ -604,8 +867,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-c1db4a30",
+      "toPort": "p-4ce14d3e"
     },
     {
       "id": "ag-e14",
@@ -615,8 +881,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-0034033c",
+      "toPort": "p-9adda68f"
     },
     {
       "id": "ag-e15",
@@ -626,8 +895,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "produces"
-      }
+        "rel": "produces",
+        "edgeType": "data-flow"
+      },
+      "fromPort": "p-bb4c4663",
+      "toPort": "p-549e2082"
     },
     {
       "id": "ag-e16",
@@ -637,8 +909,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-c26267a5",
+      "toPort": "p-c3b65b46"
     },
     {
       "id": "ag-e17",
@@ -648,8 +923,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "produces"
-      }
+        "rel": "produces",
+        "edgeType": "data-flow"
+      },
+      "fromPort": "p-d6c30748",
+      "toPort": "p-549e2082"
     },
     {
       "id": "ag-e18",
@@ -659,8 +937,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-ee4f0381",
+      "toPort": "p-a917cf71"
     },
     {
       "id": "ag-e19",
@@ -670,8 +951,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-910f5b85",
+      "toPort": "p-9fd7ac03"
     },
     {
       "id": "ag-e20",
@@ -681,8 +965,11 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "calls"
-      }
+        "rel": "calls",
+        "edgeType": "request"
+      },
+      "fromPort": "p-2a0fde2f",
+      "toPort": "p-f0d08135"
     },
     {
       "id": "ag-e21",
@@ -692,18 +979,21 @@
       "toEnd": "arrow",
       "meta": {
         "origin": "agent",
-        "rel": "produces"
-      }
+        "rel": "produces",
+        "edgeType": "data-flow"
+      },
+      "fromPort": "p-3d52d92b",
+      "toPort": "p-5087a25f"
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.4",
+    "schemaVersion": "0.5",
     "session": {
       "title": "msgflow MVP — System Design",
       "intent": "WhatsApp AI customer assistant with Google Workspace grounding — system-design extraction from msgflow-mvp-design.md",
       "createdAt": "2026-06-29T00:00:00Z",
-      "updatedAt": "2026-06-30T10:15:25.225Z",
-      "revision": 10,
+      "updatedAt": "2026-06-30T11:55:48.308Z",
+      "revision": 12,
       "lastBriefId": "brief-c3ad947b",
       "coreDocPath": "boards/msgflow-mvp.md"
     },
