@@ -1,16 +1,15 @@
 'use client'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useCanvasStore } from '@/lib/canvas/store'
-import { outlineOf, citedDocPaths, buildSourceIndex, normPath } from '@/lib/canvas/spine'
-import { isFileNode } from '@/lib/canvas/jsoncanvas'
+import { outlineOf, citedDocPaths, buildSourceIndex } from '@/lib/canvas/spine'
 import { cn } from '@/lib/utils'
 import { basename } from './frontmatter-view'
-import type { MouseEvent } from 'react'
 
 // 004 Phase 4 — the living core-markdown spine. A docked pane (not the overlay reader) bound to
-// session.coreDocPath: full-fidelity render (/api/render) · edit (textarea over the raw markdown) ·
-// dirty flag · "Submit changes" (writeFile → submitToAgent, blocked while a round is pending) ·
-// a switcher over every cited doc (Q4) · per-heading component-count badges + bidirectional pulse.
+// session.coreDocPath. It does NOT re-render the document body (the reader already shows that) —
+// it surfaces the section outline (per-heading component-count badges + click-to-pulse the canvas),
+// an edit affordance (textarea over the raw markdown) with a dirty flag, "Submit changes"
+// (writeFile → submitToAgent, blocked while a round is pending), and a switcher over cited docs (Q4).
 
 interface CoreSpineProps {
   onClose: () => void
@@ -26,7 +25,6 @@ export function CoreSpine({ onClose }: CoreSpineProps) {
   const editCoreDoc = useCanvasStore((s) => s.editCoreDoc)
   const submitCoreDocEdit = useCanvasStore((s) => s.submitCoreDocEdit)
   const highlightComponents = useCanvasStore((s) => s.highlightComponents)
-  const focusNode = useCanvasStore((s) => s.focusNode)
 
   const coreDocPath = doc?.flowcanvas.session.coreDocPath
   const pendingReview = !!doc?.flowcanvas.session.pendingReview
@@ -40,56 +38,11 @@ export function CoreSpine({ onClose }: CoreSpineProps) {
   const [editing, setEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Rendered HTML for coreDocPath, keyed by path so switching shows "Rendering…" until the new fetch lands.
-  const [result, setResult] = useState<{ forPath: string; html: string | null; error: string | null }>({ forPath: '', html: null, error: null })
-  const ready = !!coreDocPath && result.forPath === coreDocPath
-  useEffect(() => {
-    if (!coreDocPath) return
-    let live = true
-    fetch(`/api/render?path=${encodeURIComponent(coreDocPath)}`)
-      .then(async (res) => {
-        const body = (await res.json()) as { html?: string; error?: string }
-        if (!res.ok) throw new Error(body.error ?? `${res.status}`)
-        if (live) setResult({ forPath: coreDocPath, html: body.html ?? '', error: null })
-      })
-      .catch((e: unknown) => { if (live) setResult({ forPath: coreDocPath, html: null, error: e instanceof Error ? e.message : String(e) }) })
-    return () => { live = false }
-  }, [coreDocPath])
-
-  // Component-selected → scroll the prose to the section and pulse it (the heading carries a rehype-slug id).
-  useEffect(() => {
-    if (!spineHighlightAnchor || editing || !ready) return
-    const root = scrollRef.current
-    const el = root?.querySelector(`#${CSS.escape(spineHighlightAnchor)}`) as HTMLElement | null
-    if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    el.classList.add('is-pulse')
-    const captured = el
-    const t = setTimeout(() => captured.classList.remove('is-pulse'), 1500)
-    return () => { clearTimeout(t); captured.classList.remove('is-pulse') }
-  }, [spineHighlightAnchor, editing, ready])
-
-  // Spine heading → canvas: pulse its components + scroll the prose to that heading.
+  // Spine heading → canvas: pulse its components on the board.
   const onSection = useCallback((anchor: string) => {
     highlightComponents(anchor)
-    const el = scrollRef.current?.querySelector(`#${CSS.escape(anchor)}`) as HTMLElement | null
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [highlightComponents])
-
-  // Delegated prose-link click: a relative .md/asset link focuses its node IF it is on the board (no
-  // phantom-source edge — the core doc is not itself a board node). External / in-doc anchors keep default.
-  const onProseClick = useCallback((e: MouseEvent) => {
-    const a = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null
-    if (!a || !doc) return
-    const href = a.getAttribute('href') ?? ''
-    if (!href || href.startsWith('#') || /^[a-z]+:/i.test(href)) return
-    e.preventDefault()
-    const target = href.split('#')[0]
-    const hit = doc.nodes.find((n) => isFileNode(n) && normPath(n.file) === normPath(target))
-    if (hit) focusNode(hit.id)
-  }, [doc, focusNode])
 
   const onSubmit = useCallback(async () => {
     if (submitting || pendingReview) return
@@ -144,30 +97,11 @@ export function CoreSpine({ onClose }: CoreSpineProps) {
         </div>
       )}
 
-      {/* Section outline — per-heading component-count badge; click pulses the components on canvas. */}
-      {!editing && outline.length > 0 && (
-        <div className="fc-spine__outline" aria-label="Sections">
-          {outline.map((h) => {
-            const n = sourceIndex.get(h.anchor)?.length ?? 0
-            return (
-              <button
-                key={h.anchor}
-                type="button"
-                className={cn('fc-spine__sec', spineHighlightAnchor === h.anchor && 'is-linked')}
-                data-testid="spine-section"
-                data-anchor={h.anchor}
-                style={{ paddingLeft: `${8 + (h.depth - 1) * 12}px` }}
-                onClick={() => onSection(h.anchor)}
-              >
-                <span className="fc-spine__sec-tx">{h.text}</span>
-                {n > 0 && <span className="fc-spine__sec-ct" title={`${n} component${n === 1 ? '' : 's'} from this section`}>{n}</span>}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      <div className="fc-spine__scroll" ref={scrollRef}>
+      {/* Body — fills the dock height. Read mode shows the section outline (per-heading component-count
+          badge; click pulses the components on canvas); edit mode shows the raw-markdown textarea. The
+          body itself scrolls only when its content overflows, so a short outline leaves no empty gap or
+          stray scrollbar (it expands to use the full pane the rendered doc preview used to occupy). */}
+      <div className="fc-spine__body">
         {editing ? (
           <textarea
             className="fc-spine__editor"
@@ -177,26 +111,32 @@ export function CoreSpine({ onClose }: CoreSpineProps) {
             aria-label="Core document markdown"
             spellCheck={false}
           />
-        ) : (
-          <>
-            {!coreDocPath && <p className="fc-spine__msg">No core doc bound. Pick a cited doc above to make it the living spine.</p>}
-            {coreDocPath && !ready && <p className="fc-spine__msg">Rendering…</p>}
-            {ready && result.error && (
-              /not found|enoent/i.test(result.error) ? (
-                // #2/#3 — the board cites a core spec doc that is not on disk (the agent referenced a doc
-                // it never wrote). Say so precisely instead of a bare "not found", and point at the fix.
-                <p className="fc-spine__msg fc-spine__msg--err" data-testid="spine-missing">
-                  Core spec not found — the components reference <code>{coreDocPath}</code>, but that document was never
-                  written to disk. Re-run the agent so it writes the core spec doc, or pick a different doc above.
-                </p>
-              ) : (
-                <p className="fc-spine__msg fc-spine__msg--err">Could not render — {result.error}</p>
+        ) : outline.length > 0 ? (
+          <div className="fc-spine__outline" aria-label="Sections">
+            {outline.map((h) => {
+              const n = sourceIndex.get(h.anchor)?.length ?? 0
+              return (
+                <button
+                  key={h.anchor}
+                  type="button"
+                  className={cn('fc-spine__sec', spineHighlightAnchor === h.anchor && 'is-linked')}
+                  data-testid="spine-section"
+                  data-anchor={h.anchor}
+                  style={{ paddingLeft: `${8 + (h.depth - 1) * 12}px` }}
+                  onClick={() => onSection(h.anchor)}
+                >
+                  <span className="fc-spine__sec-tx">{h.text}</span>
+                  {n > 0 && <span className="fc-spine__sec-ct" title={`${n} component${n === 1 ? '' : 's'} from this section`}>{n}</span>}
+                </button>
               )
-            )}
-            {ready && result.html !== null && (
-              <div className="fc-spine__prose" onClick={onProseClick} dangerouslySetInnerHTML={{ __html: result.html }} />
-            )}
-          </>
+            })}
+          </div>
+        ) : (
+          <p className="fc-spine__msg">
+            {coreDocPath
+              ? 'This document has no sections yet.'
+              : 'No core doc bound. Pick a cited doc above to make it the living spine.'}
+          </p>
         )}
       </div>
 

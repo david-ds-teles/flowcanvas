@@ -272,3 +272,10 @@ No unit tests exist for the sidecar. Integration coverage lives entirely in `scr
 - No unit tests — `scripts/smoke-mcp.mjs` provides integration coverage only; mocking the HTTP layer for unit tests is not set up.
 - No compiled build artifact — `npm run mcp` relies on `tsx`; a `build:mcp` script (`tsc` → `node dist/...`) is not configured (`mcp/README.md:39`).
 - Disk-divergence banner deferred (Decision 10 from plan 002) — the app has no live probe to detect when the sidecar write-back changes the on-disk `.canvas` outside the current session.
+
+## Update 2026-06-30 — apply_response accepts coreDocPath
+
+The `apply_response` tool input schema gains `coreDocPath?: string`. Previously zod stripped any agent
+`coreDocPath` (the root cause of the MCP path never binding the spine or placing the core-doc card). It is
+now threaded into the pure `applyResponse` (binds `session.coreDocPath` + mints the core-doc canvas card)
+and into `organizeByType(next.nodes, next…coreDocPath)` so the card pins leftmost on first extraction.

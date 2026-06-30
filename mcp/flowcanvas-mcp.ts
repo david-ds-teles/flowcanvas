@@ -179,6 +179,13 @@ server.registerTool(
             .array(z.object({ path: z.string(), content: z.string() }))
             .optional()
             .describe("New/updated markdown files (full content including YAML frontmatter)."),
+          coreDocPath: z
+            .string()
+            .optional()
+            .describe(
+              "Root-relative path of the core spec doc. The tool binds it as the living spine AND places " +
+                "a readable markdown card for it on the canvas — do NOT add your own node for it."
+            ),
         })
         .describe("AgentResponse object matching the v0.1 agent contract."),
     },
@@ -202,7 +209,7 @@ server.registerTool(
       // organizeByType never runs for an MCP apply). Skipped (idempotent) for an incremental round on
       // an already-populated board, so it never disturbs an operator's existing arrangement.
       if (doc.nodes.length === 0 && next.nodes.length > 0) {
-        const { positions, sizes } = organizeByType(next.nodes);
+        const { positions, sizes } = organizeByType(next.nodes, next.flowcanvas.session.coreDocPath);
         next.nodes = next.nodes.map((n) => ({
           ...n,
           ...(positions[n.id] ? { x: positions[n.id].x, y: positions[n.id].y } : null),

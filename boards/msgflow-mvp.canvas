@@ -9,7 +9,7 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "solution-overview"
         },
         "kind": "boundary"
@@ -26,7 +26,7 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "architecture-decisions"
         },
         "kind": "boundary"
@@ -43,10 +43,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "problem-statement"
         },
-        "kind": "actor"
+        "kind": "actor",
+        "frontmatter": {
+          "name": "Customer",
+          "kind": "actor",
+          "description": "Inbound WhatsApp customer — the end-user the system serves.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "problem-statement"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/customer.md"
@@ -60,10 +69,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "decision-7-human-escalation"
         },
-        "kind": "actor"
+        "kind": "actor",
+        "frontmatter": {
+          "name": "Business Owner",
+          "kind": "actor",
+          "description": "The business owner — onboards the WhatsApp number and Google Workspace; receives escalation notifications.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "decision-7-human-escalation"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/business-owner.md"
@@ -77,10 +95,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "decision-1-whatsapp-channel"
         },
-        "kind": "external"
+        "kind": "external",
+        "frontmatter": {
+          "name": "zavu.dev BSP",
+          "kind": "external",
+          "description": "zavu.dev — hosted WhatsApp Business Service Provider (official Meta BSP). Free tier 2k msgs/mo.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "decision-1-whatsapp-channel"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/zavu-bsp.md"
@@ -94,10 +121,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "decision-3-llm--agent-orchestration"
         },
-        "kind": "external"
+        "kind": "external",
+        "frontmatter": {
+          "name": "OpenRouter LLM Gateway",
+          "kind": "external",
+          "description": "OpenRouter — OpenAI-compatible LLM gateway for cheap, swappable model access.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "decision-3-llm--agent-orchestration"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/openrouter-llm.md"
@@ -112,10 +148,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "api--interface-contracts"
         },
-        "kind": "service"
+        "kind": "service",
+        "frontmatter": {
+          "name": "Webhook Handler",
+          "kind": "service",
+          "description": "FastAPI route — POST /webhooks/zavu. Ingests, deduplicates, persists, and enqueues inbound WhatsApp messages.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "api--interface-contracts"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/webhook-handler.md"
@@ -130,10 +175,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "api--interface-contracts"
         },
-        "kind": "service"
+        "kind": "service",
+        "frontmatter": {
+          "name": "OAuth Handler",
+          "kind": "service",
+          "description": "FastAPI routes — Google OAuth 2.0 onboarding for per-business Google Workspace access.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "api--interface-contracts"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/oauth-handler.md"
@@ -148,10 +202,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "technology-stack"
         },
-        "kind": "queue"
+        "kind": "queue",
+        "frontmatter": {
+          "name": "Redis / arq Queue",
+          "kind": "queue",
+          "description": "Redis-backed arq job queue — async decoupling between webhook ingestion and the agent worker.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "technology-stack"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/redis-arq-queue.md"
@@ -166,10 +229,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "technical-design"
         },
-        "kind": "service"
+        "kind": "service",
+        "frontmatter": {
+          "name": "arq Worker",
+          "kind": "service",
+          "description": "arq Worker — processes handle_inbound jobs; loads conversation state and dispatches the LangGraph agent.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "technical-design"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/arq-worker.md"
@@ -184,10 +256,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "module-boundaries"
         },
-        "kind": "service"
+        "kind": "service",
+        "frontmatter": {
+          "name": "LangGraph Agent",
+          "kind": "service",
+          "description": "LangGraph Agent — the AI reasoning core; classifies intent, calls grounding tools, and decides reply vs escalate.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "module-boundaries"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/langgraph-agent.md"
@@ -202,10 +283,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "api--interface-contracts"
         },
-        "kind": "process"
+        "kind": "process",
+        "frontmatter": {
+          "name": "Channel Adapter",
+          "kind": "process",
+          "description": "Channel Adapter (ZavuAdapter) — normalizes inbound/outbound WhatsApp messages behind a swappable ChannelAdapter ABC.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "api--interface-contracts"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/channel-adapter.md"
@@ -220,10 +310,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "retrieval--knowledge-ingestion-rag"
         },
-        "kind": "process"
+        "kind": "process",
+        "frontmatter": {
+          "name": "Knowledge Ingester",
+          "kind": "process",
+          "description": "Knowledge Ingester — daily arq cron job that ingests company PDFs from Google Drive into pgvector document chunks.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "retrieval--knowledge-ingestion-rag"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/knowledge-ingester.md"
@@ -238,10 +337,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "retrieval--knowledge-ingestion-rag"
         },
-        "kind": "service"
+        "kind": "service",
+        "frontmatter": {
+          "name": "TEI Embeddings Sidecar",
+          "kind": "service",
+          "description": "TEI Embeddings Sidecar — HuggingFace Text Embeddings Inference serving BAAI/bge-m3 for zero-cost multilingual embeddings.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "retrieval--knowledge-ingestion-rag"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/tei-sidecar.md"
@@ -256,10 +364,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "data-models"
         },
-        "kind": "datastore"
+        "kind": "datastore",
+        "frontmatter": {
+          "name": "PostgreSQL + pgvector",
+          "kind": "datastore",
+          "description": "PostgreSQL + pgvector — shared multi-tenant datastore for all msgflow entities and PDF chunk embeddings.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "data-models"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/postgresql.md"
@@ -274,10 +391,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "decision-5-calendar-capability"
         },
-        "kind": "external"
+        "kind": "external",
+        "frontmatter": {
+          "name": "Google Calendar",
+          "kind": "external",
+          "description": "Google Calendar API — read-only free/busy queries powering the check_availability agent tool.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "decision-5-calendar-capability"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-calendar.md"
@@ -292,10 +418,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "retrieval--knowledge-ingestion-rag"
         },
-        "kind": "external"
+        "kind": "external",
+        "frontmatter": {
+          "name": "Google Drive",
+          "kind": "external",
+          "description": "Google Drive API — app-scoped PDF listing and download powering the knowledge ingestion pipeline.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "retrieval--knowledge-ingestion-rag"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-drive.md"
@@ -310,10 +445,19 @@
       "meta": {
         "origin": "agent",
         "source": {
-          "path": ".flowcode/plans/msgflow-mvp/msgflow-mvp-design.md",
+          "path": "boards/msgflow-mvp.md",
           "anchor": "decision-6-price-source"
         },
-        "kind": "external"
+        "kind": "external",
+        "frontmatter": {
+          "name": "Google Sheets",
+          "kind": "external",
+          "description": "Google Sheets API — reads the canonical prices spreadsheet for the lookup_price agent tool.",
+          "source": {
+            "path": "boards/msgflow-mvp.md",
+            "anchor": "decision-6-price-source"
+          }
+        }
       },
       "type": "file",
       "file": "boards/msgflow-mvp.nodes/google-sheets.md"
@@ -553,13 +697,15 @@
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.3",
+    "schemaVersion": "0.4",
     "session": {
       "title": "msgflow MVP — System Design",
       "intent": "WhatsApp AI customer assistant with Google Workspace grounding — system-design extraction from msgflow-mvp-design.md",
       "createdAt": "2026-06-29T00:00:00Z",
-      "updatedAt": "2026-06-29T21:22:38.217Z",
-      "revision": 5
+      "updatedAt": "2026-06-30T10:15:25.225Z",
+      "revision": 10,
+      "lastBriefId": "brief-c3ad947b",
+      "coreDocPath": "boards/msgflow-mvp.md"
     },
     "comments": []
   }

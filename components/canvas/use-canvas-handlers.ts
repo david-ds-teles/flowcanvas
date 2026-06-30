@@ -68,7 +68,15 @@ export function useCanvasHandlers() {
     const sel = new Set(useCanvasStore.getState().selectedIds)
     setNodes(rfNodes.map((n) => ({ ...n, selected: sel.has(n.id) })))
   }, [rfNodes, setNodes])
-  useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
+  // Rebuild controlled RF edges when the doc changes — but PRESERVE which edge is selected (005-edges).
+  // Without this, every edge edit (e.g. dragging a bend → setEdgeWaypoints → doc change) regenerated the
+  // edges and wiped `selected`, collapsing the edge's style panel / handles mid-interaction.
+  useEffect(() => {
+    setEdges((prev) => {
+      const sel = new Set(prev.filter((e) => e.selected).map((e) => e.id))
+      return sel.size === 0 ? rfEdges : rfEdges.map((e) => (sel.has(e.id) ? { ...e, selected: true } : e))
+    })
+  }, [rfEdges, setEdges])
 
   // Push the store's selectedIds onto RF node.selected so a PROGRAMMATIC selection — a structure-rail
   // click (focusNode) or a navigateRef focus-or-add — highlights the node on the canvas, not just in

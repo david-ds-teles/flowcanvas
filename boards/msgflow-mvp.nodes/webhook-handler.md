@@ -1,9 +1,9 @@
 ---
-name: webhook-handler
+name: Webhook Handler
 kind: service
 description: FastAPI route — POST /webhooks/zavu. Ingests, deduplicates, persists, and enqueues inbound WhatsApp messages.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: api--interface-contracts
 ---
 

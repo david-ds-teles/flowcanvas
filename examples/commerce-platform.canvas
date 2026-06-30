@@ -350,13 +350,13 @@
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.3",
+    "schemaVersion": "0.4",
     "session": {
       "title": "Commerce Platform",
       "intent": "Commerce platform — decomposed architecture (v2 System Design Studio demo)",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-29T23:28:05.397Z",
-      "revision": 3,
+      "updatedAt": "2026-06-30T09:43:25.504Z",
+      "revision": 4,
       "coreDocPath": "examples/commerce-platform/commerce-design.md"
     },
     "comments": [

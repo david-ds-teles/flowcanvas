@@ -35,10 +35,11 @@ interface ColumnLayout {
 }
 
 /** Lay `items` into vertical columns — one column per component-kind band, ordered left→right by rank,
- *  nodes stacked top-down within a band. Returns positions relative to (ox, oy) + the content bbox. */
-function layoutColumns(items: CanvasNode[], ox: number, oy: number): ColumnLayout {
+ *  nodes stacked top-down within a band. Returns positions relative to (ox, oy) + the content bbox.
+ *  `rankOf` overrides the band ranking (e.g. to pin the core-doc card leftmost). */
+function layoutColumns(items: CanvasNode[], ox: number, oy: number, rankOf: (n: CanvasNode) => number = bandRank): ColumnLayout {
   const buckets = new Map<number, CanvasNode[]>()
-  for (const n of items) buckets.set(bandRank(n), [...(buckets.get(bandRank(n)) ?? []), n])
+  for (const n of items) buckets.set(rankOf(n), [...(buckets.get(rankOf(n)) ?? []), n])
   const ranks = [...buckets.keys()].sort((a, b) => a - b)
   const pos: Record<string, { x: number; y: number }> = {}
   let colX = ox
@@ -69,7 +70,7 @@ export interface OrganizeResult {
  * async, no DOM — fully predictable and unit-testable. Returns absolute positions for every node plus new
  * sizes for each group container (the doc stays ABSOLUTE; the adapter handles parent-relative on render).
  */
-export function organizeByType(nodes: CanvasNode[]): OrganizeResult {
+export function organizeByType(nodes: CanvasNode[], coreDocPath?: string): OrganizeResult {
   const positions: OrganizeResult['positions'] = {}
   const sizes: OrganizeResult['sizes'] = {}
 
@@ -78,6 +79,11 @@ export function organizeByType(nodes: CanvasNode[]): OrganizeResult {
 
   const groups = nodes.filter((n) => n.type === 'group' && !n.parentId)
   const leaves = nodes.filter((n) => n.type !== 'group' && !n.parentId)
+
+  // The core-spec-doc card (kind-less file node bound as the spine) is the board's entry point — pin it to
+  // its own leftmost band (rank -1, ahead of actors) so it reads as the first element on the board.
+  const rankOf = (n: CanvasNode): number =>
+    coreDocPath && n.type === 'file' && n.file === coreDocPath ? -1 : bandRank(n)
 
   // 1. Each group's children → relative band layout; size the group to fit (+ label headroom).
   const childRel = new Map<string, Record<string, { x: number; y: number }>>()
@@ -89,8 +95,8 @@ export function organizeByType(nodes: CanvasNode[]): OrganizeResult {
     sizes[g.id] = { width: width + 2 * GROUP_PAD, height: height + GROUP_LABEL_PAD + GROUP_PAD }
   }
 
-  // 2. Top-level leaves → bands on the left.
-  const leafLayout = layoutColumns(leaves, ORIGIN_X, ORIGIN_Y)
+  // 2. Top-level leaves → bands on the left (core-doc card pinned leftmost via rankOf).
+  const leafLayout = layoutColumns(leaves, ORIGIN_X, ORIGIN_Y, rankOf)
   Object.assign(positions, leafLayout.pos)
 
   // 3. Groups flow left→right after the leaf region; project each group's children to absolute coords.

@@ -110,7 +110,7 @@ export interface BriefNode {
   componentKind?: ComponentKind  // 004 — surfaces meta.kind so the agent preserves it
 }
 
-// lib/canvas/brief.ts:49–55
+// lib/canvas/brief.ts:54–71
 export interface BriefEdge {
   id: string
   from: string
@@ -118,6 +118,16 @@ export interface BriefEdge {
   label?: string
   rel?: RelationshipType  // typed relationship (v2)
   origin: EdgeOrigin
+  // 005-edges — echo the current visual style so the agent can preserve or restyle it (parity)
+  routing?: EdgeRouting
+  line?: EdgeLineStyle
+  color?: CanvasColor
+  fromSide?: Side
+  toSide?: Side
+  fromEnd?: EdgeEnd
+  toEnd?: EdgeEnd
+  labelT?: number
+  points?: { x: number; y: number }[]
 }
 
 // lib/canvas/brief.ts:57–64
@@ -168,13 +178,22 @@ export interface AgentNode {
   kind?: ComponentKind    // 004 — agent emits the semantic kind; nodeFromAgent → meta.kind
 }
 
-// lib/canvas/brief.ts:100–108
+// lib/canvas/brief.ts:118–134
 export interface AgentEdge {
   id?: string
   fromNode: string; toNode: string
-  fromSide?: Side; toSide?: Side
+  fromSide?: Side         // 005-edges: omit ⇒ the endpoint floats from node center
+  toSide?: Side
   label?: string
   rel?: RelationshipType  // typed relationship (v2)
+  // 005-edges — full parity with the human edge Style panel
+  routing?: EdgeRouting   // 'bezier' | 'smoothstep' (default) | 'straight'
+  line?: EdgeLineStyle    // 'solid' (default) | 'dashed' | 'dotted'
+  color?: CanvasColor     // hex "#RRGGBB" or preset "1".."6"; omit ⇒ provenance default
+  fromEnd?: EdgeEnd       // start marker shape; omit ⇒ 'none'
+  toEnd?: EdgeEnd         // end marker shape; omit ⇒ 'arrow'
+  labelT?: number         // 0..1 label position along the path; omit ⇒ 0.5
+  points?: { x: number; y: number }[]   // manual line waypoints (absolute coords); omit ⇒ auto-route
 }
 
 // lib/canvas/brief.ts:109–115
@@ -321,7 +340,7 @@ Not applicable — this module owns no tables and performs no persistence.
 ## Dependencies
 
 **Upstream modules:**
-- `lib/canvas/jsoncanvas.ts` — imports `FlowcanvasDoc`, `CanvasNode`, `CanvasEdge`, `Comment`, `CommentAnchor`, `NodeKind`, `EdgeOrigin`, `CanvasColor`, `Side`, `FileNode`, `LinkNode`, `TextNode`, `RelationshipType`, `NodeSource`, `NodeShape`, `ComponentKind`, `nodeKind`, `REL_LABELS` (`brief.ts:11–28`)
+- `lib/canvas/jsoncanvas.ts` — imports `FlowcanvasDoc`, `CanvasNode`, `CanvasEdge`, `Comment`, `CommentAnchor`, `NodeKind`, `EdgeOrigin`, `CanvasColor`, `Side`, `FileNode`, `LinkNode`, `TextNode`, `RelationshipType`, `NodeSource`, `NodeShape`, `ComponentKind`, `nodeKind`, `REL_LABELS`; 005-edges also `EdgeEnd`, `EdgeRouting`, `EdgeLineStyle` (`brief.ts:11–29`)
 - `lib/canvas/refs.ts` — imports `extractRefs`, `DocRef` to populate `BriefNode.refs` for file nodes (`brief.ts:30`)
 - `lib/canvas/generation-kit.ts` — imports `kitSections` to provide `AGENT_CONTRACT` and embed `responseContract` in every brief (`brief.ts:31`)
 
@@ -368,6 +387,7 @@ Commands scoped to this module. Cross-reference full project gates in `.flowcode
 - **Scope-aware submit chokepoint.** `scopeNodes` is the single place that resolves selection → structural closure. It covers two use-cases from one code path: the MCP `get_board` tool (scoped extraction) and the clipboard Export button in `export-panel.tsx`. Triggered only when `session.briefScope` is non-empty (`brief.ts:207–209`).
 - **Edge `rel` defaults.** During `buildBrief`, `links`-origin edges get `rel:'references'`; all others get `rel:'related'` (`brief.ts:234`). During `applyResponse`, when the agent omits `rel`, new edges default to `'related'` and `REL_LABELS['related']` (`='related'`) is used as the label; when `rel` is set but label is absent, `REL_LABELS[rel]` fills the label (`brief.ts:347,363–364`). The 8-value `RelationshipType` catalog is defined in `lib/canvas/jsoncanvas.ts:15–25`.
 - **Group label preservation.** `nodeFromAgent` checks: if the `AgentNode` has no `label` but the existing `CanvasNode` is a group with a label, the existing label is kept (`brief.ts:267–268`). This prevents an agent update that merely moves a group from silently erasing its display name.
+- **Edge style parity (005-edges).** `buildBrief` emits each edge's visual style onto `BriefEdge` via conditional spreads — only fields actually set on the doc edge appear (`brief.ts:246–254`), so a plain edge stays terse. `applyResponse` threads the same nine style fields (`routing`/`line`/`color`/`fromSide`/`toSide`/`fromEnd`/`toEnd`/`labelT`/`points`) on BOTH the update branch (`brief.ts:397–408`) and the create branch (`brief.ts:422–433`), so an agent can fully restyle existing edges or create pre-styled ones — exact parity with the human Style panel. `toEnd` defaults to `'arrow'` on create when the agent omits it (`brief.ts:402,427`).
 - **`AgentNode.kind` threads to `NodeMeta.kind` via `nodeFromAgent` (004).** When the agent emits `kind` on an `AgentNode`, `nodeFromAgent` spreads it into `meta: { ...existing.meta, kind: an.kind }` (`brief.ts:261`). `buildBrief` propagates `meta.kind` back in the other direction as `componentKind` on `BriefNode` (`brief.ts:203`). Both directions are additive and optional — a round-trip through an agent that does not know about `ComponentKind` leaves `meta.kind` intact via the `...existing.meta` spread.
 
 **Gotchas & invariants:**
@@ -386,3 +406,13 @@ Commands scoped to this module. Cross-reference full project gates in `.flowcode
 - `MergeReport.conflicts` is structurally present but always `[]` — per-node revision tracking needed to populate it.
 - Canvas-anchored comments are silently excluded from scoped briefs; this is undocumented in `AGENT_CONTRACT`.
 - ~~No automated sync check between `AGENT_CONTRACT` and `docs/flowcanvas-agent-contract.md`~~ — resolved in Phase 1 (004). Both surfaces now render from `kitSections().schemaContract` in `generation-kit.ts` (`brief.ts:149`). Drift on contract edits is no longer possible via this path.
+
+## Update 2026-06-30 — core spec doc card (AgentResponse.coreDocPath)
+
+`AgentResponse` gains `coreDocPath?: string`. New pure exports `ensureCoreDocNode(nodes, coreDocPath,
+mintId, pos)` + `CORE_DOC_CARD` geometry. When `resp.coreDocPath` is set, `applyResponse` binds
+`session.coreDocPath` and idempotently mints a **kind-less** `type:"file"` card for the core doc (renders
+as a plain markdown card via the adapter, never a component widget) — the board's spine entry-point.
+Reverses the 004 "spine, not a card" rule (operator decision 2026-06-30). Consumed by `store.md` `load`
+(heals pre-existing boards) and the MCP `apply_response`; positioned leftmost by `layout.md`
+`organizeByType(nodes, coreDocPath)`.

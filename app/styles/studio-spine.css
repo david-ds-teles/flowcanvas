@@ -57,8 +57,8 @@
 }
 .fc-spine__switch-sel:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
 
-/* section outline */
-.fc-spine__outline { flex: 0 0 auto; max-height: 30%; overflow: auto; padding: 6px 8px; border-bottom: 1px solid var(--color-outline-variant); }
+/* section outline — now the spine's primary body content (fills the pane via .fc-spine__body) */
+.fc-spine__outline { padding: 6px 8px; }
 .fc-spine__sec {
   width: 100%; display: flex; align-items: center; gap: 8px;
   padding: 5px 9px; border-radius: var(--radius-control); border: 1px solid transparent; background: transparent;
@@ -74,8 +74,9 @@
   font-family: var(--font-jetbrains-mono); font-size: 9.5px;
 }
 
-/* render / edit body */
-.fc-spine__scroll { flex: 1; min-height: 0; overflow: auto; padding: 6px 0 18px; }
+/* body — the single flex-grow region; holds the outline (read) or the editor (edit) and is the only
+   scroll container, so it expands to fill the pane and shows a scrollbar only when content overflows. */
+.fc-spine__body { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .fc-spine__msg { padding: 18px 20px; color: var(--color-text-secondary); font-size: 13px; }
 .fc-spine__msg--err { color: var(--color-neon-rose); }
 .fc-spine__editor {
@@ -84,32 +85,6 @@
   color: var(--color-text-primary); font-family: var(--font-jetbrains-mono); font-size: 12.5px; line-height: 1.6; padding: 14px 16px;
 }
 .fc-spine__editor:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
-
-/* prose — reuse the reader's readability scale; headings carry rehype-slug ids for scroll-to + pulse */
-.fc-spine__prose { max-width: 64ch; margin-inline: auto; padding: 14px 22px; font-size: 15px; line-height: 1.7; color: var(--color-text-primary); }
-.fc-spine__prose h1 { font-size: 22px; font-weight: 600; margin: 0.2em 0 0.5em; }
-.fc-spine__prose h2 { font-size: 17px; margin: 1.2em 0 0.4em; scroll-margin-top: 12px; }
-.fc-spine__prose h3 { font-size: 15px; margin: 1em 0 0.35em; scroll-margin-top: 12px; }
-.fc-spine__prose p { margin: 0 0 0.85em; }
-.fc-spine__prose strong { color: var(--color-text-primary); }
-.fc-spine__prose em { color: var(--color-text-primary); font-style: italic; }
-.fc-spine__prose a { color: var(--color-primary); text-decoration: none; }
-.fc-spine__prose a:hover { text-decoration: underline; }
-.fc-spine__prose code { font-family: var(--font-jetbrains-mono); font-size: 0.84em; color: var(--color-neon-cyan); background: rgba(94, 242, 255, 0.1); border: 1px solid rgba(94, 242, 255, 0.18); border-radius: 6px; padding: 1px 6px; }
-.fc-spine__prose pre { background: rgba(94, 242, 255, 0.06); border: 1px solid rgba(94, 242, 255, 0.12); border-radius: 8px; padding: 12px 14px; overflow: auto; }
-.fc-spine__prose pre code { background: none; border: 0; padding: 0; color: var(--color-text-secondary); }
-.fc-spine__prose ul, .fc-spine__prose ol { margin: 0 0 0.85em; padding-left: 1.3em; }
-.fc-spine__prose li { margin-bottom: 0.3em; }
-/* component-selected → the section heading pulses */
-.fc-spine__prose :is(h1, h2, h3).is-pulse {
-  border-radius: 6px;
-  animation: fc-spine-pulse 1.5s ease-out;
-}
-@keyframes fc-spine-pulse {
-  0% { box-shadow: 0 0 0 2px var(--color-secondary), 0 0 18px -2px var(--color-secondary); background: rgba(228, 198, 255, 0.16); }
-  100% { box-shadow: none; background: transparent; }
-}
-@media (prefers-reduced-motion: reduce) { .fc-spine__prose :is(h1, h2, h3).is-pulse { animation: none; } }
 
 /* footer — submit */
 .fc-spine__foot { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--color-outline-variant); background: rgba(6, 14, 32, 0.6); }

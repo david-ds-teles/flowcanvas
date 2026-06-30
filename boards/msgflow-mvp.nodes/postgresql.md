@@ -1,9 +1,9 @@
 ---
-name: postgresql
+name: PostgreSQL + pgvector
 kind: datastore
 description: PostgreSQL + pgvector — shared multi-tenant datastore for all msgflow entities and PDF chunk embeddings.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: data-models
 ---
 

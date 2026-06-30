@@ -21,7 +21,7 @@ export const flowcanvasDocSchema = z.object({
   nodes: z.array(node),
   edges: z.array(z.object({ id: z.string(), fromNode: z.string(), toNode: z.string() }).passthrough()),
   flowcanvas: z.object({
-    schemaVersion: z.enum(['0.1', '0.2', '0.3']),
+    schemaVersion: z.enum(['0.1', '0.2', '0.3', '0.4']),
     session: z.object({ createdAt: z.string(), updatedAt: z.string(), revision: z.number() }).passthrough(),
     comments: z.array(z.unknown()),
   }).passthrough(),

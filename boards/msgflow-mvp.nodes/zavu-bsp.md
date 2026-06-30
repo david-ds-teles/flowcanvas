@@ -1,9 +1,9 @@
 ---
-name: zavu-bsp
+name: zavu.dev BSP
 kind: external
 description: zavu.dev — hosted WhatsApp Business Service Provider (official Meta BSP). Free tier 2k msgs/mo.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: decision-1-whatsapp-channel
 ---
 

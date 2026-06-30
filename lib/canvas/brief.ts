@@ -25,6 +25,9 @@ import type {
   NodeSource,
   NodeShape,
   ComponentKind,
+  EdgeRouting,
+  EdgeLineStyle,
+  EdgeEnd,
 } from './jsoncanvas'
 import { nodeKind, REL_LABELS } from './jsoncanvas'
 import { extractRefs, type DocRef } from './refs'
@@ -55,6 +58,16 @@ export interface BriefEdge {
   label?: string
   rel?: RelationshipType                 // typed relationship (v2, Decision 1)
   origin: EdgeOrigin
+  // 005-edges — echo the current visual style so the agent can preserve or restyle it (parity)
+  routing?: EdgeRouting
+  line?: EdgeLineStyle
+  color?: CanvasColor
+  fromSide?: Side
+  toSide?: Side
+  fromEnd?: EdgeEnd
+  toEnd?: EdgeEnd
+  labelT?: number
+  points?: { x: number; y: number }[]
 }
 export interface BriefComment {
   id: string
@@ -106,10 +119,18 @@ export interface AgentEdge {
   id?: string
   fromNode: string
   toNode: string
-  fromSide?: Side
+  fromSide?: Side                        // 005-edges: omit ⇒ the endpoint floats from node center
   toSide?: Side
   label?: string
   rel?: RelationshipType                 // typed relationship (v2, Decision 1)
+  // 005-edges — full parity with the human edge Style panel (see [[agent-feature-parity]])
+  routing?: EdgeRouting                  // 'bezier' (default) | 'smoothstep' | 'straight'
+  line?: EdgeLineStyle                   // 'solid' (default) | 'dashed' | 'dotted'
+  color?: CanvasColor                    // hex "#RRGGBB" or preset "1".."6"; omit ⇒ provenance default
+  fromEnd?: EdgeEnd                      // start marker shape; omit ⇒ 'none'
+  toEnd?: EdgeEnd                        // end marker shape; omit ⇒ 'arrow'
+  labelT?: number                        // 0..1 label position along the path; omit ⇒ 0.5
+  points?: { x: number; y: number }[]    // manual line waypoints (absolute canvas coords); omit ⇒ auto-route
 }
 export interface AgentComment {
   id?: string
@@ -129,6 +150,7 @@ export interface AgentResponse {
   removeEdgeIds?: string[]
   comments?: AgentComment[]
   generatedFiles?: GeneratedFile[]       // new/updated md → tool writes to disk before render
+  coreDocPath?: string                   // the core spec doc → applyResponse binds the spine + mints its canvas card
 }
 
 export interface MergeReport {
@@ -218,7 +240,19 @@ export function buildBrief(
   ).map((e) => {
     const origin = e.meta?.origin ?? 'user'
     const rel: RelationshipType = e.meta?.rel ?? (origin === 'links' ? 'references' : 'related')
-    return { id: e.id, from: e.fromNode, to: e.toNode, label: e.label, rel, origin }
+    return {
+      id: e.id, from: e.fromNode, to: e.toNode, label: e.label, rel, origin,
+      // 005-edges — echo any non-default visual style so the agent round-trips it (parity)
+      ...(e.meta?.routing ? { routing: e.meta.routing } : {}),
+      ...(e.meta?.line ? { line: e.meta.line } : {}),
+      ...(e.color ? { color: e.color } : {}),
+      ...(e.fromSide ? { fromSide: e.fromSide } : {}),
+      ...(e.toSide ? { toSide: e.toSide } : {}),
+      ...(e.fromEnd ? { fromEnd: e.fromEnd } : {}),
+      ...(e.toEnd ? { toEnd: e.toEnd } : {}),
+      ...(e.meta?.labelT != null ? { labelT: e.meta.labelT } : {}),
+      ...(e.meta?.points?.length ? { points: e.meta.points } : {}),
+    }
   })
   const comments: BriefComment[] = doc.flowcanvas.comments
     .filter((c) => !isScoped || (c.anchor.kind === 'node' && inScope.has(c.anchor.nodeId)))
@@ -332,10 +366,19 @@ export function applyResponse(
       const updated: CanvasEdge = {
         ...existing,
         fromNode: ae.fromNode, toNode: ae.toNode,
-        fromSide: ae.fromSide, toSide: ae.toSide,
+        fromSide: ae.fromSide ?? existing.fromSide, toSide: ae.toSide ?? existing.toSide,
         label: ae.label ?? existing.label ?? REL_LABELS[rel],
-        toEnd: existing.toEnd ?? 'arrow',
-        meta: { ...existing.meta, origin: 'agent', rel },
+        // 005-edges — agent restyle (parity); each field falls back to the existing value when omitted
+        ...(ae.color !== undefined ? { color: ae.color } : {}),
+        ...(ae.fromEnd !== undefined ? { fromEnd: ae.fromEnd } : {}),
+        toEnd: ae.toEnd ?? existing.toEnd ?? 'arrow',
+        meta: {
+          ...existing.meta, origin: 'agent', rel,
+          ...(ae.routing !== undefined ? { routing: ae.routing } : {}),
+          ...(ae.line !== undefined ? { line: ae.line } : {}),
+          ...(ae.labelT !== undefined ? { labelT: ae.labelT } : {}),
+          ...(ae.points !== undefined ? { points: ae.points } : {}),
+        },
       }
       edges[edges.indexOf(existing)] = updated
       eById.set(ae.id, updated)
@@ -347,9 +390,20 @@ export function applyResponse(
     const relNew: RelationshipType = ae.rel ?? 'related'
     const edge: CanvasEdge = {
       id, fromNode: ae.fromNode, toNode: ae.toNode,
-      fromSide: ae.fromSide, toSide: ae.toSide,
+      // 005-edges — omit sides ⇒ float from center; carry any agent-supplied visual style (parity)
+      ...(ae.fromSide ? { fromSide: ae.fromSide } : {}),
+      ...(ae.toSide ? { toSide: ae.toSide } : {}),
       label: ae.label ?? REL_LABELS[relNew],
-      toEnd: 'arrow', meta: { origin: 'agent', rel: relNew },
+      ...(ae.color !== undefined ? { color: ae.color } : {}),
+      ...(ae.fromEnd !== undefined ? { fromEnd: ae.fromEnd } : {}),
+      toEnd: ae.toEnd ?? 'arrow',
+      meta: {
+        origin: 'agent', rel: relNew,
+        ...(ae.routing !== undefined ? { routing: ae.routing } : {}),
+        ...(ae.line !== undefined ? { line: ae.line } : {}),
+        ...(ae.labelT !== undefined ? { labelT: ae.labelT } : {}),
+        ...(ae.points !== undefined ? { points: ae.points } : {}),
+      },
     }
     edges.push(edge)
     eById.set(id, edge)
@@ -388,6 +442,11 @@ export function applyResponse(
   report.removed.nodes = nodes.length - nextNodes.length
   report.removed.edges = edges.length - nextEdges.length
 
+  // (7b) Core spec doc — bind the spine to it ONLY (operator 2026-06-30 reversed: the core doc is the
+  // living spine, NEVER a duplicate canvas card). The agent declares coreDocPath; we persist it on the
+  // session so the spine renders, but no card node is ever minted for it.
+  const coreDocPath = resp.coreDocPath ?? prev.flowcanvas.session.coreDocPath
+
   // (8) Bump & hand back — the store persists via POST /api/canvas.
   const next: FlowcanvasDoc = {
     nodes: nextNodes,
@@ -395,7 +454,12 @@ export function applyResponse(
     flowcanvas: {
       ...prev.flowcanvas,
       comments,
-      session: { ...prev.flowcanvas.session, revision: prev.flowcanvas.session.revision + 1, updatedAt: now },
+      session: {
+        ...prev.flowcanvas.session,
+        revision: prev.flowcanvas.session.revision + 1,
+        updatedAt: now,
+        ...(coreDocPath ? { coreDocPath } : {}),
+      },
     },
   }
   return { next, report }

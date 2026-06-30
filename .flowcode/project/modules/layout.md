@@ -214,3 +214,11 @@ Width uses only two levels: `measured[n.id]?.width ?? n.width` — no constant f
 ## Known Gaps
 
 Not detected — populate manually.
+
+## Update 2026-06-30 — core-doc card pinned leftmost
+
+`organizeByType(nodes, coreDocPath?)` gains an optional second arg: the file node whose `file ===
+coreDocPath` ranks -1 (its own band, left of actors) so the core-spec-doc card reads as the first element
+on the board. `layoutColumns` gained a `rankOf` override to support this. Callers:
+`store.organizeByType` (passes `session.coreDocPath`) and the MCP `apply_response` (passes
+`next…coreDocPath`). Omitting the arg preserves prior behavior (a kind-less node ⇒ rightmost band).

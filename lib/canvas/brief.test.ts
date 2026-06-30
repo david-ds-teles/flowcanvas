@@ -53,7 +53,8 @@ describe('buildBrief', () => {
     expect(brief.nodes.find((n) => n.id === 'n-note')).toMatchObject({ kind: 'note', text: '## Open question' })
     expect(brief.nodes.find((n) => n.id === 'n-img')).toMatchObject({ kind: 'image', path: 'examples/arch.png' })
 
-    expect(brief.edges).toEqual([{ id: 'lk:n-design->n-plan', from: 'n-design', to: 'n-plan', label: 'links', rel: 'references', origin: 'links' }])
+    // 005-edges — buildBrief echoes any non-default edge style (here the seed edge carries color '6' + toEnd 'arrow').
+    expect(brief.edges).toEqual([{ id: 'lk:n-design->n-plan', from: 'n-design', to: 'n-plan', label: 'links', rel: 'references', origin: 'links', color: '6', toEnd: 'arrow' }])
     expect(brief.comments).toEqual([{ id: 'c-1', threadId: 'c-1', anchorNodeId: 'n-plan', author: 'human:david', text: 'reuse the file API?', createdAt: '2026-06-25T10:20:00Z', resolved: false }])
   })
 
@@ -287,5 +288,72 @@ describe('004 generation-loop round-trip', () => {
     const brief = buildBrief(seed(), 'b.canvas', new Map(), 'brief-c', 'now')
     expect(brief.responseContract).toBe(AGENT_CONTRACT)
     expect(brief.responseContract).toContain('COMPONENT KINDS')   // proves it is the 004 kit text
+  })
+
+  it('applyResponse with coreDocPath binds the spine but does NOT mint a canvas card for it', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'core', coreDocPath: 'board.md',
+      upsertNodes: [
+        { id: 'ag-svc', type: 'file', file: 'board.nodes/svc.md', x: 0, y: 0, width: 260, height: 120, kind: 'service', source: { path: 'board.md', anchor: 'x' } },
+      ],
+    }
+    const { next, report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.flowcanvas.session.coreDocPath).toBe('board.md')                                   // spine bound
+    expect(next.nodes.find((n) => n.type === 'file' && n.file === 'board.md')).toBeUndefined()     // no duplicate card — the core doc is the spine, not a board node
+    expect(report.created.nodes).toBe(1)                                                            // only the service node
+  })
+
+  it('applyResponse does not duplicate the core-doc card when the agent already supplied a node for it', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'core', coreDocPath: 'board.md',
+      upsertNodes: [
+        { id: 'ag-core', type: 'file', file: 'board.md', x: 5, y: 5, width: 300, height: 200 },
+      ],
+    }
+    const { next } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.nodes.filter((n) => n.type === 'file' && n.file === 'board.md')).toHaveLength(1)
+    expect(next.flowcanvas.session.coreDocPath).toBe('board.md')
+  })
+})
+
+describe('005-edges agent style parity', () => {
+  it('threads agent-supplied edge style onto a CREATED edge (omitted sides ⇒ floats)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'styled edge',
+      // fresh directed pair (n-design→n-img) so the create branch is not skipped by pair-dedup
+      upsertEdges: [{
+        id: 'ag-styled', fromNode: 'n-design', toNode: 'n-img', rel: 'calls',
+        routing: 'smoothstep', line: 'dashed', color: '3', fromEnd: 'circle', toEnd: 'diamond', labelT: 0.25,
+      }],
+    }
+    const { next } = applyResponse(seed(), resp, counter(), 'now')
+    const e = next.edges.find((x) => x.id === 'ag-styled')!
+    expect(e).toMatchObject({
+      fromNode: 'n-design', toNode: 'n-img', color: '3', fromEnd: 'circle', toEnd: 'diamond',
+      meta: { origin: 'agent', rel: 'calls', routing: 'smoothstep', line: 'dashed', labelT: 0.25 },
+    })
+    expect(e.fromSide).toBeUndefined()   // no pinned side supplied ⇒ the edge floats
+    expect(e.toSide).toBeUndefined()
+  })
+
+  it('restyles an EXISTING edge (promotes origin to agent, threads the new style)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'restyle',
+      upsertEdges: [{ id: 'lk:n-design->n-plan', fromNode: 'n-design', toNode: 'n-plan', routing: 'straight', color: '1' }],
+    }
+    const { next } = applyResponse(seed(), resp, counter(), 'now')
+    const e = next.edges.find((x) => x.id === 'lk:n-design->n-plan')!
+    expect(e.color).toBe('1')
+    expect(e.meta?.routing).toBe('straight')
+    expect(e.meta?.origin).toBe('agent')
+  })
+
+  it('threads agent-supplied line waypoints onto meta.points', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'bend',
+      upsertEdges: [{ id: 'ag-bend', fromNode: 'n-design', toNode: 'n-img', points: [{ x: 120, y: 40 }] }],
+    }
+    const { next } = applyResponse(seed(), resp, counter(), 'now')
+    expect(next.edges.find((x) => x.id === 'ag-bend')!.meta?.points).toEqual([{ x: 120, y: 40 }])
   })
 })

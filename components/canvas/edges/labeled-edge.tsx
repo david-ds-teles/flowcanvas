@@ -1,17 +1,129 @@
 'use client'
-import { memo, useRef, useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
+import { memo, useMemo, useRef, useState } from 'react'
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  Position,
+  getBezierPath,
+  getSmoothStepPath,
+  getStraightPath,
+  useInternalNode,
+  useReactFlow,
+  type EdgeProps,
+} from '@xyflow/react'
 import { useCanvasStore } from '@/lib/canvas/store'
-import type { EdgeOrigin, RelationshipType } from '@/lib/canvas/jsoncanvas'
-import { RELATIONSHIP_TYPES } from '@/lib/canvas/jsoncanvas'
+import type {
+  EdgeOrigin, RelationshipType, EdgeRouting, EdgeLineStyle, EdgeEnd, Side, CanvasColor,
+} from '@/lib/canvas/jsoncanvas'
+import { RELATIONSHIP_TYPES, EDGE_ROUTINGS, EDGE_LINE_STYLES, EDGE_ENDS } from '@/lib/canvas/jsoncanvas'
+import { colorVar } from '@/lib/canvas/adapter'
+import { rectIntersectionToPoint, sideOf, nearestT, nearestSegmentIndex, type Rect, type Point } from '@/lib/canvas/edge-geometry'
+import { edgeMarkerUrl, EdgeEndMarker } from './edge-markers'
 
-// Provenance → stroke (design § Design System): links muted + dashed, user solid indigo, agent neon
-// cyan glow, import violet (extraction-seeded). v2 edges also carry a typed `rel` (Decision 1/7).
+// Provenance → default stroke (design § Design System): links muted + dashed, user solid indigo, agent
+// neon cyan, import violet. 005-edges: an explicit edge.color (data.color) OVERRIDES this default.
 const STROKE: Record<EdgeOrigin, string> = {
   links: 'var(--color-outline)',
   user: 'var(--color-primary)',
   agent: 'var(--color-neon-cyan)',
-  import: 'var(--color-secondary)', // v2 — extraction-seeded edge (matches the mockup's violet .e-import)
+  import: 'var(--color-secondary)',
+}
+
+const SIDE_TO_POS: Record<Side, Position> = {
+  top: Position.Top, right: Position.Right, bottom: Position.Bottom, left: Position.Left,
+}
+
+// 005-edges — the per-edge style the adapter packs into RF edge.data.
+type EdgeData = {
+  origin?: EdgeOrigin
+  rel?: RelationshipType
+  routing?: EdgeRouting
+  line?: EdgeLineStyle
+  labelT?: number
+  color?: CanvasColor
+  fromSide?: Side
+  toSide?: Side
+  fromEnd?: EdgeEnd
+  toEnd?: EdgeEnd
+  points?: Point[]
+}
+
+// Human labels for the pickers (the enum values stay the wire/agent contract).
+const ROUTING_LABEL: Record<EdgeRouting, string> = { bezier: 'Curve', smoothstep: 'Angle', straight: 'Straight' }
+const LINE_LABEL: Record<EdgeLineStyle, string> = { solid: 'Solid', dashed: 'Dashed', dotted: 'Dotted' }
+const END_LABEL: Record<EdgeEnd, string> = { none: 'None', arrow: 'Arrow', 'arrow-open': 'Open', circle: 'Circle', diamond: 'Diamond' }
+// Color swatches: the six nyx presets ('1'..'6', mapped to hex by colorVar) + an "auto" chip (clears color).
+const SWATCHES: CanvasColor[] = ['1', '2', '3', '4', '5', '6']
+
+const clamp01 = (t: number) => Math.max(0, Math.min(1, t))
+
+// Detached-path helpers — measure a label point / sample the path WITHOUT inserting into the DOM
+// (getTotalLength/getPointAtLength work on a detached <path> in Chromium, the app + smoke runtime).
+function makePath(d: string): SVGPathElement | null {
+  if (typeof document === 'undefined') return null
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  p.setAttribute('d', d)
+  return p
+}
+function pointAtT(d: string, t: number): Point | null {
+  const p = makePath(d)
+  if (!p) return null
+  try {
+    const len = p.getTotalLength()
+    const pt = p.getPointAtLength(len * t)
+    return { x: pt.x, y: pt.y }
+  } catch { return null }
+}
+function samplePath(d: string, n: number): Point[] {
+  const p = makePath(d)
+  if (!p) return []
+  try {
+    const len = p.getTotalLength()
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const pt = p.getPointAtLength((len * i) / n)
+      return { x: pt.x, y: pt.y }
+    })
+  } catch { return [] }
+}
+
+function buildPath(
+  routing: EdgeRouting,
+  sx: number, sy: number, sPos: Position,
+  tx: number, ty: number, tPos: Position,
+): [string, number, number] {
+  if (routing === 'straight') {
+    const [d, lx, ly] = getStraightPath({ sourceX: sx, sourceY: sy, targetX: tx, targetY: ty })
+    return [d, lx, ly]
+  }
+  if (routing === 'bezier') {
+    const [d, lx, ly] = getBezierPath({ sourceX: sx, sourceY: sy, sourcePosition: sPos, targetX: tx, targetY: ty, targetPosition: tPos })
+    return [d, lx, ly]
+  }
+  // smoothstep — the default: orthogonal right-angle routing (the cleanest read for a system diagram)
+  const [d, lx, ly] = getSmoothStepPath({ sourceX: sx, sourceY: sy, sourcePosition: sPos, targetX: tx, targetY: ty, targetPosition: tPos, borderRadius: 8 })
+  return [d, lx, ly]
+}
+
+// Path through manual waypoints (005-edges): a straight polyline for angle/straight, a Catmull-Rom
+// spline for curve. Endpoints already resolved (floating or pinned); `pts` = [source, ...waypoints, target].
+function polylineThrough(pts: Point[]): string {
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ')
+}
+function splineThrough(pts: Point[]): string {
+  if (pts.length < 3) return polylineThrough(pts)
+  let d = `M ${pts[0].x},${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? p2
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = p1.y + (p2.y - p0.y) / 6
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`
+  }
+  return d
 }
 
 // In-canvas quick label editor — replaces the old window.prompt. Mounts only while this edge is being
@@ -49,8 +161,7 @@ function EdgeLabelEditor({ id, initial, x, y }: { id: string; initial: string; x
   )
 }
 
-// Typed-relationship picker (Decision 1/7) — a curated rel grid + a free-form label field. Delete moved
-// OUT to the EdgeActionBar (single delete surface, design Decision 2). Anchored below the action bar.
+// Typed-relationship picker (Decision 1/7) — a curated rel grid + a free-form label field.
 function RelPicker({ id, rel, label, x, y, onClose }: { id: string; rel: RelationshipType; label: string; x: number; y: number; onClose: () => void }) {
   const setEdgeRel = useCanvasStore((s) => s.setEdgeRel)
   const relabelEdge = useCanvasStore((s) => s.relabelEdge)
@@ -97,10 +208,122 @@ function RelPicker({ id, rel, label, x, y, onClose }: { id: string; rel: Relatio
   )
 }
 
-// Selected-edge action bar (Decision 2) — the visible affordance: rel ▾ · ✎ Label · ✕. Portaled just
-// below the label pill; reuses setEdgeRel (via RelPicker) / relabelEdge (via EdgeLabelEditor) /
-// removeEdgeWriteback verbatim. This is now the ONLY delete surface for an edge.
-function EdgeActionBar({ id, x, y, picker, onRel, onLabel }: { id: string; x: number; y: number; picker: boolean; onRel: () => void; onLabel: () => void }) {
+// 005-edges — per-edge visual style: routing · line · color · end markers · pinned sides. Each control
+// maps 1:1 to a store action; the agent reaches the same fields through the contract.
+function EdgeStylePanel({ id, data, x, y }: { id: string; data: EdgeData; x: number; y: number }) {
+  const setEdgeRouting = useCanvasStore((s) => s.setEdgeRouting)
+  const setEdgeLine = useCanvasStore((s) => s.setEdgeLine)
+  const setEdgeColor = useCanvasStore((s) => s.setEdgeColor)
+  const setEdgeMarker = useCanvasStore((s) => s.setEdgeMarker)
+  const setEdgeSide = useCanvasStore((s) => s.setEdgeSide)
+  const setEdgeWaypoints = useCanvasStore((s) => s.setEdgeWaypoints)
+  const routing = data.routing ?? 'smoothstep'
+  const line = data.line ?? 'solid'
+  const fromEnd = data.fromEnd ?? 'none'
+  const toEnd = data.toEnd ?? 'arrow'
+  const hasBends = (data.points?.length ?? 0) > 0
+  return (
+    <div
+      id={`fc-edge-style-${id}`}
+      className="fc-edgestyle nodrag nopan"
+      data-testid="edge-style-panel"
+      style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Routing</span>
+        <div className="fc-edgestyle__seg">
+          {EDGE_ROUTINGS.map((r) => (
+            <button key={r} type="button" data-testid={`edge-routing-${r}`} aria-pressed={r === routing} onClick={() => setEdgeRouting(id, r)}>{ROUTING_LABEL[r]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Line</span>
+        <div className="fc-edgestyle__seg">
+          {EDGE_LINE_STYLES.map((l) => (
+            <button key={l} type="button" data-testid={`edge-line-${l}`} aria-pressed={l === line} onClick={() => setEdgeLine(id, l)}>{LINE_LABEL[l]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Color</span>
+        <div className="fc-edgestyle__swatches">
+          <button
+            type="button"
+            className="fc-edgestyle__sw fc-edgestyle__sw--auto"
+            data-testid="edge-color-auto"
+            aria-pressed={data.color == null}
+            title="Auto (by provenance)"
+            onClick={() => setEdgeColor(id, undefined)}
+          >A</button>
+          {SWATCHES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="fc-edgestyle__sw"
+              data-testid={`edge-color-${c}`}
+              aria-pressed={data.color === c}
+              title={`Color ${c}`}
+              style={{ background: colorVar(c) }}
+              onClick={() => setEdgeColor(id, c)}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Ends</span>
+        <label className="fc-edgestyle__field">
+          <span>From</span>
+          <select data-testid="edge-from-end" value={fromEnd} onChange={(e) => setEdgeMarker(id, 'from', e.target.value as EdgeEnd)}>
+            {EDGE_ENDS.map((e) => <option key={e} value={e}>{END_LABEL[e]}</option>)}
+          </select>
+        </label>
+        <label className="fc-edgestyle__field">
+          <span>To</span>
+          <select data-testid="edge-to-end" value={toEnd} onChange={(e) => setEdgeMarker(id, 'to', e.target.value as EdgeEnd)}>
+            {EDGE_ENDS.map((e) => <option key={e} value={e}>{END_LABEL[e]}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Sides</span>
+        <label className="fc-edgestyle__field">
+          <span>From</span>
+          <select data-testid="edge-from-side" value={data.fromSide ?? ''} onChange={(e) => setEdgeSide(id, 'from', e.target.value === '' ? undefined : (e.target.value as Side))}>
+            <option value="">Auto</option>
+            <option value="top">Top</option>
+            <option value="right">Right</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
+        <label className="fc-edgestyle__field">
+          <span>To</span>
+          <select data-testid="edge-to-side" value={data.toSide ?? ''} onChange={(e) => setEdgeSide(id, 'to', e.target.value === '' ? undefined : (e.target.value as Side))}>
+            <option value="">Auto</option>
+            <option value="top">Top</option>
+            <option value="right">Right</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
+      </div>
+      <div className="fc-edgestyle__row">
+        <span className="fc-edgestyle__lbl">Line shape</span>
+        <button type="button" className="fc-edgestyle__reset" data-testid="edge-clear-bends" disabled={!hasBends} onClick={() => setEdgeWaypoints(id, [])}>
+          {hasBends ? 'Clear bends' : 'No manual bends'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+type Panel = 'none' | 'rel' | 'style'
+
+// Selected-edge action bar (Decision 2) — rel ▾ · style ▾ · ✎ Label · ✕. Portaled just below the label
+// pill; the only delete surface for an edge.
+function EdgeActionBar({ id, x, y, panel, onRel, onStyle, onLabel }: { id: string; x: number; y: number; panel: Panel; onRel: () => void; onStyle: () => void; onLabel: () => void }) {
   const removeEdgeWriteback = useCanvasStore((s) => s.removeEdgeWriteback)
   return (
     <div
@@ -109,7 +332,8 @@ function EdgeActionBar({ id, x, y, picker, onRel, onLabel }: { id: string; x: nu
       style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, pointerEvents: 'all' }}
       onClick={(e) => e.stopPropagation()}
     >
-      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-rel" aria-expanded={picker} aria-controls={`fc-rel-picker-${id}`} title="Set relationship type" onClick={onRel}>rel ▾</button>
+      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-rel" aria-expanded={panel === 'rel'} aria-controls={`fc-rel-picker-${id}`} title="Set relationship type" onClick={onRel}>rel ▾</button>
+      <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-style" aria-expanded={panel === 'style'} aria-controls={`fc-edge-style-${id}`} title="Edge style — routing, color, line, ends, sides" onClick={onStyle}>style ▾</button>
       <button type="button" className="fc-edge-actions__btn" data-testid="edge-action-label" title="Edit label" aria-label="Edit label" onClick={onLabel}>✎ Label</button>
       <button type="button" className="fc-edge-actions__btn fc-edge-actions__btn--del" data-testid="edge-delete" title="Delete this connection" aria-label="Delete connection" onClick={() => removeEdgeWriteback(id)}>✕</button>
     </div>
@@ -117,65 +341,226 @@ function EdgeActionBar({ id, x, y, picker, onRel, onLabel }: { id: string; x: nu
 }
 
 export const LabeledEdge = memo(function LabeledEdge({
-  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data, selected,
+  id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, label, data, selected,
 }: EdgeProps) {
-  // Orthogonal right-angle routing (fewer crossings than bezier).
-  const [path, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 8 })
-  const d = data as { origin?: EdgeOrigin; rel?: RelationshipType } | undefined
-  const origin = (d?.origin ?? 'user') as EdgeOrigin
-  const rel = (d?.rel ?? 'related') as RelationshipType
+  const d = (data ?? {}) as EdgeData
+  const origin = (d.origin ?? 'user') as EdgeOrigin
+  const rel = (d.rel ?? 'related') as RelationshipType
+  const routing = (d.routing ?? 'smoothstep') as EdgeRouting   // 005-edges — orthogonal is the clean default
   const derived = origin === 'links'
-  const editing = useCanvasStore((s) => s.editingEdgeId === id)
+  const points = useMemo(() => d.points ?? [], [d.points])
+
   const setEditingEdge = useCanvasStore((s) => s.setEditingEdge)
-  const [picker, setPicker] = useState(false)
-  // Close the rel picker when the edge is deselected — the picker is an affordance of a selected edge,
-  // so it should not linger (and this avoids the y-offset shift when the action bar unmounts). Render-
-  // phase reset is the React-sanctioned alternative to a setState-in-effect (see comment-layer.tsx).
+  const setEdgeLabelT = useCanvasStore((s) => s.setEdgeLabelT)
+  const setEdgeWaypoints = useCanvasStore((s) => s.setEdgeWaypoints)
+  const editing = useCanvasStore((s) => s.editingEdgeId === id)
+  const { screenToFlowPosition } = useReactFlow()
+
+  // 005-edges — FLOATING endpoints. An unpinned end anchors at the node center and meets the perimeter
+  // where the line crosses it, aimed at the next bend (first/last waypoint) or the other node's center.
+  // A pinned side keeps RF's handle-anchored coords.
+  const sourceNode = useInternalNode(source)
+  const targetNode = useInternalNode(target)
+  const rectOf = (n: typeof sourceNode): Rect | null =>
+    n ? { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: n.measured?.width ?? 0, height: n.measured?.height ?? 0 } : null
+  const srcRect = rectOf(sourceNode)
+  const tgtRect = rectOf(targetNode)
+  const fromPinned = d.fromSide != null
+  const toPinned = d.toSide != null
+  const centerOf = (r: Rect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 })
+
+  let sx = sourceX, sy = sourceY, sPos = sourcePosition
+  let tx = targetX, ty = targetY, tPos = targetPosition
+  if (srcRect && tgtRect) {
+    const srcAim: Point = points.length ? points[0] : centerOf(tgtRect)
+    const tgtAim: Point = points.length ? points[points.length - 1] : centerOf(srcRect)
+    if (!fromPinned) { const p = rectIntersectionToPoint(srcRect, srcAim); sx = p.x; sy = p.y; sPos = SIDE_TO_POS[sideOf(srcRect, p)] }
+    if (!toPinned) { const p = rectIntersectionToPoint(tgtRect, tgtAim); tx = p.x; ty = p.y; tPos = SIDE_TO_POS[sideOf(tgtRect, p)] }
+  }
+
+  const [path, midX, midY] = useMemo(() => {
+    if (points.length > 0) {
+      const rp: Point[] = [{ x: sx, y: sy }, ...points, { x: tx, y: ty }]
+      const d2 = routing === 'bezier' ? splineThrough(rp) : polylineThrough(rp)
+      const m = rp[Math.floor(rp.length / 2)]
+      return [d2, m.x, m.y] as [string, number, number]
+    }
+    return buildPath(routing, sx, sy, sPos, tx, ty, tPos)
+  }, [routing, sx, sy, sPos, tx, ty, tPos, points])
+
+  // Label position along the path (0..1), draggable. Memoized off [path, labelT].
+  const labelT = clamp01(typeof d.labelT === 'number' ? d.labelT : 0.5)
+  const labelPt = useMemo(() => pointAtT(path, labelT) ?? { x: midX, y: midY }, [path, labelT, midX, midY])
+  const labelX = labelPt.x
+  const labelY = labelPt.y
+
+  // Stroke: explicit color overrides provenance default; line style → dash; selection thickens.
+  const stroke = colorVar(d.color) ?? STROKE[origin] ?? STROKE.user
+  const line = (d.line ?? (derived ? 'dashed' : 'solid')) as EdgeLineStyle
+  const dash = line === 'dashed' ? '7 5' : line === 'dotted' ? '1.5 5' : undefined
+  const markerStartUrl = edgeMarkerUrl(id, 'start', d.fromEnd ?? 'none')
+  const markerEndUrl = edgeMarkerUrl(id, 'end', d.toEnd ?? 'arrow')
+
+  const [panel, setPanel] = useState<Panel>('none')
+  // Close the popovers when the edge is deselected (render-phase reset — the React-sanctioned alternative
+  // to setState-in-effect; matches comment-layer.tsx).
   const [prevSelected, setPrevSelected] = useState(selected)
   if (prevSelected !== selected) {
     setPrevSelected(selected)
-    if (!selected && picker) setPicker(false)
+    if (!selected && panel !== 'none') setPanel('none')
   }
   const text = typeof label === 'string' ? label : ''
 
+  // Live waypoints from the store (avoids stale-closure during a drag).
+  const livePoints = (): Point[] => useCanvasStore.getState().doc?.edges.find((e) => e.id === id)?.meta?.points ?? []
+  const startDrag = (e: React.PointerEvent, onMove: (fp: Point) => void) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    const move = (ev: PointerEvent) => onMove(screenToFlowPosition({ x: ev.clientX, y: ev.clientY }))
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  // Drag an existing waypoint; double-click removes it.
+  const moveWaypoint = (j: number) => (e: React.PointerEvent) => startDrag(e, (fp) => {
+    const next = livePoints().slice()
+    next[j] = { x: Math.round(fp.x), y: Math.round(fp.y) }
+    setEdgeWaypoints(id, next)
+  })
+  const removeWaypoint = (j: number) => (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = livePoints().slice()
+    next.splice(j, 1)
+    setEdgeWaypoints(id, next)
+  }
+  // Grab the LINE itself and bend it (the design-tool gesture): on a real drag, insert a waypoint at the
+  // segment nearest the grab point and drag it. Works with NO prior selection. A plain click (no drag)
+  // falls through to React Flow, which selects the edge. This is the affordance the faint dots lacked.
+  const onLinePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+    e.stopPropagation()   // block the pane's marquee/pan during the bend; a click still selects via RF
+    const startClient = { x: e.clientX, y: e.clientY }
+    const startFlow = screenToFlowPosition(startClient)
+    let dragging = false
+    let seg = -1
+    const move = (ev: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - startClient.x, ev.clientY - startClient.y) < 5) return
+        dragging = true
+        const cur = livePoints()
+        const rpNow: Point[] = [{ x: sx, y: sy }, ...cur, { x: tx, y: ty }]
+        seg = nearestSegmentIndex(rpNow, startFlow)
+        const next = cur.slice()
+        next.splice(seg, 0, { x: Math.round(startFlow.x), y: Math.round(startFlow.y) })
+        setEdgeWaypoints(id, next)
+      }
+      const fp = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      const arr = livePoints().slice()
+      if (seg >= 0 && seg < arr.length) {
+        arr[seg] = { x: Math.round(fp.x), y: Math.round(fp.y) }
+        setEdgeWaypoints(id, arr)
+      }
+    }
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  // Drag the label along the path. A real drag suppresses the click-toggle so a tap still opens the picker.
+  const draggedRef = useRef(false)
+  const onLabelPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    draggedRef.current = false
+    const samples = samplePath(path, 64)
+    if (samples.length < 2) return
+    const start = { x: e.clientX, y: e.clientY }
+    const move = (ev: PointerEvent) => {
+      if (!draggedRef.current && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return
+      draggedRef.current = true
+      setEdgeLabelT(id, nearestT(samples, screenToFlowPosition({ x: ev.clientX, y: ev.clientY })))
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   return (
     <>
+      {/* Per-edge marker defs, colored to match the stroke (no shared context-stroke → no black heads). */}
+      {(markerStartUrl || markerEndUrl) && (
+        <defs>
+          <EdgeEndMarker edgeId={id} which="start" end={d.fromEnd ?? 'none'} color={stroke} />
+          <EdgeEndMarker edgeId={id} which="end" end={d.toEnd ?? 'arrow'} color={stroke} />
+        </defs>
+      )}
       <BaseEdge
         id={id}
         path={path}
-        markerEnd={markerEnd}
-        style={{ stroke: STROKE[origin] ?? STROKE.user, strokeWidth: selected ? 2.5 : 1.5, strokeDasharray: derived ? '5 4' : undefined }}
+        markerStart={markerStartUrl}
+        markerEnd={markerEndUrl}
+        style={{ stroke, strokeWidth: selected ? 2.5 : 1.5, strokeDasharray: dash }}
       />
+      {/* 005-edges — fat transparent hit-path ON TOP of the stroke: grab the line ANYWHERE to bend it. */}
+      <path className="fc-edge-grab" d={path} fill="none" stroke="transparent" strokeWidth={18} style={{ pointerEvents: 'stroke', cursor: 'grab' }} onPointerDown={onLinePointerDown} />
       {editing ? (
         <EdgeLabelEditor id={id} initial={text} x={labelX} y={labelY} />
       ) : (
         <EdgeLabelRenderer>
-          {/* Typed-edge pill — rel eyebrow + free-form label. Click → rel picker; double-click → quick label edit. */}
+          {/* Typed-edge pill — rel eyebrow + free-form label. Click → rel picker · double-click → quick
+              label edit · drag → slide the label along the line (move it where it reads). */}
           <div
             className={`fc-edge-label fc-edge-label--${origin} nodrag nopan`}
             data-testid="edge-rel-pill"
-            aria-expanded={picker}
+            aria-expanded={panel === 'rel'}
             aria-controls={`fc-rel-picker-${id}`}
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }}
-            title="Click to set relationship · double-click to edit label"
-            onClick={(e) => { e.stopPropagation(); setPicker((v) => !v) }}
-            onDoubleClick={(e) => { e.stopPropagation(); setPicker(false); setEditingEdge(id) }}
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all', cursor: 'grab' }}
+            title="Click: relationship · double-click: edit label · drag: move label along the line"
+            onPointerDown={onLabelPointerDown}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (draggedRef.current) { draggedRef.current = false; return }
+              setPanel((p) => (p === 'rel' ? 'none' : 'rel'))
+            }}
+            onDoubleClick={(e) => { e.stopPropagation(); setPanel('none'); setEditingEdge(id) }}
           >
             {derived && <span className="fc-edge-label__lock" aria-label="derived from links">🔒</span>}
             <span className="fc-edge-label__rel">{rel}</span>
             {text !== '' && <span className="fc-edge-label__text">{text}</span>}
           </div>
+
+          {/* 005-edges — a visible handle on each existing bend (always grabbable, not gated on selection):
+              drag to move it · double-click to remove. Adding a bend is done by grabbing the line itself. */}
+          {points.map((p, j) => (
+            <div
+              key={`wp-${j}`}
+              className="fc-edge-waypoint nodrag nopan"
+              data-testid="edge-waypoint"
+              style={{ transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`, pointerEvents: 'all' }}
+              title="Drag to move this bend · double-click to remove"
+              onPointerDown={moveWaypoint(j)}
+              onDoubleClick={removeWaypoint(j)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ))}
+
           {selected && (
             <EdgeActionBar
               id={id}
               x={labelX}
               y={labelY + 24}
-              picker={picker}
-              onRel={() => setPicker((v) => !v)}
-              onLabel={() => { setPicker(false); setEditingEdge(id) }}
+              panel={panel}
+              onRel={() => setPanel((p) => (p === 'rel' ? 'none' : 'rel'))}
+              onStyle={() => setPanel((p) => (p === 'style' ? 'none' : 'style'))}
+              onLabel={() => { setPanel('none'); setEditingEdge(id) }}
             />
           )}
-          {picker && <RelPicker id={id} rel={rel} label={text} x={labelX} y={labelY + (selected ? 56 : 28)} onClose={() => setPicker(false)} />}
+          {panel === 'rel' && <RelPicker id={id} rel={rel} label={text} x={labelX} y={labelY + (selected ? 56 : 28)} onClose={() => setPanel('none')} />}
+          {panel === 'style' && <EdgeStylePanel id={id} data={d} x={labelX} y={labelY + (selected ? 56 : 28)} />}
         </EdgeLabelRenderer>
       )}
     </>

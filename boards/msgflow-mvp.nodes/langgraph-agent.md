@@ -1,9 +1,9 @@
 ---
-name: langgraph-agent
+name: LangGraph Agent
 kind: service
 description: LangGraph Agent — the AI reasoning core; classifies intent, calls grounding tools, and decides reply vs escalate.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: module-boundaries
 ---
 

@@ -31,7 +31,11 @@ describe('store / onConnect (v2 — typed user edges)', () => {
     useCanvasStore.getState().onConnect({ source: 'b', target: 'a', sourceHandle: 'right', targetHandle: 'left' })
     const { doc, dirty, editingEdgeId } = useCanvasStore.getState()
     const minted = doc!.edges.find((e) => e.fromNode === 'b' && e.toNode === 'a')!
-    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', fromSide: 'right', toSide: 'left', label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
+    // 005-edges — new connections FLOAT by default: the drag handle is ignored for anchoring, so no
+    // fromSide/toSide is pinned (re-pinnable later via the Style panel).
+    expect(minted).toMatchObject({ fromNode: 'b', toNode: 'a', label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' } })
+    expect(minted.fromSide).toBeUndefined()
+    expect(minted.toSide).toBeUndefined()
     expect(minted.id.startsWith('e-')).toBe(true)   // a minted user edge, not a deterministic lk: id
     expect(editingEdgeId).toBe(minted.id)           // inline label editor opens
     expect(dirty).toBe(true)
@@ -107,6 +111,54 @@ describe('store / relabelEdge', () => {
     useCanvasStore.setState({ doc: { ...seed(), edges: [{ id: 'ag1', fromNode: 'a', toNode: 'b', label: 'x', meta: { origin: 'agent' } }] } })
     useCanvasStore.getState().relabelEdge('ag1', 'y')
     expect(useCanvasStore.getState().doc!.edges[0].meta?.origin).toBe('agent')
+  })
+})
+
+describe('store / edge style (005-edges)', () => {
+  // Seed edge id is 'lk:a->b' (carries color '6'). These are pure synchronous doc patches.
+  it('setEdgeRouting / setEdgeLine write meta + dirty', () => {
+    useCanvasStore.getState().setEdgeRouting('lk:a->b', 'smoothstep')
+    useCanvasStore.getState().setEdgeLine('lk:a->b', 'dashed')
+    const e = useCanvasStore.getState().doc!.edges.find((x) => x.id === 'lk:a->b')!
+    expect(e.meta?.routing).toBe('smoothstep')
+    expect(e.meta?.line).toBe('dashed')
+    expect(useCanvasStore.getState().dirty).toBe(true)
+  })
+
+  it('setEdgeColor sets then clears the color field', () => {
+    useCanvasStore.getState().setEdgeColor('lk:a->b', '5')
+    expect(useCanvasStore.getState().doc!.edges[0].color).toBe('5')
+    useCanvasStore.getState().setEdgeColor('lk:a->b', undefined)
+    expect('color' in useCanvasStore.getState().doc!.edges[0]).toBe(false)
+  })
+
+  it('setEdgeMarker sets each end marker independently', () => {
+    useCanvasStore.getState().setEdgeMarker('lk:a->b', 'from', 'circle')
+    useCanvasStore.getState().setEdgeMarker('lk:a->b', 'to', 'diamond')
+    const e = useCanvasStore.getState().doc!.edges[0]
+    expect(e.fromEnd).toBe('circle')
+    expect(e.toEnd).toBe('diamond')
+  })
+
+  it('setEdgeSide pins then floats an endpoint', () => {
+    useCanvasStore.getState().setEdgeSide('lk:a->b', 'from', 'right')
+    expect(useCanvasStore.getState().doc!.edges[0].fromSide).toBe('right')
+    useCanvasStore.getState().setEdgeSide('lk:a->b', 'from', undefined)
+    expect(useCanvasStore.getState().doc!.edges[0].fromSide).toBeUndefined()
+  })
+
+  it('setEdgeLabelT clamps to [0,1]', () => {
+    useCanvasStore.getState().setEdgeLabelT('lk:a->b', 1.8)
+    expect(useCanvasStore.getState().doc!.edges[0].meta?.labelT).toBe(1)
+    useCanvasStore.getState().setEdgeLabelT('lk:a->b', -0.5)
+    expect(useCanvasStore.getState().doc!.edges[0].meta?.labelT).toBe(0)
+  })
+
+  it('setEdgeWaypoints sets the bend list, then clears it with []', () => {
+    useCanvasStore.getState().setEdgeWaypoints('lk:a->b', [{ x: 50, y: 60 }, { x: 90, y: 20 }])
+    expect(useCanvasStore.getState().doc!.edges[0].meta?.points).toEqual([{ x: 50, y: 60 }, { x: 90, y: 20 }])
+    useCanvasStore.getState().setEdgeWaypoints('lk:a->b', [])
+    expect(useCanvasStore.getState().doc!.edges[0].meta?.points).toBeUndefined()
   })
 })
 

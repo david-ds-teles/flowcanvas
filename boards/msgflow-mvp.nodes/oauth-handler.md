@@ -1,9 +1,9 @@
 ---
-name: oauth-handler
+name: OAuth Handler
 kind: service
 description: FastAPI routes — Google OAuth 2.0 onboarding for per-business Google Workspace access.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: api--interface-contracts
 ---
 

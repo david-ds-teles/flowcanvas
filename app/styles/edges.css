@@ -116,3 +116,135 @@
 .fc-edge-actions__btn:hover { color: var(--color-text-primary); border-color: var(--color-outline-variant); background: rgba(128, 131, 255, 0.1); }
 .fc-edge-actions__btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .fc-edge-actions__btn--del:hover { color: var(--color-neon-rose); border-color: var(--color-neon-rose); background: rgba(255, 81, 106, 0.1); }
+
+/* ───────────────────────── 005-edges — floating edges + per-edge style ───────────────────────── */
+
+/* Off-screen holder for the shared <marker> defs (configurable arrowheads; edges reference url(#id)). */
+.fc-edge-markers { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+
+/* Reduce handle noise: the four connect dots are hidden at rest and fade in on node hover or in connect
+   mode. Floating edges no longer need a visible anchor dot, so a board reads clean; the grab target is
+   still live (the ::before hit-area), so connections are just as easy to start. */
+.react-flow .react-flow__handle { opacity: 0; transition: opacity .12s ease, background .14s ease, box-shadow .14s ease; }
+.react-flow .react-flow__node:hover .react-flow__handle,
+.react-flow .react-flow__handle:hover,
+.react-flow .react-flow__handle.connectingfrom,
+.react-flow .react-flow__handle.connectingto,
+.fc-rf--connect .react-flow__handle { opacity: 1; }
+
+/* The per-edge Style panel (routing · line · color · end markers · pinned sides), portaled below the bar. */
+.fc-edgestyle {
+  position: absolute;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 236px;
+  padding: 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-outline-variant);
+  background: rgba(13, 21, 40, 0.97);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.78);
+}
+.fc-edgestyle__row { display: flex; align-items: center; gap: 8px; }
+.fc-edgestyle__lbl {
+  flex: 0 0 46px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.fc-edgestyle__seg { display: inline-flex; gap: 3px; }
+.fc-edgestyle__seg button {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.fc-edgestyle__seg button:hover { color: var(--color-text-primary); background: rgba(128, 131, 255, 0.1); }
+.fc-edgestyle__seg button[aria-pressed="true"] {
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+  background: rgba(128, 131, 255, 0.18);
+}
+.fc-edgestyle__swatches { display: inline-flex; align-items: center; gap: 4px; }
+.fc-edgestyle__sw {
+  width: 18px; height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-outline-variant);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.fc-edgestyle__sw[aria-pressed="true"] { outline: 2px solid var(--color-text-primary); outline-offset: 1px; }
+.fc-edgestyle__sw--auto {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9px;
+}
+.fc-edgestyle__field {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 9.5px;
+  color: var(--color-text-secondary);
+}
+.fc-edgestyle__field select {
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-highest);
+  color: var(--color-text-primary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.fc-edgestyle__reset {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.fc-edgestyle__reset:hover:not(:disabled) { color: var(--color-text-primary); background: rgba(128, 131, 255, 0.1); }
+.fc-edgestyle__reset:disabled { opacity: 0.45; cursor: default; }
+
+/* Manual line bends: a solid dot per waypoint (drag to move · double-click to remove) + a faint dot at
+   each segment midpoint (drag to add a bend). Shown only while the edge is selected. */
+.fc-edge-waypoint {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 999px;
+  border: 2px solid var(--color-primary);
+  background: var(--color-surface-highest);
+  box-shadow: 0 0 8px -1px var(--color-primary);
+  cursor: grab;
+  z-index: 7;
+}
+.fc-edge-waypoint:active { cursor: grabbing; }
+.fc-edge-addpoint {
+  position: absolute;
+  width: 9px; height: 9px;
+  border-radius: 999px;
+  border: 1px dashed var(--color-outline);
+  background: rgba(128, 131, 255, 0.18);
+  opacity: 0.5;
+  cursor: copy;
+  z-index: 6;
+  transition: opacity .12s ease, background .12s ease;
+}
+.fc-edge-addpoint:hover { opacity: 1; background: rgba(128, 131, 255, 0.35); }

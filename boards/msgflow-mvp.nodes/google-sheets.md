@@ -1,9 +1,9 @@
 ---
-name: google-sheets
+name: Google Sheets
 kind: external
 description: Google Sheets API — reads the canonical prices spreadsheet for the lookup_price agent tool.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: decision-6-price-source
 ---
 
@@ -25,7 +25,7 @@ Reads the business's canonical price list from a designated Google Sheet. The Sh
 }
 ```
 
-**Operation:** `GoogleClient.read_prices_sheet(spreadsheet_id, range_a1)` → `list[list[str]]`; each row mapped to `PriceItem { name, price, unit, notes }` (DTOs defined in `knowledge/dto.py`).
+**Operation:** `GoogleClient.read_prices_sheet(spreadsheet_id, range_a1)` → `list[list[str]]`; each row mapped to `PriceItem { name, price, unit, notes }` (DTOs in `knowledge/dto.py`).
 
 **Filtering:** when `query` is provided, rows are filtered by case-insensitive substring match on `name` before returning to the agent.
 

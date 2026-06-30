@@ -22,7 +22,10 @@ CORE SPEC DOC (the board's single source of truth — REQUIRED):
   the spec — read it (read_file) and decompose it; do not rewrite or delete it.
 - If there is NO coreDocPath (extracting from an inline prompt / an empty board), FIRST author a single
   core spec doc "<board-stem>.md" (YAML frontmatter + ATX headings describing the WHOLE system) and put
-  it in generatedFiles. The app binds the sole cited doc as the living core spine automatically.
+  it in generatedFiles.
+- ALWAYS set coreDocPath in your AgentResponse to that one core spec doc (the brief's coreDocPath, or the
+  "<board-stem>.md" you just wrote). The app binds it as the living core spine (a docked pane) — it is NOT
+  a canvas card. Do NOT add an upsertNodes entry for the core spec doc: it is the spine, never a board node.
 - Every node's meta.source.path MUST point to THAT one core spec doc — a file that EXISTS (the brief's
   coreDocPath, or the "<board-stem>.md" you just wrote). NEVER cite a doc path you did not create: a
   dangling source path leaves the board with no readable specification.
@@ -40,7 +43,17 @@ EXTRACTION (core spec doc -> typed system-design board, NOT document cards):
 TYPED EDGES:
 - Set rel from [references, depends-on, implements, derives-from, calls, produces, informs, related].
   Set label to a short human display (defaults to rel). Do NOT invent rel values. Use containment
-  (parentId) for "contains", not an edge.`
+  (parentId) for "contains", not an edge.
+EDGE STYLE (optional, per edge — full parity with the human style controls; omit any for clean defaults):
+- routing: "smoothstep" (default, right-angle — cleanest for a system diagram) | "bezier" (curve) | "straight".
+- line: "solid" (default) | "dashed" | "dotted".
+- color: hex "#RRGGBB" or a preset "1".."6"; omit ⇒ stroke colored by provenance.
+- fromEnd / toEnd: marker shape per end — "none" | "arrow" (default toEnd) | "arrow-open" | "circle" | "diamond".
+- fromSide / toSide: pin an endpoint to "top"|"right"|"bottom"|"left". OMIT BOTH to let the edge FLOAT from
+  the node center to the nearest perimeter point (the default — cleaner, fewer crossings). Pin only when a
+  specific side genuinely reads better.
+- labelT: 0..1 label position along the line (0.5 = midpoint); set it to move a label off a busy crossing.
+- points: array of {x,y} waypoints (absolute canvas coords) the line bends through; omit ⇒ auto-route.`
 
 const KIND_CATALOG = `COMPONENT KINDS (set meta.kind on a node; absent ⇒ a plain card):
 - service   — a runtime process that executes logic (API, microservice, worker, gateway, function).
@@ -74,19 +87,21 @@ const MCP_HOW_TO = `MCP LOOP (connected harness):
 3. Reason: decompose into typed components (meta.kind + label + meta.source).
 4. write_file the core spec "<board-stem>.md" FIRST (only when there was no coreDocPath), then each
    derived "<board-stem>.nodes/<slug>.md" (.md/.mdx only) with name:/description:/source: frontmatter.
-5. apply_response(AgentResponse) — echo briefId; the tool merges + persists + bumps the revision.`
+5. apply_response(AgentResponse) — echo briefId; set coreDocPath; the tool merges + persists + bumps the
+   revision (and binds coreDocPath as the living spine — the core doc is the spine, never a canvas card).`
 
 const WORKED_EXAMPLE = `WORKED EXAMPLE — input "## Order lifecycle\\nCheckout calls Payments, which writes Orders DB."
-(no coreDocPath in the brief, so the core spec "board.md" is authored first and every node cites it)
+(no coreDocPath in the brief: author the core spec "board.md", set it as coreDocPath, and every node cites
+it. The app binds "board.md" as the living spine — note board.md is NOT in upsertNodes; it is the spine, never a card.)
 => {
-  "responseVersion":"0.1","briefId":"<echo>","summary":"Extracted order lifecycle",
+  "responseVersion":"0.1","briefId":"<echo>","summary":"Extracted order lifecycle","coreDocPath":"board.md",
   "upsertNodes":[
     {"id":"ag-checkout","type":"file","file":"board.nodes/checkout.md","label":"Checkout","x":0,"y":0,"width":260,"height":120,
      "kind":"service","source":{"path":"board.md","anchor":"order-lifecycle"}},
     {"id":"ag-orders","type":"file","file":"board.nodes/orders-db.md","label":"Orders DB","x":320,"y":0,"width":260,"height":120,
      "kind":"datastore","source":{"path":"board.md","anchor":"order-lifecycle"}}
   ],
-  "upsertEdges":[{"id":"ag-e1","fromNode":"ag-checkout","toNode":"ag-orders","rel":"produces","label":"writes"}],
+  "upsertEdges":[{"id":"ag-e1","fromNode":"ag-checkout","toNode":"ag-orders","rel":"produces","label":"writes","color":"5"}],
   "generatedFiles":[
     {"path":"board.md","content":"---\\ntitle: Order system\\n---\\n## Order lifecycle\\nCheckout calls Payments, which writes Orders DB."},
     {"path":"board.nodes/checkout.md","content":"---\\nname: Checkout\\ndescription: Accepts orders and calls Payments\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\nCheckout service."},

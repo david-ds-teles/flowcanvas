@@ -1,9 +1,9 @@
 ---
-name: google-calendar
+name: Google Calendar
 kind: external
 description: Google Calendar API — read-only free/busy queries powering the check_availability agent tool.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: decision-5-calendar-capability
 ---
 
@@ -17,9 +17,9 @@ Read-only calendar access via `freebusy.query`. Returns only busy block time ran
 
 **Availability derivation:**
 1. `GoogleClient.freebusy(calendar_id, time_min, time_max)` → `list[BusyBlock]`.
-2. Subtract busy blocks from `business.business_hours` JSONB (shape: `{mon..sun: [{open: "HH:MM", close: "HH:MM"}]}`; times in `business.timezone` IANA).
+2. Subtract busy blocks from `business.business_hours` JSONB (`{mon..sun: [{open: "HH:MM", close: "HH:MM"}]}`; times in `business.timezone` IANA).
 3. Return free `AvailabilitySlot` windows within configured business hours.
 
 **`calendar_id`:** stored in `google_connection.calendar_id` (defaults to `'primary'`).
 
-**Deferred — Calendar write:** `events.insert` (scope `calendar.events`) for appointment booking. Additive: `'booking'` is already in `agent_intent` enum; scope appended to `granted_scopes TEXT[]` (no schema change); one new `appointment` table. No existing table changes.
+**Deferred — Calendar write:** `events.insert` (scope `calendar.events`) for appointment booking. Additive: `'booking'` is already in `agent_intent` enum; scope appended to `granted_scopes TEXT[]`; one new `appointment` table. No existing table changes.

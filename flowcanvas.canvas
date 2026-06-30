@@ -691,14 +691,15 @@
     }
   ],
   "flowcanvas": {
-    "schemaVersion": "0.3",
+    "schemaVersion": "0.4",
     "session": {
       "title": "Flowcanvas — Initial Architecture (001)",
       "intent": "what is this all about?",
       "createdAt": "2026-06-28T00:00:00Z",
-      "updatedAt": "2026-06-29T13:19:04.994Z",
-      "revision": 3,
-      "pendingReview": false
+      "updatedAt": "2026-06-30T10:24:49.137Z",
+      "revision": 4,
+      "pendingReview": false,
+      "coreDocPath": ".flowcode/plans/001-initial-architecture/001-initial-architecture-design.md"
     },
     "comments": [
       {

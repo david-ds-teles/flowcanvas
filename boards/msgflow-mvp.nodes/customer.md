@@ -1,9 +1,9 @@
 ---
-name: customer
+name: Customer
 kind: actor
 description: Inbound WhatsApp customer — the end-user the system serves.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: problem-statement
 ---
 

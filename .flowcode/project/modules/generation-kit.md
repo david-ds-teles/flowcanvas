@@ -18,7 +18,7 @@ links: [.flowcode/project/project-overview.md, .flowcode/quality-checks/quality-
 
 ## Purpose
 
-`generation-kit.ts` owns the complete textual content of the Flowcanvas Agent Contract. It assembles four distinct sections — system prompt, schema contract (three sub-clauses joined), MCP loop instructions, and a worked JSON example — and exposes them two ways: as a structured `KitSections` record (for programmatic embedding) and as a single paste-ready markdown string via `buildKit`. Every downstream artifact renders FROM this module: `brief.ts` re-exports `AGENT_CONTRACT` (a thin alias over `kitSections().schemaContract`) and stamps `responseContract` into every `DesignBrief` it builds; `docs/flowcanvas-agent-contract.md` carries a "GENERATED" header and is regenerated from the same source; in Phase 3, the MCP `get_generation_kit` tool, the `flowcanvas://generation-kit` resource, and the UI "Copy full kit" bundle will all call `buildKit`. The module is intentionally pure so it can be tested in isolation with zero setup.
+`generation-kit.ts` owns the complete textual content of the Flowcanvas Agent Contract. It assembles four distinct sections — system prompt, schema contract (three sub-clauses joined), MCP loop instructions, and a worked JSON example — and exposes them two ways: as a structured `KitSections` record (for programmatic embedding) and as a single paste-ready markdown string via `buildKit`. 005-edges added an "EDGE STYLE (optional, per edge)" block to the schema contract documenting every per-edge field (`routing`/`line`/`color`/`fromEnd`/`toEnd`/`fromSide`/`toSide`/`labelT`/`points`) so the agent reaches full parity with the human Style panel, and the worked-example edge now carries `"color":"5"`. Every downstream artifact renders FROM this module: `brief.ts` re-exports `AGENT_CONTRACT` (a thin alias over `kitSections().schemaContract`) and stamps `responseContract` into every `DesignBrief` it builds; `docs/flowcanvas-agent-contract.md` carries a "GENERATED" header and is regenerated from the same source; in Phase 3, the MCP `get_generation_kit` tool, the `flowcanvas://generation-kit` resource, and the UI "Copy full kit" bundle will all call `buildKit`. The module is intentionally pure so it can be tested in isolation with zero setup.
 
 ### Internal Architecture
 
@@ -172,7 +172,7 @@ Commands scoped to this module. Cross-reference full project gates in `.flowcode
 **Conventions & patterns:**
 
 - **Pure by design.** The file-level comment `// Pure: no fs, no network, no DOM` (`lib/canvas/generation-kit.ts:1`) is an enforced invariant — never add I/O. Purity enables Vitest to run the full suite in-process with no mocks and no server.
-- **Three-part `schemaContract`.** `SCHEMA_CONTRACT_BASE`, `KIND_CATALOG`, and `SLUG_RULE` are kept as separate `const` strings and joined at call time (`lib/canvas/generation-kit.ts:83`). This separation makes it possible to update the slug rule or kind catalog independently without touching the core extraction rules.
+- **Three-part `schemaContract`.** `SCHEMA_CONTRACT_BASE`, `KIND_CATALOG`, and `SLUG_RULE` are kept as separate `const` strings and joined at call time (`lib/canvas/generation-kit.ts:83`). This separation makes it possible to update the slug rule or kind catalog independently without touching the core extraction rules. The 005-edges "EDGE STYLE (optional, per edge)" block lives inside `SCHEMA_CONTRACT_BASE` (`generation-kit.ts:49-58`), right after the TYPED EDGES clause — so the per-edge style fields ship in the same string the human style controls map to.
 - **`COMPONENT_KINDS` imported, not duplicated.** `KIND_CATALOG` embeds the allowed set by interpolating `COMPONENT_KINDS.join(', ')` (`lib/canvas/generation-kit.ts:43`). The kind list is defined exactly once in `jsoncanvas.ts`; the generation kit always reflects the live set. Adding or removing a kind in `jsoncanvas.ts` automatically propagates into the contract text at runtime.
 - **`buildKit` is the paste-ready rendition; `kitSections` is the structured rendition.** Never call `buildKit` in programmatic contexts (e.g. stamping `responseContract`) — use `kitSections().schemaContract` so downstream consumers get a clean string without the `## N ·` markdown headers.
 - **`docs/flowcanvas-agent-contract.md` is generated.** Its first line is `<!-- GENERATED — do not hand-edit. Source of truth: kitSections().schemaContract in lib/canvas/generation-kit.ts. -->`. Manual edits to that file will be silently overwritten; changes must be made in `generation-kit.ts`.
@@ -192,3 +192,12 @@ Commands scoped to this module. Cross-reference full project gates in `.flowcode
 - Phase 3 `get_generation_kit` MCP tool and `flowcanvas://generation-kit` resource are not yet implemented; `generation-kit.ts` is ready to serve them but the sidecar wiring is pending.
 - `docs/flowcanvas-agent-contract.md` regeneration is currently manual; no script or CI gate regenerates it from `kitSections().schemaContract` automatically.
 - No schema version field in `KitSections` or in the `buildKit` output — if the contract evolves, consumers have no way to detect a stale cached copy without re-calling `kitSections()`.
+
+## Update 2026-06-30 — core spec doc → canvas card (contract change)
+
+The CORE SPEC DOC contract section now tells the agent to **set `coreDocPath` in the AgentResponse** (not
+only place the doc in `generatedFiles`). The app then binds the spine AND auto-creates a readable markdown
+card for the core doc on the canvas — the one exception to the generatedFiles+upsertNodes rule (the agent
+must NOT add its own node for the core doc). The worked example and MCP-loop step 5 now set `coreDocPath`.
+Reverses the 004 "core doc = spine, not a card" rule (operator decision 2026-06-30). The card is
+minted/positioned by `brief.md` (`ensureCoreDocNode`, `applyResponse`) and `layout.md` (leftmost pin).

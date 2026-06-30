@@ -101,4 +101,24 @@ describe('layout / organizeByType (type-banded system-design layout)', () => {
       expect(p.y + c.height).toBeLessThanOrEqual(g.y + gs.height)
     }
   })
+
+  it('pins the core-doc card to the leftmost band when coreDocPath is given', () => {
+    const withCore: CanvasNode[] = [
+      { id: 'core', type: 'file', file: 'board.md', x: 0, y: 0, width: 320, height: 220, meta: { origin: 'agent' } },
+      { id: 'svc', type: 'file', file: 'board.nodes/svc.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'service' } },
+      { id: 'act', type: 'file', file: 'board.nodes/act.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'actor' } },
+    ]
+    const { positions } = organizeByType(withCore, 'board.md')
+    expect(positions.core.x).toBeLessThan(positions.act.x)   // core-doc card sits left of the actor band
+    expect(positions.act.x).toBeLessThan(positions.svc.x)    // actors still left of services
+  })
+
+  it('without coreDocPath the core-doc-shaped card falls in the unkinded (rightmost) band', () => {
+    const withCore: CanvasNode[] = [
+      { id: 'core', type: 'file', file: 'board.md', x: 0, y: 0, width: 320, height: 220, meta: { origin: 'agent' } },
+      { id: 'act', type: 'file', file: 'board.nodes/act.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'actor' } },
+    ]
+    const { positions } = organizeByType(withCore)                // no coreDocPath → no special pinning
+    expect(positions.core.x).toBeGreaterThan(positions.act.x)     // unkinded band is rightmost
+  })
 })

@@ -1,6 +1,6 @@
-import { MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
+import { type Node as RFNode, type Edge as RFEdge } from '@xyflow/react'
 import type { CSSProperties } from 'react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, Side, EdgeOrigin, RelationshipType } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, CanvasColor, EdgeOrigin, RelationshipType } from './jsoncanvas'
 import { nodeKind, COMPONENT_KIND_META } from './jsoncanvas'
 
 const PRESET: Record<string, string> = { '1': '#ff516a', '2': '#f59f00', '3': '#e3b341', '4': '#b6f36a', '5': '#5ef2ff', '6': '#a371f7' }   // nyx §2.4
@@ -39,12 +39,19 @@ export function toReactFlow(doc: FlowcanvasDoc): { nodes: RFNode[]; edges: RFEdg
   })
   const edges = doc.edges.map<RFEdge>((e) => ({
     id: e.id, source: e.fromNode, target: e.toNode,
+    // A pinned side maps to its handle; a floating end (no side) leaves the handle undefined so the edge
+    // component recomputes a center-anchored endpoint (005-edges). Markers/stroke/path all live in the
+    // component now (it owns per-edge color + configurable end shapes), so no markerEnd here.
     sourceHandle: e.fromSide, targetHandle: e.toSide,
     type: 'labeled', label: e.label,
-    data: { origin: e.meta?.origin ?? 'user', rel: e.meta?.rel },   // v2 — rel drives typed-edge styling
+    data: {
+      origin: e.meta?.origin ?? 'user', rel: e.meta?.rel,                 // v2 — rel drives typed-edge styling
+      routing: e.meta?.routing, line: e.meta?.line, labelT: e.meta?.labelT, // 005-edges — per-edge style
+      points: e.meta?.points,                                             // 005-edges — manual line waypoints
+      color: e.color, fromSide: e.fromSide, toSide: e.toSide, fromEnd: e.fromEnd, toEnd: e.toEnd,
+    },
     selectable: true,                                  // explicit (was relying on RF defaults) — Phase 2
     deletable: true,
-    markerEnd: (e.toEnd ?? 'arrow') !== 'none' ? { type: MarkerType.ArrowClosed } : undefined,
   }))
   return { nodes, edges }
 }
@@ -70,17 +77,18 @@ export function toJSONCanvas(rfNodes: RFNode[], rfEdges: RFEdge[], prev: Flowcan
     else delete (next as { parentId?: string }).parentId
     return next
   })
+  // Edge endpoint reconnection is not enabled, so the doc edge (`base`) is the source of truth for every
+  // edge field — geometry, sides, color, marker ends, and the 005-edges meta (routing/line/labelT). RF
+  // only carries origin/rel in `data`; refresh those and keep everything else (this is the fix for the
+  // prior bug where the explicit `meta: { origin, rel }` dropped routing/line/labelT on every RF sync).
   const edges: CanvasEdge[] = rfEdges.map((re) => {
-    const base = prevEdgeById.get(re.id)                 // carry color / fromEnd / toEnd that RF state does not model
+    const base = prevEdgeById.get(re.id)
     const data = re.data as { origin?: EdgeOrigin; rel?: RelationshipType } | undefined
-    return {
-      ...base,
-      id: re.id, fromNode: re.source, toNode: re.target,
-      fromSide: re.sourceHandle as Side | undefined, toSide: re.targetHandle as Side | undefined,
-      label: typeof re.label === 'string' ? re.label : undefined,
-      toEnd: base?.toEnd ?? 'arrow',
-      meta: { origin: data?.origin ?? base?.meta?.origin, rel: data?.rel ?? base?.meta?.rel },   // v2 — preserve rel
+    if (base) {
+      return { ...base, meta: { ...base.meta, origin: data?.origin ?? base.meta?.origin, rel: data?.rel ?? base.meta?.rel } }
     }
+    // Defensive fallback — edges are created through the store, so an RF edge always has a doc base.
+    return { id: re.id, fromNode: re.source, toNode: re.target, toEnd: 'arrow', meta: { origin: data?.origin ?? 'user', rel: data?.rel } }
   })
   return { ...prev, nodes, edges }
 }

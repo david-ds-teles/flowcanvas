@@ -1,6 +1,6 @@
 ---
 name: migrate
-description: Module knowledge base for migrate — pure schema-version ladder that upgrades any FlowcanvasDoc to schema '0.3', shared by store.load and importDoc.
+description: Module knowledge base for migrate — pure schema-version ladder that upgrades any FlowcanvasDoc to schema '0.4', shared by store.load and importDoc.
 status: active
 tags: [module, public-api, knowledge-base, migration, schema]
 links: [.flowcode/project/project-overview.md, .flowcode/project/modules/edges.md, .flowcode/project/modules/schema.md]
@@ -8,7 +8,7 @@ links: [.flowcode/project/project-overview.md, .flowcode/project/modules/edges.m
 
 # migrate
 
-- Owns the canonical schema-version upgrade ladder for `FlowcanvasDoc` (`0.1 → 0.2 → 0.3`); returns `{ doc, migrated }` indicating whether the doc was changed.
+- Owns the canonical schema-version upgrade ladder for `FlowcanvasDoc` (`0.1 → 0.2 → 0.3 → 0.4`); returns `{ doc, migrated }` indicating whether the doc was changed.
 - Path: `lib/canvas/migrate.ts`; stack: TypeScript.
 - Public API: `migrateDoc(doc: FlowcanvasDoc): { doc: FlowcanvasDoc; migrated: boolean }`.
 - Generated at depth by `flowcode:module-explorer-agent`; meets § Module Doc Completeness Bar — real signatures, a usage example, config/env, traced deps, conventions.
@@ -18,7 +18,7 @@ links: [.flowcode/project/project-overview.md, .flowcode/project/modules/edges.m
 
 ## Purpose
 
-`migrate` is the single, pure extraction point for the schema-version upgrade ladder. The `0.1 → 0.2` step bakes the previously-live-only derived `links:` edges into the persisted edge set (via `reconcileEdges(doc.edges, deriveLinkEdges(doc.nodes))`); the `0.2 → 0.3` step is a pure version-string bump with no data change. A `0.3` doc passes through unchanged and returns the **original reference** (not a copy) with `migrated: false`.
+`migrate` is the single, pure extraction point for the schema-version upgrade ladder. The `0.1 → 0.2` step bakes the previously-live-only derived `links:` edges into the persisted edge set (via `reconcileEdges(doc.edges, deriveLinkEdges(doc.nodes))`); the `0.2 → 0.3` step is a pure version-string bump with no data change; the `0.3 → 0.4` step (005-edges) **floats every existing edge** — it strips the auto-assigned `fromSide`/`toSide` handle sides so the edge re-routes from the node center, dropping the reading noise the pinned handles caused (additive style fields `routing`/`line`/`labelT`/`points` default in the renderer, so no write is needed for them). A `0.4` doc passes through unchanged and returns the **original reference** (not a copy) with `migrated: false`.
 
 The module was extracted from the inline migration in `store.load` (plan 004 Phase 1) so that both `store.load` and the upcoming `importDoc` action (Phase 5) share one ladder and guarantee that every path accepting a `.canvas` file migrates identically. The module is intentionally pure — no fs, no DOM, no side effects. The caller must hydrate node frontmatter via `hydrateFiles` before calling `migrateDoc`, since `deriveLinkEdges` reads `meta.frontmatter.links`.
 
@@ -31,8 +31,11 @@ flowchart TD
   BAKE --> C2{"schemaVersion 0.2?"}
   C1 -- "no" --> C2
   C2 -- "yes" --> BUMP["no-op bump to v0.3, migrated=true"]
-  BUMP --> RET["return { doc, migrated }"]
-  C2 -- "no: pass-through" --> RET
+  BUMP --> C3{"schemaVersion 0.3?"}
+  C2 -- "no" --> C3
+  C3 -- "yes" --> FLOAT["float edges (drop fromSide/toSide), set v0.4, migrated=true"]
+  FLOAT --> RET["return { doc, migrated }"]
+  C3 -- "no: pass-through" --> RET
 ```
 
 ---
@@ -48,7 +51,7 @@ Concrete signatures only. No prose.
 export function migrateDoc(doc: FlowcanvasDoc): { doc: FlowcanvasDoc; migrated: boolean }
 ```
 
-The return `doc` is the upgraded document — immutably reconstructed at each step that fires, or the same object reference if already at `0.3`. `migrated` is `true` whenever any version bump occurred, including the semantically no-op `0.2 → 0.3` bump.
+The return `doc` is the upgraded document — immutably reconstructed at each step that fires, or the same object reference if already at `0.4`. `migrated` is `true` whenever any version bump occurred, including the semantically no-op `0.2 → 0.3` bump and the `0.3 → 0.4` edge-float step.
 
 ### Classes
 
@@ -71,7 +74,7 @@ None — the function is pure and does not throw. All inputs are structurally ty
 ## Usage Examples
 
 ```typescript
-// lib/canvas/migrate.test.ts:21-31 — 0.1 → 0.3 full ladder (real test)
+// lib/canvas/migrate.test.ts:25-35 — 0.1 → 0.4 full ladder (real test)
 import { migrateDoc } from './migrate'
 import type { CanvasNode, FlowcanvasDoc } from './jsoncanvas'
 
@@ -97,11 +100,11 @@ const doc: FlowcanvasDoc = {
 
 const { doc: upgraded, migrated } = migrateDoc(doc)
 // migrated                          => true
-// upgraded.flowcanvas.schemaVersion => '0.3'
+// upgraded.flowcanvas.schemaVersion => '0.4'
 // upgraded.edges[0]                 => { id: 'lk:a->b', fromNode: 'a', toNode: 'b', meta: { origin: 'links' } }
 ```
 
-Demonstrates the full `0.1 → 0.3` ladder: bakes derived edge `lk:a->b` from node `a`'s `links: [examples/b.md]`, then bumps version through `0.2 → 0.3`. Real test at `lib/canvas/migrate.test.ts:21`. Idempotence (0.3 doc returns same reference, `migrated: false`) is pinned at `lib/canvas/migrate.test.ts:41-46`.
+Demonstrates the full `0.1 → 0.4` ladder: bakes derived edge `lk:a->b` from node `a`'s `links: [examples/b.md]`, bumps version through `0.2 → 0.3`, then floats edges on `0.3 → 0.4`. Real test at `lib/canvas/migrate.test.ts:25`. The `0.3 → 0.4` edge-float (strips `fromSide`/`toSide`, preserves all other fields) is pinned at `lib/canvas/migrate.test.ts:44-56`. Idempotence (a `0.4` doc returns the same reference, `migrated: false`) is pinned at `lib/canvas/migrate.test.ts:58-63`.
 
 ---
 
@@ -141,13 +144,14 @@ Not applicable — pure TypeScript module; reads no environment variables and no
 
 ## Key Insights
 
-**Conventions & patterns:** Follows the `lib/canvas/*` pure-module convention (no DOM, no React, no `fs`) — accepts typed inputs, returns typed outputs; fully unit-testable under vitest. Uses structural spread for immutable per-step reconstruction; the input doc is never mutated (`lib/canvas/migrate.ts:10-11`, `14-16`). Sequential `if` (not `else if`) at lines 9 and 13 makes a `0.1` doc pass through both upgrade steps in a single call — `0.1` falls into the first branch, exits with `schemaVersion:'0.2'`, then immediately falls into the second branch and exits at `0.3`.
+**Conventions & patterns:** Follows the `lib/canvas/*` pure-module convention (no DOM, no React, no `fs`) — accepts typed inputs, returns typed outputs; fully unit-testable under vitest. Uses structural spread for immutable per-step reconstruction; the input doc is never mutated (`lib/canvas/migrate.ts:10-11`, `15`, `23-30`). Three sequential `if`s (not `else if`) at lines 9, 14, and 18 make a `0.1` doc pass through every upgrade step in a single call — `0.1` exits the first branch at `'0.2'`, falls into the second and exits at `'0.3'`, then falls into the third (005-edges) which floats the edges and exits at `'0.4'`.
 
 **Gotchas & invariants:**
 
 - **Hydration must precede this call.** `deriveLinkEdges` reads `node.meta?.frontmatter?.links`; those fields are populated by `hydrateFiles` in `store.load` (`lib/canvas/store.ts:129`). Calling `migrateDoc` before frontmatter is hydrated silently produces an empty or wrong edge set for the `0.1 → 0.2` step — no error is thrown, the data is just wrong. The call order is `hydrateFiles` then `migrateDoc`, not the other way around.
-- **`0.3` pass-through preserves the original object reference.** When the input is already `0.3`, neither `if` branch fires; `next` is never reassigned and the original `doc` is returned. The test at `lib/canvas/migrate.test.ts:41-46` asserts `doc === input` (same reference, not just deep-equal) to guard against inadvertent cloning. Callers that compare by identity (e.g. memoization guards) can rely on this.
-- **`migrated: true` for the semantically no-op `0.2 → 0.3` bump.** A board persisted at `0.2` will report `migrated: true` after the call. The caller (Phase 5 `store.load`) will therefore save a `0.3` file on first open — by design, advancing every existing board to the current schema exactly once.
+- **`0.4` pass-through preserves the original object reference.** When the input is already `0.4`, no `if` branch fires; `next` is never reassigned and the original `doc` is returned. The test at `lib/canvas/migrate.test.ts:58-63` asserts `doc === input` (same reference, not just deep-equal) to guard against inadvertent cloning. Callers that compare by identity (e.g. memoization guards) can rely on this.
+- **The `0.3 → 0.4` step floats edges by stripping handle sides (005-edges).** It maps over `doc.edges` and, for any edge carrying `fromSide`/`toSide`, returns a clone with both deleted (`migrate.ts:23-29`); edges that already float are returned unchanged (object-identity preserved per edge). All other edge fields — `id`, `color`, `fromEnd`/`toEnd`, `label`, `meta` — survive untouched (pinned at `migrate.test.ts:44-56`).
+- **`migrated: true` for the semantically no-op `0.2 → 0.3` bump and the `0.3 → 0.4` float.** A board persisted at `0.2` or `0.3` reports `migrated: true` after the call, so `store.load` saves a `0.4` file on first open — by design, advancing every existing board to the current schema exactly once.
 - **Coexistence with `store.ts` inline migration.** The current `store.load` still contains an equivalent inline `0.1 → 0.2` check at `lib/canvas/store.ts:132-138`. Phase 5 replaces that block with a `migrateDoc` call; until then both implementations coexist. If either is edited, the other must be kept in sync — divergent migration behavior would cause different boards to receive different edge sets depending on load path.
 - **No production call sites yet.** `migrateDoc` is created and tested but not yet consumed by any production code path. Phase 5 wires it into `store.load` and `importDoc`.
 

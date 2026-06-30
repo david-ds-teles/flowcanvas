@@ -1,9 +1,9 @@
 ---
-name: redis-arq-queue
+name: Redis / arq Queue
 kind: queue
 description: Redis-backed arq job queue — async decoupling between webhook ingestion and the agent worker.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: technology-stack
 ---
 

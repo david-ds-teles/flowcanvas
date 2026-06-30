@@ -185,10 +185,12 @@ setNodeShape(id: string, shape: NodeShape): void
 #### Edge Editing
 
 ```ts
-// lib/canvas/store.ts:154
+// lib/canvas/store.ts:270
 onConnect(conn: Connection): void
 // Mint a typed user edge (rel:'related', empty label, toEnd:'arrow') and open its inline editor.
 // Rejects self-connections (source === target). v2: no links: write-back (Decision 4).
+// 005-edges: the new edge FLOATS by default — no fromSide/toSide, so it anchors to node centers and
+// meets each perimeter where the line crosses it. The Style panel can pin a side per edge afterward.
 
 // lib/canvas/store.ts:168
 removeEdgeWriteback(id: string): void
@@ -206,6 +208,41 @@ setEdgeRel(id: string, rel: RelationshipType): void
 // lib/canvas/store.ts:377
 setEditingEdge(id: string | null): void
 // Open (pass id) or close (pass null) the inline edge-label editor (sets editingEdgeId).
+```
+
+#### Edge Style (005-edges)
+
+Seven actions backing the Style panel; each maps a doc edge field. The agent reaches the same fields
+through the contract (`AgentEdge`), keeping human/agent parity.
+
+```ts
+// lib/canvas/store.ts:567
+setEdgeRouting(id: string, routing: EdgeRouting): void
+// Set meta.routing ('smoothstep' | 'bezier' | 'straight'); marks dirty.
+
+// lib/canvas/store.ts:573
+setEdgeLine(id: string, line: EdgeLineStyle): void
+// Set meta.line ('solid' | 'dashed' | 'dotted'); marks dirty.
+
+// lib/canvas/store.ts:588
+setEdgeColor(id: string, color?: CanvasColor): void
+// Set edge.color (hex or preset '1'..'6'); undefined DELETES the field → reverts to the provenance stroke.
+
+// lib/canvas/store.ts:600
+setEdgeMarker(id: string, which: 'from' | 'to', end: EdgeEnd): void
+// Set per-end marker shape (from = start marker, to = end marker); EdgeEnd ∈ none|arrow|arrow-open|circle|diamond.
+
+// lib/canvas/store.ts:607
+setEdgeSide(id: string, which: 'from' | 'to', side?: Side): void
+// Pin an endpoint to a side; undefined DELETES that side → the endpoint floats (anchors to node center).
+
+// lib/canvas/store.ts:580
+setEdgeLabelT(id: string, t: number): void
+// Set meta.labelT — 0..1 label position along the path (drag-to-move); clamped to [0,1].
+
+// lib/canvas/store.ts:621
+setEdgeWaypoints(id: string, points: { x: number; y: number }[]): void
+// Set meta.points — manual line bends (absolute coords). An empty array DELETES the field → auto-route.
 ```
 
 #### Mode
@@ -452,7 +489,7 @@ Not applicable — no database; the board is persisted as a `.canvas` JSON file 
 ## Dependencies
 
 **Upstream modules:**
-- `lib/canvas/jsoncanvas.ts` — `FlowcanvasDoc`, `CanvasNode`, `CanvasEdge`, `Comment`, `CommentAnchor`, `NodeShape`, `RelationshipType`, `isFileNode`, `nodeKind`, `REL_LABELS` (store.ts:3-4)
+- `lib/canvas/jsoncanvas.ts` — `FlowcanvasDoc`, `CanvasNode`, `CanvasEdge`, `Comment`, `CommentAnchor`, `NodeShape`, `RelationshipType`, `isFileNode`, `nodeKind`, `REL_LABELS`; 005-edges also `Side`, `CanvasColor`, `EdgeEnd`, `EdgeRouting`, `EdgeLineStyle` (for the 7 edge-style actions) (store.ts:3-4)
 - `lib/canvas/edges.ts` — `deriveLinkEdges` only (store.ts:5); `reconcileEdges` was extracted to `lib/canvas/migrate.ts` in Phase 5 — the store uses `deriveLinkEdges` only in `resyncFile` now
 - `lib/canvas/migrate.ts` — `migrateDoc` (store.ts:11); the shared `0.1→0.2→0.3` upgrade ladder; called by both `load` and `importDoc`
 - `lib/canvas/validate.ts` — `parseFlowcanvasDoc` (store.ts:12); zod-validates an untrusted JSON blob into a typed `FlowcanvasDoc`; called by `importCanvasFile`
@@ -524,3 +561,11 @@ Not applicable — `store.ts` reads no environment variables or config keys dire
 
 - `resyncFile` implements Decision 10 — per-file reconcile for disk-divergence detection. The disk-divergence banner (surfacing when a watched `.md` file changes on disk while the board is open) is explicitly deferred per plan `002` evolution log.
 - `submitToAgent` scoped brief: `session.briefScope` is stamped, but there is no UI feedback after submit indicating that a scope is active. The MCP sidecar and clipboard Export paths both honour it via `buildBriefPure`, but a reviewer has no visual cue.
+
+## Update 2026-06-30 — load heals the core-doc card; organize is coreDocPath-aware
+
+`load` now heals boards generated before the core-doc-card change: when a board has a bound `coreDocPath`
+but no file node references it, `load` mints (via `ensureCoreDocNode` from `brief.md`) + hydrates (one
+`resolvePaths`) a markdown card placed left of the content bbox and persists it (idempotent; fires once).
+The `organizeByType` action passes `session.coreDocPath` to the pure layout so the healed/generated card
+pins leftmost. Part of the 004 "spine, not a card" reversal (operator decision 2026-06-30).

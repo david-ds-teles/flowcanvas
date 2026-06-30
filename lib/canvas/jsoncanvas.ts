@@ -1,7 +1,10 @@
 // ─────────────────────────── Extended JSONCanvas core ───────────────────────────
 
 export type Side = 'top' | 'right' | 'bottom' | 'left'
-export type EdgeEnd = 'none' | 'arrow'
+/** Marker shape drawn at an edge end. `none` = no marker. 005-edges widened this from `'none'|'arrow'`. */
+export type EdgeEnd = 'none' | 'arrow' | 'arrow-open' | 'circle' | 'diamond'
+/** Ordered allowed set — drives the edge end-marker picker UI + the agent contract. */
+export const EDGE_ENDS: readonly EdgeEnd[] = ['none', 'arrow', 'arrow-open', 'circle', 'diamond']
 /** Hex "#RRGGBB" or JSONCanvas preset "1".."6". */
 export type CanvasColor = string
 
@@ -76,7 +79,17 @@ export const REL_LABELS: Record<RelationshipType, string> = {
 // Decision 4 — 'import' marks extraction-seeded edges; 'links' stays for legacy/migrated.
 export type EdgeOrigin = 'links' | 'user' | 'agent' | 'import'
 export const EDGE_ORIGINS: readonly EdgeOrigin[] = ['links', 'user', 'agent', 'import']
-export const SCHEMA_VERSIONS = ['0.1', '0.2', '0.3'] as const
+export const SCHEMA_VERSIONS = ['0.1', '0.2', '0.3', '0.4'] as const
+
+// ── 005-edges — per-edge visual style (human + agent authorable; see [[agent-feature-parity]]) ──
+/** Path geometry between endpoints: 'smoothstep' (right-angle, default) · 'bezier' (curve) · 'straight'. */
+export type EdgeRouting = 'bezier' | 'smoothstep' | 'straight'
+/** Ordered allowed set (default first) — drives the routing picker UI + the agent contract. */
+export const EDGE_ROUTINGS: readonly EdgeRouting[] = ['smoothstep', 'bezier', 'straight']
+/** Stroke dash pattern: 'solid' (default) · 'dashed' · 'dotted'. */
+export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted'
+/** Ordered allowed set — drives the line-style picker UI + the agent contract. */
+export const EDGE_LINE_STYLES: readonly EdgeLineStyle[] = ['solid', 'dashed', 'dotted']
 
 // Decision 2 — provenance back to the source design/plan doc a node was extracted from.
 export interface NodeSource {
@@ -125,11 +138,18 @@ export type CanvasNode = FileNode | LinkNode | TextNode | GroupNode
 export interface CanvasEdge {
   id: string
   fromNode: string; toNode: string
-  fromSide?: Side; toSide?: Side
-  fromEnd?: EdgeEnd; toEnd?: EdgeEnd          // default toEnd:"arrow"
-  color?: CanvasColor
-  label?: string                                          // free-form display (unchanged)
-  meta?: { origin?: EdgeOrigin; rel?: RelationshipType }  // v2 — + rel (Decision 1)
+  fromSide?: Side; toSide?: Side              // 005-edges: PRESENT = pinned to that side · ABSENT = floats from node center
+  fromEnd?: EdgeEnd; toEnd?: EdgeEnd          // marker shape per end; default toEnd:"arrow", fromEnd:"none"
+  color?: CanvasColor                         // 005-edges: now drives the rendered stroke (overrides the provenance default)
+  label?: string                              // free-form display (unchanged)
+  meta?: {
+    origin?: EdgeOrigin
+    rel?: RelationshipType                    // v2 — typed relationship (Decision 1)
+    routing?: EdgeRouting                     // 005-edges — path style; absent ⇒ renderer default 'smoothstep'
+    line?: EdgeLineStyle                      // 005-edges — stroke dash; absent ⇒ 'solid' (or 'dashed' for a derived links edge)
+    labelT?: number                           // 005-edges — 0..1 label position along the path; absent ⇒ 0.5 (midpoint)
+    points?: { x: number; y: number }[]       // 005-edges — manual waypoints (absolute canvas coords) the line bends through; drag to reshape
+  }
 }
 
 // ─────────────────────────── Comments (Flowcanvas extension) ───────────────────────────
@@ -165,7 +185,7 @@ export interface SessionMeta {
 }
 
 export interface FlowcanvasExt {
-  schemaVersion: '0.1' | '0.2' | '0.3'   // 004 boards persist '0.3'
+  schemaVersion: '0.1' | '0.2' | '0.3' | '0.4'   // 005-edges boards persist '0.4'
   session: SessionMeta
   comments: Comment[]
 }

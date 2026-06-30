@@ -1,9 +1,9 @@
 ---
-name: arq-worker
+name: arq Worker
 kind: service
 description: arq Worker — processes handle_inbound jobs; loads conversation state and dispatches the LangGraph agent.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: technical-design
 ---
 
@@ -18,9 +18,8 @@ Async arq worker process. The agent **never** runs on the HTTP request path — 
 2. If `message.intent IS NOT NULL` → duplicate, no-op, release lock.
 3. Load `conversation` + recent `message` history from Postgres.
 4. Check `conversation.status`: `ESCALATED` or `PAUSED` → skip auto-reply.
-5. Bind per-business tools via closure — `business_id` injected, **never LLM-visible**:
-   `check_availability`, `lookup_price`, `answer_from_documents`, `escalate_to_human`
+5. Bind per-business tools via closure — `business_id` injected, **never LLM-visible**.
 6. Dispatch LangGraph agent with `AgentState`.
-7. **REPLY decision:** check 24-h service window (`conversation.last_inbound_at`) → `send_text` (in-window) or `send_template(OUT_OF_WINDOW_TEMPLATE)` (out-of-window, or drop + log).
-8. **ESCALATE decision:** create `escalation` row, set `conversation.status = 'ESCALATED'`, send owner notification via `OWNER_ESCALATION_TEMPLATE`.
-9. Commit transaction: set `message.intent`, append outbound `message` row.
+7. **REPLY decision:** check 24-h service window → `send_text` (in-window) or `send_template(OUT_OF_WINDOW_TEMPLATE)` (out-of-window).
+8. **ESCALATE decision:** create `escalation` row, set `conversation.status = 'ESCALATED'`, notify owner via `OWNER_ESCALATION_TEMPLATE`.
+9. Commit: set `message.intent`, append outbound `message` row.

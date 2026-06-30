@@ -1,9 +1,9 @@
 ---
-name: business-owner
+name: Business Owner
 kind: actor
 description: The business owner — onboards the WhatsApp number and Google Workspace; receives escalation notifications.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: decision-7-human-escalation
 ---
 

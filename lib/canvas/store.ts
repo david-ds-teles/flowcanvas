@@ -1,6 +1,6 @@
 import { create, type StateCreator } from 'zustand'
 import type { Connection } from '@xyflow/react'
-import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta } from './jsoncanvas'
+import type { FlowcanvasDoc, CanvasNode, CanvasEdge, Comment, CommentAnchor, NodeShape, RelationshipType, CanvasColor, NodeMeta, Side, EdgeRouting, EdgeLineStyle, EdgeEnd } from './jsoncanvas'
 import { isFileNode, nodeKind, REL_LABELS } from './jsoncanvas'
 import { deriveLinkEdges } from './edges'
 import { buildBrief as buildBriefPure, applyResponse as applyResponsePure } from './brief'
@@ -75,6 +75,14 @@ interface CanvasState {
   setNodeAlign: (id: string, align?: NodeMeta['align'], valign?: NodeMeta['valign']) => void
   relabelEdge: (id: string, label: string) => void
   setEdgeRel: (id: string, rel: RelationshipType) => void          // v2: typed-edge rel picker (Phase 6)
+  // ─── 005-edges — per-edge visual style (mirrored to the agent contract; see [[agent-feature-parity]]) ───
+  setEdgeRouting: (id: string, routing: EdgeRouting) => void       // path style: curve / angle / straight
+  setEdgeLine: (id: string, line: EdgeLineStyle) => void           // stroke dash: solid / dashed / dotted
+  setEdgeColor: (id: string, color?: CanvasColor) => void          // stroke color; undefined ⇒ provenance default
+  setEdgeMarker: (id: string, which: 'from' | 'to', end: EdgeEnd) => void   // arrowhead shape per end
+  setEdgeSide: (id: string, which: 'from' | 'to', side?: Side) => void      // pin an endpoint to a side; undefined ⇒ float
+  setEdgeLabelT: (id: string, t: number) => void                   // 0..1 label position along the path (drag-to-move)
+  setEdgeWaypoints: (id: string, points: { x: number; y: number }[]) => void  // manual line bends ([] clears → auto-route)
   setEditingEdge: (id: string | null) => void
   setMode: (mode: CanvasMode) => void
   openReader: (id: string) => void
@@ -214,7 +222,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
       coreDocBody: coreBody, coreDocDraft: coreBody, coreDocDirty: false, spineHighlightAnchor: null, linkedNodeIds: [],
       __hist: 'reset',                                            // #1 — a board switch starts a fresh undo history
     })
-    if (migrated || autobound) await get().save()                 // persist the migrate upgrade and/or the auto-bound core doc once
+    if (migrated || autobound) await get().save()   // persist the migrate upgrade and/or auto-bound core doc once
     const rev = get().doc?.flowcanvas.session.revision ?? next.flowcanvas.session.revision
     void api.putActive({ canvasRef: path, baseRevision: rev, intent: next.flowcanvas.session.intent ?? '' })
       .catch((e) => console.error('putActive failed', e))
@@ -241,10 +249,11 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     const { doc } = get()
     if (!doc || !conn.source || !conn.target || conn.source === conn.target) return
     const id = edgeId()
+    // 005-edges — new connections FLOAT by default (no pinned side): the rendered edge anchors to the
+    // node centers and meets each perimeter where the line crosses it, cutting the reading noise the
+    // handle-anchored edges caused. The Style panel can pin a side per edge afterward.
     const edge: CanvasEdge = {
       id, fromNode: conn.source, toNode: conn.target,
-      fromSide: conn.sourceHandle as CanvasEdge['fromSide'],
-      toSide: conn.targetHandle as CanvasEdge['toSide'],
       label: '', toEnd: 'arrow', meta: { origin: 'user', rel: 'related' },
     }
     set({ doc: { ...doc, edges: [...doc.edges, edge] }, dirty: true, editingEdgeId: id })
@@ -346,7 +355,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
   organizeByType() {
     const { doc } = get()
     if (!doc || doc.nodes.length === 0) return
-    const { positions, sizes } = organizeByTypePure(doc.nodes)
+    const { positions, sizes } = organizeByTypePure(doc.nodes, doc.flowcanvas.session.coreDocPath)
     get().applyLayout(positions, sizes)
   },
   // #1 — undo/redo. Swap in the previous / next full-doc snapshot from the history stacks. __hist:'skip'
@@ -396,7 +405,7 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
     const doc: FlowcanvasDoc = {
       nodes: [], edges: [],
       flowcanvas: {
-        schemaVersion: '0.3',
+        schemaVersion: '0.4',
         session: { title: 'Untitled board', intent: '', createdAt: now, updatedAt: now, revision: 0 },
         comments: [],
       },
@@ -528,6 +537,73 @@ export const useCanvasStore = create<CanvasState>(withHistory((set, get) => ({
       if (e.id !== id) return e
       const label = e.label && e.label.trim() ? e.label : REL_LABELS[rel]
       return { ...e, label, meta: { ...e.meta, rel, origin: e.meta?.origin === 'links' ? 'user' : (e.meta?.origin ?? 'user') } }
+    })
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // ─── 005-edges — per-edge visual style. Each maps to a Style-panel control; the agent reaches the same
+  // fields through the contract (AgentEdge), keeping human/agent parity ([[agent-feature-parity]]). ───
+  setEdgeRouting(id: string, routing: EdgeRouting) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => (e.id === id ? { ...e, meta: { ...e.meta, routing } } : e))
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  setEdgeLine(id: string, line: EdgeLineStyle) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => (e.id === id ? { ...e, meta: { ...e.meta, line } } : e))
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // 0..1 position of the label along the path (drag-to-move); clamped to the segment.
+  setEdgeLabelT(id: string, t: number) {
+    const { doc } = get()
+    if (!doc) return
+    const labelT = Math.max(0, Math.min(1, t))
+    const edges = doc.edges.map((e) => (e.id === id ? { ...e, meta: { ...e.meta, labelT } } : e))
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // Stroke color; undefined removes the field (reverts to the provenance-default stroke).
+  setEdgeColor(id: string, color?: CanvasColor) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => {
+      if (e.id !== id) return e
+      const next: CanvasEdge = { ...e }
+      if (color === undefined) delete next.color; else next.color = color
+      return next
+    })
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // Per-end marker shape (from = start marker, to = end marker).
+  setEdgeMarker(id: string, which: 'from' | 'to', end: EdgeEnd) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => (e.id === id ? (which === 'from' ? { ...e, fromEnd: end } : { ...e, toEnd: end }) : e))
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // Pin an endpoint to a side; undefined floats it (anchors to the node center).
+  setEdgeSide(id: string, which: 'from' | 'to', side?: Side) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => {
+      if (e.id !== id) return e
+      const next: CanvasEdge = { ...e }
+      if (which === 'from') { if (side === undefined) delete next.fromSide; else next.fromSide = side }
+      else { if (side === undefined) delete next.toSide; else next.toSide = side }
+      return next
+    })
+    set({ doc: { ...doc, edges }, dirty: true })
+  },
+  // Manual line bends (005-edges): set the waypoint list the edge routes through (drag-to-reshape).
+  // An empty array removes the field, so the edge reverts to auto-routing by its `routing` style.
+  setEdgeWaypoints(id: string, points: { x: number; y: number }[]) {
+    const { doc } = get()
+    if (!doc) return
+    const edges = doc.edges.map((e) => {
+      if (e.id !== id) return e
+      const meta = { ...e.meta }
+      if (points.length === 0) delete meta.points; else meta.points = points
+      return { ...e, meta }
     })
     set({ doc: { ...doc, edges }, dirty: true })
   },

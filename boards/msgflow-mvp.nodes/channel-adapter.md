@@ -1,9 +1,9 @@
 ---
-name: channel-adapter
+name: Channel Adapter
 kind: process
 description: Channel Adapter (ZavuAdapter) — normalizes inbound/outbound WhatsApp messages behind a swappable ChannelAdapter ABC.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: api--interface-contracts
 ---
 
@@ -24,10 +24,7 @@ async def send_template(business_id, to, template_name, params) -> SendResult
 
 **ZavuAdapter specifics:**
 - Verification: constant-time `HMAC-SHA256(raw_body, ZAVU_WEBHOOK_SECRET)` vs `x-zavu-signature: sha256=<hex>`.
-- Inbound payload: assumed Meta Cloud API envelope (`entry[].changes[].value.{metadata,contacts,messages}`). *(confirm exact shape at zavu integration)*
+- Inbound payload: assumed Meta Cloud API envelope (`entry[].changes[].value.{metadata,contacts,messages}`). *(confirm at integration)*
 - Outbound: uses the business's decrypted `api_key_encrypted` from `channel_credential`.
-- Caller must verify the 24-h service window before calling `send_text`.
-
-**`send_template`** is used for: owner escalation notices (`OWNER_ESCALATION_TEMPLATE`) and out-of-window customer replies (`OUT_OF_WINDOW_TEMPLATE`). Template pre-approval with zavu is an external dependency.
 
 **Swappability:** swap `ZavuAdapter → CloudApiAdapter` per-business without touching the agent or worker.

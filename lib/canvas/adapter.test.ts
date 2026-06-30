@@ -69,14 +69,19 @@ describe('adapter / toReactFlow', () => {
     expect(img.height).toBe(240) // image/note/link/group are not auto-sized
   })
 
-  it('maps edges with origin in data, label, and an arrow marker', () => {
+  it('maps edges with origin + style in data (markers are component-owned in 005-edges)', () => {
     const lk = toReactFlow(doc).edges.find((e) => e.id === 'lk:n-design->n-plan')!
     expect(lk.source).toBe('n-design')
     expect(lk.target).toBe('n-plan')
     expect(lk.type).toBe('labeled')
     expect(lk.label).toBe('links')
-    expect((lk.data as { origin: string }).origin).toBe('links')
-    expect(lk.markerEnd).toBeTruthy()
+    const data = lk.data as { origin: string; toEnd?: string; color?: string }
+    expect(data.origin).toBe('links')
+    // 005-edges — the adapter no longer emits markerEnd; the labeled-edge component renders configurable
+    // markers from data.toEnd, and the per-edge style (color/sides/ends) rides along in data.
+    expect(lk.markerEnd).toBeUndefined()
+    expect(data.toEnd).toBe('arrow')
+    expect(data.color).toBe('6')
     // Phase 2 — explicit selectability flags (no longer relying on RF defaults)
     expect(lk.selectable).toBe(true)
     expect(lk.deletable).toBe(true)

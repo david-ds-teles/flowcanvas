@@ -73,7 +73,7 @@ export const flowcanvasDocSchema = z.object({
   nodes: z.array(node),
   edges: z.array(z.object({ id: z.string(), fromNode: z.string(), toNode: z.string() }).passthrough()),
   flowcanvas: z.object({
-    schemaVersion: z.enum(['0.1', '0.2', '0.3']),
+    schemaVersion: z.enum(['0.1', '0.2', '0.3', '0.4']),   // 005-edges += '0.4'
     session: z.object({ createdAt: z.string(), updatedAt: z.string(), revision: z.number() }).passthrough(),
     comments: z.array(z.unknown()),
   }).passthrough(),
@@ -207,7 +207,7 @@ Commands scoped to this module. Cross-reference full project gates in `.flowcode
 - `COMPONENT_KINDS` is a `readonly ComponentKind[]` array, not a tuple, so it cannot be passed directly to `z.enum()` (which requires `[string, ...string[]]`). The cast `as unknown as [string, ...string[]]` at `lib/canvas/validate.ts:6` is required and correct; the values themselves are correct because `COMPONENT_KINDS` is the authoritative source in `jsoncanvas.ts`.
 - `flowcanvasDocSchema` is exported as a `z.ZodType<FlowcanvasDoc>`, meaning callers can call `.parse()`, `.safeParse()`, or `.parseAsync()` on it directly — not just `parseFlowcanvasDoc`. The export is intentional for consumers that need the raw schema (e.g., future MCP tool input validation).
 - Phase 5 pipeline (`importDoc` / `importCanvasFile`, plan-004) chains `parseFlowcanvasDoc(json) → migrateDoc(doc)`. The validate step must come first — `migrateDoc` assumes a structurally valid doc.
-- The schema accepts `schemaVersion '0.1' | '0.2' | '0.3'` (all historical versions) so that older `.canvas` files can pass through `parseFlowcanvasDoc` before `migrateDoc` upgrades them. This is by design; the schema is an import validator, not a write-time normalizer.
+- The schema accepts `schemaVersion '0.1' | '0.2' | '0.3' | '0.4'` (all historical versions, 005-edges added `'0.4'`) so that older `.canvas` files can pass through `parseFlowcanvasDoc` before `migrateDoc` upgrades them. This is by design; the schema is an import validator, not a write-time normalizer. The new 005-edges edge style fields (`color`, `fromSide`/`toSide`, `fromEnd`/`toEnd`, `meta.routing`/`line`/`labelT`/`points`) are not individually modeled — they survive via `.passthrough()` on the edge object.
 
 ---
 

@@ -60,7 +60,7 @@ describe('GET /api/canvas', () => {
     const res = await canvasGET(get(`/api/canvas?path=${encodeURIComponent(DEMO)}`))
     expect(res.status).toBe(200)
     const { doc } = await res.json()
-    expect(doc.flowcanvas.schemaVersion).toBe('0.3')   // 004: load migrates + persists 0.3 for every opened board
+    expect(doc.flowcanvas.schemaVersion).toBe('0.4')   // 005-edges: load migrates + persists 0.4 (floats edges) for every opened board
     expect(doc.nodes.length).toBeGreaterThan(10)
     expect(doc.edges.some((e: { meta?: { rel?: string } }) => e.meta?.rel === 'calls')).toBe(true)
   })

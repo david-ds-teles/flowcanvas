@@ -115,6 +115,7 @@ function CanvasFlow() {
 
   // The spine is available when the board binds a core doc OR cites at least one source doc (Q4 switcher).
   const spineAvailable = !!doc && (!!doc.flowcanvas.session.coreDocPath || citedDocPaths(doc.nodes).length > 0)
+
   // The Spine tab only exists while a core/cited doc is bound — fall back to Inspector if it vanishes.
   const effectiveRightTab: RightTab = rightTab === 'spine' && !spineAvailable ? 'inspector' : rightTab
   // InspectorRail still owns inspector⇄submit; its in-panel "Review" action now selects the dock's Review tab.

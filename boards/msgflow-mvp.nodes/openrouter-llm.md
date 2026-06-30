@@ -1,9 +1,9 @@
 ---
-name: openrouter-llm
+name: OpenRouter LLM Gateway
 kind: external
 description: OpenRouter — OpenAI-compatible LLM gateway for cheap, swappable model access.
 source:
-  path: .flowcode/plans/msgflow-mvp/msgflow-mvp-design.md
+  path: boards/msgflow-mvp.md
   anchor: decision-3-llm--agent-orchestration
 ---
 
