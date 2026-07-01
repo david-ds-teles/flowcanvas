@@ -7,9 +7,10 @@ const elk = new ELK()
 export type LayoutPositions = Record<string, { x: number; y: number }>
 export type MeasuredSizes = Record<string, { width: number; height: number }>
 
-// ─────────────────── #7/#8 — "Organize by type" system-design layout ───────────────────
-// Left→right band order: actors/externals (sources) → flow → services → queues/datastores (sinks).
-// Lower rank sits further left. Mirrors a conventional layered architecture diagram.
+// ─────────────────── "Organize by type" — readable system-design layout ───────────────────
+// Band rank orders cards WITHIN a block (sources → flow → services → sinks) so same-kind cards
+// cluster. The board itself is laid out as compact, WRAPPED grids — never an infinite horizontal
+// strip (operator 2026-06-30: a generated board MUST be readable). See organizeByType below.
 const KIND_BAND_RANK: Record<ComponentKind, number> = {
   actor: 0, external: 1, decision: 2, process: 3, service: 4, queue: 5, datastore: 6, boundary: 7,
 }
@@ -20,42 +21,50 @@ function bandRank(n: CanvasNode): number {
   return k ? KIND_BAND_RANK[k] : UNKINDED_RANK
 }
 
-const COL_GAP = 56          // gap between type-band columns
-const ROW_GAP = 32          // gap between stacked nodes in a band
+const COL_GAP = 56          // gap between cards in a grid row
+const ROW_GAP = 32          // gap between grid rows
 export const GROUP_PAD = 28        // inner padding inside a group container
 export const GROUP_LABEL_PAD = 44  // extra top padding so the group label clears its children
-const GROUP_GAP = 88        // gap between top-level items (leaf bands ↔ groups ↔ groups)
+const GROUP_GAP = 88        // gap between top-level blocks and between shelf rows
 const ORIGIN_X = 80
 const ORIGIN_Y = 80
+// Readability budgets (operator 2026-06-30): a group wraps its children to stay within MAX_GROUP_WIDTH;
+// top-level blocks wrap to a new shelf row past MAX_ROW_WIDTH — so the board stays compact, never a strip.
+export const MAX_GROUP_WIDTH = 1200
+export const MAX_ROW_WIDTH = 2300
+const GROUP_TIER_RANK = 2.5  // groups sort between source leaves (<2.5) and notes/loose cards (>2.5)
 
-interface ColumnLayout {
+interface GridLayout {
   pos: Record<string, { x: number; y: number }>
   width: number
   height: number
 }
 
-/** Lay `items` into vertical columns — one column per component-kind band, ordered left→right by rank,
- *  nodes stacked top-down within a band. Returns positions relative to (ox, oy) + the content bbox.
- *  `rankOf` overrides the band ranking (e.g. to pin the core-doc card leftmost). */
-function layoutColumns(items: CanvasNode[], ox: number, oy: number, rankOf: (n: CanvasNode) => number = bandRank): ColumnLayout {
-  const buckets = new Map<number, CanvasNode[]>()
-  for (const n of items) buckets.set(rankOf(n), [...(buckets.get(rankOf(n)) ?? []), n])
-  const ranks = [...buckets.keys()].sort((a, b) => a - b)
+/** Lay `items` into a compact, balanced grid (row-major), bounded so the block never exceeds `maxWidth`.
+ *  Items keep their given order (the caller pre-sorts by band rank so same-kind cards cluster). A uniform
+ *  cell (widest × tallest item) keeps the grid aligned and guarantees non-overlap; each card is centered
+ *  in its cell. Column count targets a near-square grid, capped by the width budget. Returns positions
+ *  relative to (0,0) + the content bbox. */
+function layoutGrid(items: CanvasNode[], maxWidth: number): GridLayout {
+  const cellW = Math.max(...items.map((n) => n.width))
+  const cellH = Math.max(...items.map((n) => n.height))
+  const maxColsByWidth = Math.max(1, Math.floor((maxWidth + COL_GAP) / (cellW + COL_GAP)))
+  const cols = Math.min(items.length, maxColsByWidth, Math.max(1, Math.ceil(Math.sqrt(items.length))))
+  const rows = Math.ceil(items.length / cols)
   const pos: Record<string, { x: number; y: number }> = {}
-  let colX = ox
-  let maxH = 0
-  for (const r of ranks) {
-    const col = [...(buckets.get(r) ?? [])].sort((a, b) => a.id.localeCompare(b.id))
-    const colW = Math.max(...col.map((n) => n.width))
-    let y = oy
-    for (const n of col) {
-      pos[n.id] = { x: Math.round(colX + (colW - n.width) / 2), y: Math.round(y) }
-      y += n.height + ROW_GAP
+  items.forEach((n, i) => {
+    const c = i % cols
+    const r = Math.floor(i / cols)
+    pos[n.id] = {
+      x: Math.round(c * (cellW + COL_GAP) + (cellW - n.width) / 2),
+      y: Math.round(r * (cellH + ROW_GAP) + (cellH - n.height) / 2),
     }
-    maxH = Math.max(maxH, y - oy - ROW_GAP)
-    colX += colW + COL_GAP
+  })
+  return {
+    pos,
+    width: cols * cellW + (cols - 1) * COL_GAP,
+    height: rows * cellH + (rows - 1) * ROW_GAP,
   }
-  return { pos, width: Math.max(0, colX - ox - COL_GAP), height: Math.max(0, maxH) }
 }
 
 export interface OrganizeResult {
@@ -64,50 +73,77 @@ export interface OrganizeResult {
 }
 
 /**
- * #7/#8 — deterministic "Organize by type". Arranges every component into vertical bands by `meta.kind`,
- * lays each group's children into the same bands INSIDE the group, and resizes each group to enclose its
- * children (so the boundary always frames its members — design-system §8). Pure geometry: no ELK, no
- * async, no DOM — fully predictable and unit-testable. Returns absolute positions for every node plus new
- * sizes for each group container (the doc stays ABSOLUTE; the adapter handles parent-relative on render).
+ * Deterministic "Organize by type" — a READABLE system-design layout (operator 2026-06-30: a generated
+ * board must be easy to understand, never a horizontal strip). Pure geometry: no ELK, no async, no DOM.
+ *
+ * Two levels of wrapping keep the board compact:
+ *   1. Each group's children are laid into a balanced GRID (band-ranked so same-kind cards cluster) and the
+ *      group is resized to enclose them (design-system §8) — a many-child subsystem no longer widens forever.
+ *   2. Top-level blocks (loose leaves + group containers) are SHELF-PACKED into rows, ordered by reading
+ *      tier — sources (actors/externals) → subsystem groups → notes/loose cards — with each tier starting a
+ *      fresh row and rows wrapping past MAX_ROW_WIDTH. The board reads top→bottom in clear bands.
+ *
+ * Returns absolute positions for every node plus new sizes for each group (the doc stays ABSOLUTE; the
+ * adapter handles parent-relative on render).
  */
 export function organizeByType(nodes: CanvasNode[], coreDocPath?: string): OrganizeResult {
   const positions: OrganizeResult['positions'] = {}
   const sizes: OrganizeResult['sizes'] = {}
 
+  const order = new Map(nodes.map((n, i) => [n.id, i])) // stable tiebreaker = document order
   const childrenOf = new Map<string, CanvasNode[]>()
   for (const n of nodes) if (n.parentId) childrenOf.set(n.parentId, [...(childrenOf.get(n.parentId) ?? []), n])
 
   const groups = nodes.filter((n) => n.type === 'group' && !n.parentId)
   const leaves = nodes.filter((n) => n.type !== 'group' && !n.parentId)
 
-  // The core-spec-doc card (kind-less file node bound as the spine) is the board's entry point — pin it to
-  // its own leftmost band (rank -1, ahead of actors) so it reads as the first element on the board.
-  const rankOf = (n: CanvasNode): number =>
-    coreDocPath && n.type === 'file' && n.file === coreDocPath ? -1 : bandRank(n)
+  // Block reading tier: the core-spec-doc card (rare — the spine is normally not a node) is the entry point;
+  // groups sit between source leaves and notes/loose cards.
+  const blockRank = (n: CanvasNode): number =>
+    coreDocPath && n.type === 'file' && n.file === coreDocPath ? -2
+      : n.type === 'group' ? GROUP_TIER_RANK
+      : bandRank(n)
 
-  // 1. Each group's children → relative band layout; size the group to fit (+ label headroom).
+  // 1. Each group's children → balanced grid; size the group to enclose them (+ label headroom).
   const childRel = new Map<string, Record<string, { x: number; y: number }>>()
   for (const g of groups) {
-    const kids = childrenOf.get(g.id) ?? []
+    const kids = [...(childrenOf.get(g.id) ?? [])].sort(
+      (a, b) => bandRank(a) - bandRank(b) || order.get(a.id)! - order.get(b.id)!,
+    )
     if (!kids.length) { sizes[g.id] = { width: g.width, height: g.height }; continue }
-    const { pos, width, height } = layoutColumns(kids, 0, 0)
+    const { pos, width, height } = layoutGrid(kids, MAX_GROUP_WIDTH)
     childRel.set(g.id, pos)
     sizes[g.id] = { width: width + 2 * GROUP_PAD, height: height + GROUP_LABEL_PAD + GROUP_PAD }
   }
 
-  // 2. Top-level leaves → bands on the left (core-doc card pinned leftmost via rankOf).
-  const leafLayout = layoutColumns(leaves, ORIGIN_X, ORIGIN_Y, rankOf)
-  Object.assign(positions, leafLayout.pos)
+  // 2. Top-level blocks (loose leaves + group containers), ordered by reading tier then document order.
+  interface Block { id: string; w: number; h: number; rank: number; ord: number }
+  const blocks: Block[] = [
+    ...leaves.map((n) => ({ id: n.id, w: n.width, h: n.height, rank: blockRank(n), ord: order.get(n.id)! })),
+    ...groups.map((g) => ({ id: g.id, w: sizes[g.id].width, h: sizes[g.id].height, rank: blockRank(g), ord: order.get(g.id)! })),
+  ].sort((a, b) => a.rank - b.rank || a.ord - b.ord)
 
-  // 3. Groups flow left→right after the leaf region; project each group's children to absolute coords.
-  let gx = ORIGIN_X + (leaves.length ? leafLayout.width + GROUP_GAP : 0)
-  for (const g of groups) {
-    positions[g.id] = { x: gx, y: ORIGIN_Y }
-    const rel = childRel.get(g.id)
+  // 3. Shelf-pack blocks into rows: wrap when the row would exceed MAX_ROW_WIDTH, or when the reading tier
+  //    changes (so sources / subsystems / notes each occupy their own band). Project each group's children
+  //    to absolute coords once its block position is fixed.
+  const tierOf = (rank: number): number => (rank < GROUP_TIER_RANK ? 0 : rank > GROUP_TIER_RANK ? 2 : 1)
+  let x = ORIGIN_X
+  let y = ORIGIN_Y
+  let rowH = 0
+  let prevTier: number | null = null
+  for (const b of blocks) {
+    const tier = tierOf(b.rank)
+    const overflow = x > ORIGIN_X && x + b.w > ORIGIN_X + MAX_ROW_WIDTH
+    const tierBreak = prevTier !== null && tier !== prevTier
+    if (overflow || tierBreak) { x = ORIGIN_X; y += rowH + GROUP_GAP; rowH = 0 }
+    positions[b.id] = { x, y }
+    const rel = childRel.get(b.id)
     if (rel) for (const [cid, p] of Object.entries(rel)) {
-      positions[cid] = { x: gx + GROUP_PAD + p.x, y: ORIGIN_Y + GROUP_LABEL_PAD + p.y }
+      positions[cid] = { x: x + GROUP_PAD + p.x, y: y + GROUP_LABEL_PAD + p.y }
     }
-    gx += sizes[g.id].width + GROUP_GAP
+    x += b.w + GROUP_GAP
+    rowH = Math.max(rowH, b.h)
+    prevTier = tier
   }
 
   return { positions, sizes }

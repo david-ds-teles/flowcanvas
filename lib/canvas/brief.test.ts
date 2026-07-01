@@ -425,4 +425,41 @@ describe('006-sync server-side quality net (applyResponse)', () => {
     const { report } = applyResponse(seed(), resp, counter(), 'now')
     expect(report.warnings.some((w) => w.includes('no notes'))).toBe(true)
   })
+
+  it('warns when a (re)generated node card is thin/unstructured (one-paragraph summary)', () => {
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'thin card',
+      upsertNodes: [{ id: 'ag-svc', type: 'file', file: 'b.nodes/svc.md', x: 0, y: 0, width: 220, height: 120, kind: 'service', source: { path: 'board.md', anchor: 'x' } }],
+      generatedFiles: [{ path: 'b.nodes/svc.md', content: '---\nname: Svc\n---\nA small service that does a thing and returns a value.' }],
+    }
+    const { report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(report.warnings.some((w) => /thin or unstructured/.test(w))).toBe(true)
+  })
+
+  it('does NOT flag a structured, concrete node card as thin', () => {
+    const richBody = [
+      '**Svc** is the stateless entry-point service that turns a validated cart into a confirmed order.',
+      '',
+      '**Responsibilities**',
+      '- Validate cart items, totals, and caller auth before any charge.',
+      '- Call Payments to authorize, then persist the confirmed order and return its id.',
+      '',
+      '**Contract**',
+      '- `POST /checkout` -> 201 {orderId} · 402 on auth decline · 409 on duplicate cart token.',
+      '- `Idempotency-Key` header dedupes provider retries.',
+      '',
+      '**Talks to**',
+      '- -> Payments (sync request) · -> Orders DB (writes).',
+      '',
+      '**Constraints**',
+      '- Horizontally scalable; never holds funds — Payments owns authorization state.',
+    ].join('\n')
+    const resp: AgentResponse = {
+      responseVersion: '0.1', briefId: 'brief-77a1', summary: 'rich card',
+      upsertNodes: [{ id: 'ag-svc', type: 'file', file: 'b.nodes/svc.md', x: 0, y: 0, width: 220, height: 120, kind: 'service', source: { path: 'board.md', anchor: 'x' } }],
+      generatedFiles: [{ path: 'b.nodes/svc.md', content: `---\nname: Svc\n---\n${richBody}` }],
+    }
+    const { report } = applyResponse(seed(), resp, counter(), 'now')
+    expect(report.warnings.some((w) => /thin or unstructured/.test(w))).toBe(false)
+  })
 })

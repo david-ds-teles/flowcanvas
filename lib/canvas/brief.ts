@@ -321,6 +321,15 @@ const sigOf = (parentId: string | null, author: string, text: string) => `${pare
 // boundary box but with no parentId is the "forgot parentId" case the brasilog board exhibited).
 const CONTAINMENT_SLACK = 8
 
+// A node spec card must be a structured, concrete spec, not a one-paragraph summary. A round's generated
+// file is "thin" when its markdown body (sans frontmatter) is short AND carries no structure (no bullet
+// list, no bold label) — the exact low-quality shape the operator rejected.
+const MIN_NODE_BODY_CHARS = 360
+const stripFrontmatter = (content: string): string => {
+  const m = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(content)
+  return (m ? content.slice(m[0].length) : content).trim()
+}
+
 /**
  * Server-side safety net (the spec is served live, but spec-served ≠ spec-followed). Repairs + audits the
  * merged board against the load-bearing VISUAL rules an agent commonly skips:
@@ -330,7 +339,11 @@ const CONTAINMENT_SLACK = 8
  *     overrides the semantic edgeType legend, and a component board with no design-note callouts.
  * Pure. The warnings ride back in the MergeReport so the agent self-corrects on the next round.
  */
-function enforceBoardQuality(nodes: CanvasNode[], edges: CanvasEdge[]): { nodes: CanvasNode[]; warnings: string[] } {
+function enforceBoardQuality(
+  nodes: CanvasNode[],
+  edges: CanvasEdge[],
+  generatedFiles: GeneratedFile[] = [],
+): { nodes: CanvasNode[]; warnings: string[] } {
   const warnings: string[] = []
   const groups = nodes.filter((n): n is GroupNode => n.type === 'group')
   const encloses = (g: GroupNode, n: CanvasNode): boolean =>
@@ -366,6 +379,24 @@ function enforceBoardQuality(nodes: CanvasNode[], edges: CanvasEdge[]): { nodes:
   // Audit 3: a component board with no notes — the key decisions/constraints are unstated.
   if (repaired.some((n) => n.type !== 'group' && n.meta?.kind) && !repaired.some((n) => n.type === 'text')) {
     warnings.push('Board has typed components but no notes — add type:"text" callouts for key decisions, constraints, or a legend.')
+  }
+
+  // Audit 4: thin/unstructured node cards — a round that (re)writes a node's .md must give it a real spec
+  // body, not a bare paragraph. Only files (re)generated THIS round are checked (a layout-only round skips).
+  const nodeFilePaths = new Set(
+    repaired.filter((n) => n.type === 'file').map((n) => (n as { file?: string }).file).filter(Boolean),
+  )
+  const thin = generatedFiles
+    .filter((g) => nodeFilePaths.has(g.path))
+    .filter((g) => {
+      const body = stripFrontmatter(g.content)
+      const structured = /(^|\n)\s*[-*]\s+/.test(body) || body.includes('**')
+      return body.length < MIN_NODE_BODY_CHARS || !structured
+    })
+    .map((g) => g.path)
+  if (thin.length) {
+    const shown = thin.slice(0, 3).join(', ') + (thin.length > 3 ? ', …' : '')
+    warnings.push(`${thin.length} node card(s) are thin or unstructured (${shown}) — give each a structured spec body (role + responsibilities + the concrete contract: routes/signatures/tables/config/thresholds + key constraints) extracted from its source section, so the card reads as a real spec, not a one-paragraph summary.`)
   }
 
   return { nodes: repaired, warnings }
@@ -509,7 +540,7 @@ export function applyResponse(
   report.removed.edges = edges.length - nextEdges.length
 
   // (7c) Quality net — repair missing parentId by containment + audit the load-bearing visual rules.
-  const { nodes: nextNodes, warnings } = enforceBoardQuality(survivingNodes, nextEdges)
+  const { nodes: nextNodes, warnings } = enforceBoardQuality(survivingNodes, nextEdges, resp.generatedFiles)
   report.warnings = warnings
 
   // (7b) Core spec doc — bind the spine to it ONLY (operator 2026-06-30 reversed: the core doc is the

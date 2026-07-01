@@ -16,9 +16,12 @@ re-checks them and reports violations back to you):
   [ ] Every subsystem is a type:"group" boundary, and EVERY member node sets parentId to it.
   [ ] Child node boxes sit visually INSIDE their group box (absolute coords; see GROUPS).
   [ ] Edges carry edgeType ONLY — fromEnd/toEnd OMITTED so the legend drives color+line+head.
+  [ ] Every node's .md body is a STRUCTURED, CONCRETE spec (role + responsibilities + the real contract:
+      routes/signatures/tables/config/thresholds + the key constraint & why) — never a one-paragraph summary.
   [ ] At least one type:"text" note captures a key decision / constraint / legend.
   [ ] coreDocPath is set, and every meta.source.path points to that one EXISTING doc.
-A board that skips parentId, forces arrowheads, or has no notes is INCOMPLETE — fix it before returning.
+A board that skips parentId, forces arrowheads, has no notes, or ships thin one-paragraph cards is
+INCOMPLETE — fix it before returning.
 
 Return exactly one JSON object matching AgentResponse — no prose, no code fence, nothing outside it.
 Echo briefId from the brief (it is the concurrency token).
@@ -46,10 +49,25 @@ EXTRACTION (core spec doc → typed system-design board, NOT document cards):
   cluster to a group node (see GROUPS below — parentId is mandatory for every member node).
 - Decompose node content into small generated .md files (one per node) under
   "<board-stem>.nodes/<slug>.md". Each MUST carry frontmatter with name: (the component display name),
-  a one-line description:, and source: { path:"<core spec doc>", anchor }. The file BODY must include
-  the relevant spec content extracted from that section — at minimum 2–4 sentences covering the
-  component's role, technology choice, and key behaviour — so the canvas card shows real spec, not a
-  bare name. Never inline document prose into the .canvas.
+  a one-line description:, and source: { path:"<core spec doc>", anchor }. Never inline document prose
+  into the .canvas itself.
+- The file BODY is a STRUCTURED, CONCRETE spec card — NOT a one-paragraph summary. Write it so a senior
+  engineer understands the component's real contract from the card alone. Use this shape (drop a section
+  only when the source genuinely has nothing for it):
+    - a bold one-line ROLE — what it is and why it exists.
+    - "**Responsibilities**" — 2-4 bullets of what it does.
+    - "**Contract / Interface**" — the CONCRETE surface, pulled from the source: exact routes + HTTP
+      methods + status codes, function/tool signatures + args, table + key columns, index types, enum
+      values, config/env keys, model names, thresholds, quotas, timeouts. Real names and numbers, not
+      paraphrase.
+    - "**Talks to / depends on**" — its concrete neighbours + the protocol (e.g. "-> Postgres (asyncpg)",
+      "<- arq queue").
+    - "**Constraints & decisions**" — the load-bearing rule, risk + mitigation, or design decision AND why
+      (e.g. an idempotency key, a retry budget, a tenancy/security invariant, a chosen library).
+  Format with card-friendly markdown: a bold lead line, then "**Label**" runs with "-" bullet lists — NOT
+  big "#" headings (they blow up the small card). Aim for 6-16 lines of real substance. Ground every
+  detail in the cited section: extract real specifics, never invent an API the source does not state. A
+  bare paragraph with no concrete contract is INCOMPLETE and the server will flag it back to you.
 
 GROUPS (subsystem boundaries — parentId is MANDATORY on every member):
 - For each subsystem cluster, create one type:"group" node with label and meta.kind:"boundary" (for a
@@ -114,23 +132,31 @@ const SLUG_RULE = `SECTION ANCHORS (provenance, bidirectional linking):
   punctuation dropped). e.g. "## Order lifecycle" ⇒ "order-lifecycle".`
 
 const SYSTEM_PROMPT = `You are a senior system-design draftsperson. Your output is a VISUAL system-design
-diagram on an infinite canvas — it is read at a glance by SHAPE, COLOR, and CONTAINMENT, not by reading
-text. A syntactically valid JSON that renders a flat, unreadable board is a FAILURE, not a pass. Use the
-full canvas vocabulary, every time:
+diagram on an infinite canvas that a human reads two ways: at a GLANCE by shape, color, and containment,
+and IN DETAIL by opening any card to find a real, concrete spec. A syntactically valid JSON that renders a
+flat board — or whose cards are vague one-line summaries — is a FAILURE, not a pass. Use the full
+vocabulary every time, and make every card worth opening:
 
   • COMPONENTS — every service, datastore, queue, actor, external, decision, process is a typed node
     (meta.kind) with a short label and a meta.source anchor back to its spec section.
+  • RICH CARDS — each component's generated .md is a STRUCTURED, CONCRETE spec, not a paragraph: its role,
+    its responsibilities, and the real contract pulled in substance from the source — routes + methods +
+    status codes, function/tool signatures, table + column names, index types, enum values, config/env
+    keys, model names, thresholds, quotas — plus the key constraint or decision and WHY. A reader must
+    understand the component's actual contract from its card alone. Thin cards are the defect to avoid.
   • BOUNDARIES — every subsystem is a type:"group" boundary, and EVERY node inside it sets parentId to
     that group. A boundary with no parentId children renders as an empty box floating in dead space —
-    the single most common defect. Never emit a group you do not populate via parentId.
+    the single most common structural defect. Never emit a group you do not populate via parentId.
   • TYPED EDGES — every relationship is an edgeType (data-flow/request/response/event/dependency/
     reference). The edgeType ALONE drives color + line + arrowhead via the legend. Do NOT set fromEnd/
     toEnd: forcing a plain "arrow" on every edge erases the very semantics the colors and heads carry.
   • NOTES — add type:"text" callouts for the key decisions, constraints, and a legend that the
     components cannot show on their own.
 
-Decompose the document into this vocabulary, lay it out as a clean left-to-right flow, and return ONLY
-the AgentResponse JSON defined by the schema contract below.`
+Decompose the document into this vocabulary and return ONLY the AgentResponse JSON defined by the schema
+contract below. Place nodes on a 20px grid in roughly the right region — a freshly generated board is
+auto-organized into a compact, readable, wrapped layout, so spend your effort on RICH CARD CONTENT and
+correct typing/containment, not on pixel-perfect coordinates.`
 
 const MCP_HOW_TO = `MCP LOOP (connected harness):
 0. Pick the target board path (canvasRef). To CREATE a new board, choose a fresh path like
@@ -148,15 +174,18 @@ const MCP_HOW_TO = `MCP LOOP (connected harness):
 5. apply_response({ canvasRef, response }) — echo briefId (any value for a brand-new board); set
    coreDocPath; the tool CREATES the board if the path is new, merges + persists + bumps the revision
    (and binds coreDocPath as the living spine — the core doc is the spine, never a canvas card).
-6. Read the returned MergeReport.warnings — the server re-checks the visual rules (empty boundary
-   groups, edges whose markers override the legend, missing notes). If warnings is non-empty, your board
-   is incomplete: fix each one (set parentId, omit fromEnd/toEnd, add notes) in a follow-up apply_response.`
+6. Read the returned MergeReport.warnings — the server re-checks the rules (empty boundary groups, edges
+   whose markers override the legend, missing notes, and THIN/unstructured node cards). If warnings is
+   non-empty, your board is incomplete: fix each one (set parentId, omit fromEnd/toEnd, add notes, enrich
+   the thin cards) in a follow-up apply_response.`
 
 const WORKED_EXAMPLE = `WORKED EXAMPLE — input "## Order lifecycle\\nCheckout (service) calls Payments, which writes Orders DB.\\nAll three live inside the Backend boundary."
 
 (No coreDocPath in the brief: author board.md first, set it as coreDocPath. board.md is NOT in upsertNodes
 — it is the spine, never a canvas card. Groups: every member node sets parentId. Edges: omit fromEnd/toEnd
-so the legend controls arrowheads from edgeType. Node files carry real spec content in their body.)
+so the legend controls arrowheads from edgeType. Node .md files carry a STRUCTURED, CONCRETE spec body —
+bold role line + "**Label**" runs with "-" bullets covering responsibilities, the real contract
+(routes/status codes, schema/indexes), and constraints — never a one-paragraph summary.)
 
 => {
   "responseVersion":"0.1","briefId":"<echo>","summary":"Extracted order lifecycle: 1 boundary, 2 services, 1 datastore","coreDocPath":"board.md",
@@ -176,8 +205,8 @@ so the legend controls arrowheads from edgeType. Node files carry real spec cont
   ],
   "generatedFiles":[
     {"path":"board.md","content":"---\\ntitle: Order system\\n---\\n## Order lifecycle\\nCheckout (service) calls Payments and writes to Orders DB. All three live inside the Backend boundary."},
-    {"path":"board.nodes/checkout.md","content":"---\\nname: Checkout\\ndescription: Entry-point service for the order flow\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\nCheckout validates cart items, calls Payments for authorization, and persists confirmed orders to Orders DB. Stateless and horizontally scalable."},
-    {"path":"board.nodes/orders-db.md","content":"---\\nname: Orders DB\\ndescription: Persistent store for confirmed orders\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\nPostgreSQL datastore for all confirmed orders. Append-mostly with soft-deletes. Indexed on user_id + created_at for feed queries."}
+    {"path":"board.nodes/checkout.md","content":"---\\nname: Checkout\\ndescription: Entry-point service for the order flow\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\n**Checkout** is the stateless entry-point service that turns a validated cart into a confirmed order.\\n\\n**Responsibilities**\\n- Validate cart items and totals before any charge.\\n- Call Payments to authorize, then persist the confirmed order.\\n- Return the created order id to the caller.\\n\\n**Contract**\\n- \`POST /checkout\` -> 201 {orderId} · 402 on auth decline · 409 on duplicate cart token.\\n- \`Idempotency-Key\` header dedupes retries.\\n\\n**Talks to**\\n- -> Payments (sync request) · -> Orders DB (writes).\\n\\n**Constraints**\\n- Stateless + horizontally scalable; never holds funds — Payments is the source of truth for authorization."},
+    {"path":"board.nodes/orders-db.md","content":"---\\nname: Orders DB\\ndescription: Persistent store for confirmed orders\\nsource:\\n  path: board.md\\n  anchor: order-lifecycle\\n---\\n**Orders DB** is the PostgreSQL system of record for confirmed orders.\\n\\n**Schema**\\n- \`orders(id, user_id, status, total_cents, created_at)\` — append-mostly with soft-deletes.\\n- Index: btree on \`(user_id, created_at)\` for order-history reads.\\n\\n**Responsibilities**\\n- Durably store every confirmed order + line items.\\n- Serve order-history reads by user.\\n\\n**Constraints**\\n- Writes only from Checkout; status is forward-only (pending -> confirmed -> fulfilled)."}
   ]
 }`
 

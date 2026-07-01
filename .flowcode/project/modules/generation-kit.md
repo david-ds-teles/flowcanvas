@@ -214,3 +214,25 @@ card for the core doc on the canvas — the one exception to the generatedFiles+
 must NOT add its own node for the core doc). The worked example and MCP-loop step 5 now set `coreDocPath`.
 Reverses the 004 "core doc = spine, not a card" rule (operator decision 2026-06-30). The card is
 minted/positioned by `brief.md` (`ensureCoreDocNode`, `applyResponse`) and `layout.md` (leftmost pin).
+
+## Update 2026-06-30 — rich, structured node cards (generation-quality contract)
+
+Operator rejected generated boards as low-quality: components were thin one-paragraph summaries with no
+concrete contract. The kit now demands RICH cards. Changes to `kitSections()`:
+
+- **`SYSTEM_PROMPT`** — added a "RICH CARDS" pillar (a reader must understand a component's contract from
+  its card alone) and dropped the "left-to-right flow" hand-placement framing (the canvas auto-organizes;
+  the agent spends effort on content + typing/containment, not coordinates).
+- **`schemaContract` EXTRACTION** — the node-file BODY rule changed from "2–4 sentences" to a STRUCTURED,
+  CONCRETE spec: bold role line + `**Responsibilities**` / `**Contract / Interface**` / `**Talks to**` /
+  `**Constraints & decisions**` with `-` bullets, real routes/signatures/tables/config/thresholds (no
+  `#` headings — they blow up the small card), 6–16 lines, grounded in the cited section.
+- **RETURN CHECKLIST** — added a "structured concrete spec, never a one-paragraph summary" item; the
+  closing line now flags thin cards as INCOMPLETE.
+- **`workedExample`** — `checkout.md` / `orders-db.md` rewritten as structured cards so the example teaches
+  the rich format (prior example taught the thin output). **MCP loop** step 6 lists thin cards among the
+  server warnings to fix.
+
+The rich body now also renders INLINE on the component widget (`canvas-nodes.md` → `component-node.tsx`),
+and `brief.md` `enforceBoardQuality` Audit 4 warns when a (re)generated card is thin/unstructured.
+`docs/flowcanvas-agent-contract.md` regenerated via `npm run gen:contract`.

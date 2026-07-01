@@ -430,3 +430,15 @@ as a plain markdown card via the adapter, never a component widget) — the boar
 Reverses the 004 "spine, not a card" rule (operator decision 2026-06-30). Consumed by `store.md` `load`
 (heals pre-existing boards) and the MCP `apply_response`; positioned leftmost by `layout.md`
 `organizeByType(nodes, coreDocPath)`.
+
+## Update 2026-06-30 — Audit 4: thin/unstructured node-card warning
+
+`enforceBoardQuality` now takes a third arg, `generatedFiles: GeneratedFile[]`, and adds **Audit 4**: for
+every file node whose `.md` was (re)generated THIS round, it strips frontmatter (`stripFrontmatter`) and
+flags the card as thin when the body is `< MIN_NODE_BODY_CHARS` (360) OR carries no structure (no `-`/`*`
+bullet and no `**bold**` label). The pushed warning lists the offending paths and tells the agent to write
+a structured spec body (role + responsibilities + concrete contract + constraints). Layout-only rounds
+(no `generatedFiles`) skip the audit, so an incremental reposition never false-flags existing content. The
+warning rides back in `MergeReport.warnings` so the agent self-corrects over MCP — the server-side half of
+the generation-quality fix (the spec-side half is `generation-kit.md`). Signature/output of `applyResponse`
+unchanged; it now passes `resp.generatedFiles` into `enforceBoardQuality`.

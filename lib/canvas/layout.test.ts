@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { CanvasNode, CanvasEdge } from './jsoncanvas'
-import { computeLayout, organizeByType, type MeasuredSizes } from './layout'
+import { computeLayout, organizeByType, GROUP_PAD, MAX_GROUP_WIDTH, MAX_ROW_WIDTH, type MeasuredSizes } from './layout'
 
 // Small board: two connected top-level nodes, an island, and a group with one child.
 const nodes: CanvasNode[] = [
@@ -58,35 +58,70 @@ describe('layout / computeLayout (ELK re-organize)', () => {
   })
 })
 
-// #7/#8 — type-banded system-design layout.
+// "Organize by type" — readable, wrapped system-design layout.
 const kindNodes: CanvasNode[] = [
   { id: 'actorTop', type: 'text', text: '', x: 0, y: 0, width: 200, height: 120, meta: { origin: 'agent', kind: 'actor' } },
-  { id: 'svcTop', type: 'file', file: 's.md', x: 0, y: 0, width: 240, height: 140, meta: { origin: 'agent', kind: 'service' } },
+  { id: 'extTop', type: 'file', file: 's.md', x: 0, y: 0, width: 240, height: 140, meta: { origin: 'agent', kind: 'external' } },
   { id: 'g', type: 'group', label: 'sys', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'agent', shape: 'rectangle', kind: 'boundary' } },
   { id: 'svcA', type: 'file', file: 'a.md', x: 0, y: 0, width: 240, height: 140, parentId: 'g', meta: { origin: 'agent', kind: 'service' } },
   { id: 'svcB', type: 'file', file: 'b.md', x: 0, y: 0, width: 240, height: 140, parentId: 'g', meta: { origin: 'agent', kind: 'service' } },
   { id: 'db', type: 'file', file: 'db.md', x: 0, y: 0, width: 240, height: 160, parentId: 'g', meta: { origin: 'agent', kind: 'datastore' } },
 ]
 
-describe('layout / organizeByType (type-banded system-design layout)', () => {
+// A group with many children — exercises the within-group grid wrap.
+const wideGroup: CanvasNode[] = [
+  { id: 'wg', type: 'group', label: 'wide', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'agent', kind: 'boundary' } },
+  ...Array.from({ length: 6 }, (_, i): CanvasNode => ({
+    id: `c${i}`, type: 'file', file: `c${i}.md`, x: 0, y: 0, width: 240, height: 120,
+    parentId: 'wg', meta: { origin: 'agent', kind: 'service' },
+  })),
+]
+
+// Many wide groups — exercises the top-level shelf-row wrap (the anti-strip contract).
+const manyGroups: CanvasNode[] = Array.from({ length: 5 }, (_, i) => i).flatMap((i): CanvasNode[] => [
+  { id: `g${i}`, type: 'group', label: `g${i}`, x: 0, y: 0, width: 300, height: 200, meta: { origin: 'agent', kind: 'boundary' } },
+  { id: `g${i}c`, type: 'file', file: `g${i}c.md`, x: 0, y: 0, width: 700, height: 120, parentId: `g${i}`, meta: { origin: 'agent', kind: 'service' } },
+])
+
+describe('layout / organizeByType (readable wrapped layout)', () => {
   it('positions every node and sizes the group container', () => {
     const { positions, sizes } = organizeByType(kindNodes)
-    expect(Object.keys(positions).sort()).toEqual(['actorTop', 'db', 'g', 'svcA', 'svcB', 'svcTop'])
+    expect(Object.keys(positions).sort()).toEqual(['actorTop', 'db', 'extTop', 'g', 'svcA', 'svcB'])
     expect(sizes.g.width).toBeGreaterThan(0)
     expect(sizes.g.height).toBeGreaterThan(0)
   })
 
-  it('orders top-level bands left→right by kind (actor before service before group)', () => {
-    const { positions } = organizeByType(kindNodes)
-    expect(positions.actorTop.x).toBeLessThan(positions.svcTop.x)
-    expect(positions.svcTop.x).toBeLessThan(positions.g.x)
+  it('reads in tiers top→bottom: source leaves, then groups, then notes/loose cards', () => {
+    const tiered: CanvasNode[] = [
+      { id: 'act', type: 'file', file: 'act.md', x: 0, y: 0, width: 240, height: 120, meta: { origin: 'agent', kind: 'actor' } },
+      { id: 'grp', type: 'group', label: 'sys', x: 0, y: 0, width: 300, height: 200, meta: { origin: 'agent', kind: 'boundary' } },
+      { id: 'svc', type: 'file', file: 'svc.md', x: 0, y: 0, width: 240, height: 120, parentId: 'grp', meta: { origin: 'agent', kind: 'service' } },
+      { id: 'note', type: 'text', text: 'legend', x: 0, y: 0, width: 240, height: 100, meta: { origin: 'agent' } },
+    ]
+    const { positions } = organizeByType(tiered)
+    expect(positions.act.y).toBeLessThan(positions.grp.y)   // sources above subsystems
+    expect(positions.grp.y).toBeLessThan(positions.note.y)  // subsystems above notes
   })
 
-  it('bands group children by kind — same-kind share a column and stack; other kinds shift right', () => {
+  it('orders group children by band rank so same-kind cards cluster (services before datastore)', () => {
     const { positions } = organizeByType(kindNodes)
-    expect(positions.svcA.x).toBe(positions.svcB.x)        // both service → same band column
-    expect(positions.svcA.y).not.toBe(positions.svcB.y)    // stacked vertically
-    expect(positions.db.x).toBeGreaterThan(positions.svcA.x) // datastore band is right of the service band
+    expect(positions.svcA.y).toBeLessThanOrEqual(positions.db.y) // datastore is last in reading order
+  })
+
+  it('wraps a many-child group into a bounded grid (group width <= MAX_GROUP_WIDTH + padding)', () => {
+    const { positions, sizes } = organizeByType(wideGroup)
+    expect(sizes.wg.width).toBeLessThanOrEqual(MAX_GROUP_WIDTH + 2 * GROUP_PAD)
+    const rowYs = new Set(Object.keys(positions).filter((id) => id.startsWith('c')).map((id) => positions[id].y))
+    expect(rowYs.size).toBeGreaterThan(1) // children wrap onto more than one row
+  })
+
+  it('wraps top-level groups into shelf rows — never an infinite horizontal strip', () => {
+    const { positions, sizes } = organizeByType(manyGroups)
+    const groupIds = Object.keys(sizes).filter((id) => id.startsWith('g') && !id.endsWith('c'))
+    const rightEdges = groupIds.map((id) => positions[id].x + sizes[id].width)
+    for (const right of rightEdges) expect(right).toBeLessThanOrEqual(80 + MAX_ROW_WIDTH) // ORIGIN_X + budget
+    const rowYs = new Set(groupIds.map((id) => positions[id].y))
+    expect(rowYs.size).toBeGreaterThan(1) // five wide groups span multiple rows
   })
 
   it('resizes the group to fully enclose its children (design-system §8)', () => {
@@ -102,23 +137,23 @@ describe('layout / organizeByType (type-banded system-design layout)', () => {
     }
   })
 
-  it('pins the core-doc card to the leftmost band when coreDocPath is given', () => {
+  it('pins the core-doc card as the top-left entry point when coreDocPath is given', () => {
     const withCore: CanvasNode[] = [
       { id: 'core', type: 'file', file: 'board.md', x: 0, y: 0, width: 320, height: 220, meta: { origin: 'agent' } },
       { id: 'svc', type: 'file', file: 'board.nodes/svc.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'service' } },
       { id: 'act', type: 'file', file: 'board.nodes/act.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'actor' } },
     ]
     const { positions } = organizeByType(withCore, 'board.md')
-    expect(positions.core.x).toBeLessThan(positions.act.x)   // core-doc card sits left of the actor band
-    expect(positions.act.x).toBeLessThan(positions.svc.x)    // actors still left of services
+    expect(positions.core.x).toBeLessThan(positions.act.x)   // core-doc card sits left of the actor
+    expect(positions.core.y).toBeLessThanOrEqual(positions.act.y)
   })
 
-  it('without coreDocPath the core-doc-shaped card falls in the unkinded (rightmost) band', () => {
+  it('without coreDocPath the unkinded card falls in the last (notes/loose) tier — below kinded cards', () => {
     const withCore: CanvasNode[] = [
       { id: 'core', type: 'file', file: 'board.md', x: 0, y: 0, width: 320, height: 220, meta: { origin: 'agent' } },
       { id: 'act', type: 'file', file: 'board.nodes/act.md', x: 0, y: 0, width: 260, height: 120, meta: { origin: 'agent', kind: 'actor' } },
     ]
-    const { positions } = organizeByType(withCore)                // no coreDocPath → no special pinning
-    expect(positions.core.x).toBeGreaterThan(positions.act.x)     // unkinded band is rightmost
+    const { positions } = organizeByType(withCore)            // no coreDocPath → no special pinning
+    expect(positions.core.y).toBeGreaterThan(positions.act.y) // unkinded card drops to the last tier
   })
 })

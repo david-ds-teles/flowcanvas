@@ -38,11 +38,12 @@ describe('MCP generation pipeline (apply_response merge + first-extraction auto-
     expect(next.nodes.every((n) => !!n.meta?.kind)).toBe(true)                       // every node is typed
   })
 
-  it('auto-arranges the first extraction into left→right type bands (actor → service → datastore)', () => {
+  it('auto-arranges the first extraction into a readable layout (source above; service before datastore)', () => {
     const { next } = applyResponse(emptyBoard(), response, (p) => p + 'x', 't')
     const { positions } = organizeByType(next.nodes)                                 // the sidecar's first-extraction step
     const x = (id: string) => positions[id].x
-    expect(x('ag-user')).toBeLessThan(x('ag-svc'))
-    expect(x('ag-svc')).toBeLessThan(x('ag-db'))
+    const y = (id: string) => positions[id].y
+    expect(y('ag-user')).toBeLessThan(y('ag-svc'))   // actor (source) reads above the services tier
+    expect(x('ag-svc')).toBeLessThan(x('ag-db'))     // service before datastore in reading order
   })
 })

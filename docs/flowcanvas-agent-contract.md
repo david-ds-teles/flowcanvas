@@ -8,9 +8,12 @@ re-checks them and reports violations back to you):
   [ ] Every subsystem is a type:"group" boundary, and EVERY member node sets parentId to it.
   [ ] Child node boxes sit visually INSIDE their group box (absolute coords; see GROUPS).
   [ ] Edges carry edgeType ONLY — fromEnd/toEnd OMITTED so the legend drives color+line+head.
+  [ ] Every node's .md body is a STRUCTURED, CONCRETE spec (role + responsibilities + the real contract:
+      routes/signatures/tables/config/thresholds + the key constraint & why) — never a one-paragraph summary.
   [ ] At least one type:"text" note captures a key decision / constraint / legend.
   [ ] coreDocPath is set, and every meta.source.path points to that one EXISTING doc.
-A board that skips parentId, forces arrowheads, or has no notes is INCOMPLETE — fix it before returning.
+A board that skips parentId, forces arrowheads, has no notes, or ships thin one-paragraph cards is
+INCOMPLETE — fix it before returning.
 
 Return exactly one JSON object matching AgentResponse — no prose, no code fence, nothing outside it.
 Echo briefId from the brief (it is the concurrency token).
@@ -38,10 +41,25 @@ EXTRACTION (core spec doc → typed system-design board, NOT document cards):
   cluster to a group node (see GROUPS below — parentId is mandatory for every member node).
 - Decompose node content into small generated .md files (one per node) under
   "<board-stem>.nodes/<slug>.md". Each MUST carry frontmatter with name: (the component display name),
-  a one-line description:, and source: { path:"<core spec doc>", anchor }. The file BODY must include
-  the relevant spec content extracted from that section — at minimum 2–4 sentences covering the
-  component's role, technology choice, and key behaviour — so the canvas card shows real spec, not a
-  bare name. Never inline document prose into the .canvas.
+  a one-line description:, and source: { path:"<core spec doc>", anchor }. Never inline document prose
+  into the .canvas itself.
+- The file BODY is a STRUCTURED, CONCRETE spec card — NOT a one-paragraph summary. Write it so a senior
+  engineer understands the component's real contract from the card alone. Use this shape (drop a section
+  only when the source genuinely has nothing for it):
+    - a bold one-line ROLE — what it is and why it exists.
+    - "**Responsibilities**" — 2-4 bullets of what it does.
+    - "**Contract / Interface**" — the CONCRETE surface, pulled from the source: exact routes + HTTP
+      methods + status codes, function/tool signatures + args, table + key columns, index types, enum
+      values, config/env keys, model names, thresholds, quotas, timeouts. Real names and numbers, not
+      paraphrase.
+    - "**Talks to / depends on**" — its concrete neighbours + the protocol (e.g. "-> Postgres (asyncpg)",
+      "<- arq queue").
+    - "**Constraints & decisions**" — the load-bearing rule, risk + mitigation, or design decision AND why
+      (e.g. an idempotency key, a retry budget, a tenancy/security invariant, a chosen library).
+  Format with card-friendly markdown: a bold lead line, then "**Label**" runs with "-" bullet lists — NOT
+  big "#" headings (they blow up the small card). Aim for 6-16 lines of real substance. Ground every
+  detail in the cited section: extract real specifics, never invent an API the source does not state. A
+  bare paragraph with no concrete contract is INCOMPLETE and the server will flag it back to you.
 
 GROUPS (subsystem boundaries — parentId is MANDATORY on every member):
 - For each subsystem cluster, create one type:"group" node with label and meta.kind:"boundary" (for a
