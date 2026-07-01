@@ -1,11 +1,12 @@
 'use client'
-import { memo, type ReactElement } from 'react'
+import { memo, useEffect, useRef, type ReactElement } from 'react'
 import { type NodeProps } from '@xyflow/react'
 import type { CanvasNode, ComponentKind } from '@/lib/canvas/jsoncanvas'
 import { COMPONENT_KIND_META } from '@/lib/canvas/jsoncanvas'
 import { useCanvasStore } from '@/lib/canvas/store'
 import { cn } from '@/lib/utils'
 import { basename } from '../frontmatter-view'
+import { CanvasMarkdown } from '../canvas-markdown'
 import { NodeResizeFrame } from './node-frame'
 import { CommentBadge } from './comment-badge'
 
@@ -60,6 +61,31 @@ function Inner({ id, selected, data }: NodeProps) {
     String(fm.description ?? fm.summary ?? '') ||
     (node.type === 'file' ? oneLine(body) : node.type === 'text' ? oneLine(node.text.split('\n').slice(1).join('\n')) : '')
   const anchor = node.meta?.source?.anchor
+  // A file node's full spec body renders inline (scrollable) so the widget IS the detailed component the
+  // operator wants — no double-click required. Non-file/empty widgets fall back to the one-line role.
+  const detail = node.type === 'file' ? body?.trim() ?? '' : ''
+  const hasDetail = detail.length > 0
+
+  // Wheel routing so zoom and scroll stay DIFFERENT gestures (operator: "both working depending on the
+  // gesture"). A native bubble-phase listener fires before React Flow's zoom handler on the ancestor pane:
+  //   · pinch / ⌘+wheel  → return (let RF zoom the canvas)
+  //   · plain wheel, card still has content to scroll → stopPropagation (scroll the card, no zoom)
+  //   · plain wheel, card scrolled to the edge / not overflowing → return (fall through to canvas zoom — no trap)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return                       // pinch-zoom / ⌘-zoom intent
+      if (el.scrollHeight - el.clientHeight <= 1) return        // nothing to scroll
+      const atTop = el.scrollTop <= 0
+      const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight
+      if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) return   // pushing past the edge → let it zoom
+      e.stopPropagation()                                       // scrollable card → consume the scroll
+    }
+    el.addEventListener('wheel', onWheel)
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [hasDetail])
 
   return (
     <NodeResizeFrame id={id} node={node} selected={!!selected} minWidth={180} minHeight={96}>
@@ -76,7 +102,9 @@ function Inner({ id, selected, data }: NodeProps) {
             <div className="fc-cmp__kind">{meta?.label ?? kind ?? 'component'}</div>
           </div>
         </div>
-        {role && <div className="fc-cmp__role">{role}</div>}
+        {hasDetail
+          ? <div className="fc-cmp__body" ref={bodyRef}><CanvasMarkdown>{detail}</CanvasMarkdown></div>
+          : role && <div className="fc-cmp__role">{role}</div>}
         {anchor && (
           <button
             type="button"

@@ -233,6 +233,7 @@ export function CanvasToolbar({ onOpenAgent, onOpenBoard, onClearBoard, railLeft
         {modeBtn('select', 'toolbar-select', 'Select', <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" /></svg>)}
         {modeBtn('connect', 'toolbar-connect', 'Connect (draw edges)', <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8 8l8 8" /></svg>)}
         {modeBtn('comment', 'toolbar-comment-mode', 'Comment', <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M5 5h14v10H9l-4 4z" /></svg>)}
+        {modeBtn('pan', 'toolbar-pan', 'Pan / Hand — drag to navigate the board (H · or hold Space)', <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-.5a1.5 1.5 0 0 1 3 0V12m0-1.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5h-1a5 5 0 0 1-3.6-1.5L6 16c-.9-.9-.4-2.3.9-2.3.6 0 1.1.2 1.5.6l.6.7V7a1.5 1.5 0 0 1 3 0" /></svg>)}
       </div>
 
       <span className="fc-toolbar__divider" aria-hidden="true" />

@@ -95,6 +95,7 @@ function CanvasFlow() {
   const doc = useCanvasStore((s) => s.doc)
   const load = useCanvasStore((s) => s.load)
   const mode = useCanvasStore((s) => s.mode)
+  const setMode = useCanvasStore((s) => s.setMode)
   const connecting = useCanvasStore((s) => s.connecting)
   const readerNodeId = useCanvasStore((s) => s.readerNodeId)
   const closeReader = useCanvasStore((s) => s.closeReader)
@@ -105,6 +106,9 @@ function CanvasFlow() {
   const reviewState = useCanvasStore((s) => s.reviewState)       // drives the dock Review-tab attention dot
   const clearRevealComments = useCanvasStore((s) => s.clearRevealComments)
   const handlers = useCanvasHandlers()
+  const { fitView, zoomTo, getNodes, setCenter, getInternalNode } = useReactFlow()   // board-framing API for the navigation shortcuts
+  const [spacePan, setSpacePan] = useState(false)        // Space held → transient board-navigation (pan-anywhere)
+  const panActive = spacePan || mode === 'pan'           // pan when the hand tool is on OR Space is held
   const [path] = useState(readPath)
   const [error, setError] = useState<string | null>(null)
   const [agent, setAgent] = useState<{ open: boolean; tab: 'export' | 'import' | 'kit' }>({ open: false, tab: 'export' })
@@ -176,6 +180,76 @@ function CanvasFlow() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [railLeft, railRight])
+
+  // Space-to-pan (operator: holding Space must NAVIGATE the board — never grab the component/group under
+  // the cursor) + H toggles the sticky hand tool (mode 'pan') so navigation doesn't need Space held down.
+  // Either source drives panActive → the <ReactFlow> props switch to pan-anywhere (nodesDraggable off,
+  // panOnDrag on) and the .fc-rf--pan class neutralises the connection dots (pointer-events:none in
+  // edges.css), so the 007 dot-gesture passes through and a drag anywhere just pans. Release / blur exits Space.
+  useEffect(() => {
+    // Space yields to a focused button/field (it activates buttons natively); H (a tool key, not a button
+    // activator) is blocked only inside a text field, so it still toggles when a toolbar button holds focus.
+    const isText = (el: HTMLElement | null) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+    const onDown = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (e.code === 'Space' && !e.repeat) {
+        if (isText(el) || el?.tagName === 'BUTTON') return
+        e.preventDefault(); setSpacePan(true)
+      } else if ((e.key === 'h' || e.key === 'H') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) {
+        if (isText(el)) return
+        e.preventDefault()
+        setMode(useCanvasStore.getState().mode === 'pan' ? 'select' : 'pan')   // toggle the hand tool
+      }
+    }
+    const onUp = (e: KeyboardEvent) => { if (e.code === 'Space') setSpacePan(false) }
+    const onBlur = () => setSpacePan(false)
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    window.addEventListener('blur', onBlur)
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur) }
+  }, [setMode])
+
+  // Big-board navigation (operator: absorb a large design fast). Figma-style framing shortcuts —
+  // Shift+1 fit the whole board · Shift+2 zoom TIGHT to the selection · Shift+3 zoom to the selection PLUS
+  // its directly-connected neighbours (padded, so you see what it links to and can hop along connections) ·
+  // Shift+0 reset to 100%. e.code (not e.key) so layout-shifted glyphs don't matter; ignored while typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.code === 'Digit1') { e.preventDefault(); void fitView({ padding: 0.12, duration: 420 }) }
+      else if (e.code === 'Digit2') {
+        e.preventDefault()
+        const sel = getNodes().filter((n) => n.selected)
+        void fitView(sel.length ? { nodes: sel.map((n) => ({ id: n.id })), padding: 0.25, duration: 420 } : { padding: 0.12, duration: 420 })
+      }
+      else if (e.code === 'Digit3') {
+        e.preventDefault()
+        const sel = getNodes().filter((n) => n.selected)
+        if (!sel.length) { void fitView({ padding: 0.12, duration: 420 }); return }
+        // Context view: centre on the selection at HALF its tight (Shift+2) zoom — the component stays
+        // prominent with a ring of surroundings so you can see what it connects to, without blowing out
+        // toward fit-all. Bounds use absolute positions (getInternalNode) so a grouped child frames right.
+        const boxes = sel.map((n) => {
+          const i = getInternalNode(n.id)
+          const p = i?.internals.positionAbsolute ?? n.position
+          return { x: p.x, y: p.y, w: i?.measured?.width ?? n.width ?? 0, h: i?.measured?.height ?? n.height ?? 0 }
+        })
+        const bx = Math.min(...boxes.map((b) => b.x)), by = Math.min(...boxes.map((b) => b.y))
+        const ex = Math.max(...boxes.map((b) => b.x + b.w)), ey = Math.max(...boxes.map((b) => b.y + b.h))
+        const bw = ex - bx || 1, bh = ey - by || 1
+        const pane = document.querySelector('.react-flow__pane')?.getBoundingClientRect()
+        if (!pane) { void fitView({ nodes: sel.map((n) => ({ id: n.id })), padding: 0.9, duration: 420 }); return }
+        const pad = 0.25   // mirrors Shift+2's tight framing; * 0.5 halves that zoom for the context step-back
+        const tight = Math.min(pane.width / (bw * (1 + 2 * pad)), pane.height / (bh * (1 + 2 * pad)))
+        void setCenter(bx + bw / 2, by + bh / 2, { zoom: Math.max(0.2, Math.min(2, tight * 0.5)), duration: 420 })
+      }
+      else if (e.code === 'Digit0') { e.preventDefault(); void zoomTo(1, { duration: 300 }) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fitView, getNodes, getInternalNode, setCenter, zoomTo])
 
   // Comment badge → reveal its message: open the right dock on the Inspector tab so the "Comments on
   // this node" list is visible (the badge already selected the node). Driven off the store subscription
@@ -281,7 +355,7 @@ function CanvasFlow() {
         {/* CENTER canvas */}
         <div className="fc-studio__center">
           <ReactFlow
-            className={cn(mode === 'connect' && 'fc-rf--connect', connecting && 'fc-rf--connecting') || undefined}
+            className={cn(mode === 'connect' && 'fc-rf--connect', connecting && 'fc-rf--connecting', panActive && 'fc-rf--pan') || undefined}
             nodes={rfNodes}
             edges={handlers.edges}
             onNodesChange={handlers.onNodesChange}
@@ -300,11 +374,12 @@ function CanvasFlow() {
             connectionLineType={ConnectionLineType.SmoothStep}
             connectionRadius={34}
             deleteKeyCode={['Delete', 'Backspace']}
-            elementsSelectable
+            nodesDraggable={!panActive}
+            elementsSelectable={!panActive}
             edgesFocusable
-            selectionOnDrag={mode === 'select'}
+            selectionOnDrag={!panActive && mode === 'select'}
             selectionMode={SelectionMode.Partial}
-            panOnDrag={mode === 'select' ? [1, 2] : true}
+            panOnDrag={panActive ? true : mode === 'select' ? [1, 2] : true}
             multiSelectionKeyCode={['Meta', 'Control']}
             fitView
             minZoom={0.2}

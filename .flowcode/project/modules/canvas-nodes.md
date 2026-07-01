@@ -458,3 +458,23 @@ So a press-drag anywhere on the card moves the node (RF), the wheel scrolls the 
 `.fc-cmp__h` is a kind-tinted near-solid **header contrast band** (`color-mix(--kc 18%, rgba(9,13,24,.92))`,
 1px accent border, 9px radius) and the card base fill was raised from `.55` to `.9` opacity so the glass
 widget is legible over the canvas. CDP-verified: an inner component moves from a body press-drag.
+
+## Update 2026-07-01 — gesture-aware card wheel, arrowheads at rest, edges inert in pan mode
+
+- **`.fc-cmp__body` no longer uses `nowheel`** (supersedes the 2026-06-30 note above). `nowheel` blunt-blocked
+  ALL wheel over the card — plain scroll AND pinch — so the cursor could never zoom the canvas over a widget.
+  Replaced with a native bubble-phase `wheel` listener in `component-node.tsx` (`useRef` body + `useEffect`):
+  pinch / `ctrlKey`/`metaKey` → return (let React Flow zoom); a plain wheel while the body still has room →
+  `stopPropagation` (scroll the card); at the scroll edge → return (fall through to canvas zoom, no trap).
+  So zoom and scroll are distinct gestures. Still verify with a real wheel gesture (CDP), never unit tests alone.
+- **Arrowheads now render at rest (`edges.css`).** The always-visible connection dot `.fc-port::before` was an
+  OPAQUE disc in the nodes/handles layer, covering the edge arrowhead which paints in the edges layer below;
+  React Flow only elevates an edge above nodes on selection (`elevateEdgesOnSelect`), so the head appeared only
+  when selected. Fix: the dot centre is now `background: transparent` (a ring) so the head shows THROUGH it —
+  the intended "head seats in the dot", now visible unselected. (Verified: marker is referenced + defined at
+  rest via DOM; the fix is visual/occlusion, not conditional rendering.)
+- **Edge surfaces go inert in pan mode.** `.react-flow.fc-rf--pan .react-flow__edge path` + `.fc-edge-waypoint`
+  + `.fc-edge-label` are `pointer-events:none !important`, so a hand-tool drag over an edge (previously caught
+  by the fat `.fc-edge-grab` hit-path → inserted a bend and ate the pan) now falls through to the pane and pans.
+  React Flow gates panning to the pane background — the visible `.react-flow__edge-path` (pe `visibleStroke`)
+  had to be neutralised too, not just `.fc-edge-grab`. Scoped to pan mode; normal-mode bending is unchanged.

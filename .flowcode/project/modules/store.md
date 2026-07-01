@@ -46,8 +46,9 @@ Concrete signatures only. No prose.
 ### Exported Types
 
 ```ts
-// lib/canvas/store.ts:16
-export type CanvasMode = 'select' | 'connect' | 'comment'
+// lib/canvas/store.ts:16 — 'pan' is the sticky hand tool (drag navigates, never grabs a node); holding
+// Space is the transient equivalent layered on top of any mode (both drive canvas-shell `panActive`).
+export type CanvasMode = 'select' | 'connect' | 'comment' | 'pan'
 
 // lib/canvas/store.ts:19
 export type ReaderSize = 'drawer' | 'half' | 'full'
@@ -312,7 +313,8 @@ portForConnect(
 ```ts
 // lib/canvas/store.ts:380
 setMode(mode: CanvasMode): void
-// Switch canvas interaction mode; drives toolbar mode group + comment layer click capture.
+// Switch canvas interaction mode; drives toolbar mode group + comment layer click capture. 'pan' =
+// hand tool (canvas-shell derives pan-anywhere RF props + the fc-rf--pan class from it or a Space-hold).
 ```
 
 #### Reader

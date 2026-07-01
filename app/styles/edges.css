@@ -129,6 +129,24 @@
    click a dot or side to arm · click a target dot/node to land · drag a dot to move it · Esc to cancel. */
 .react-flow .react-flow__handle { transition: opacity .12s ease, background .14s ease, box-shadow .14s ease; }
 
+/* Board-navigation (pan) mode — active while the hand tool is on (mode 'pan') OR Space is held; canvas-shell
+   sets the class + pan-anywhere RF props. The connection dots stop capturing the pointer so a drag over a
+   dot/card/group pans instead of arming a connection or grabbing the node; the whole surface reads grab → grabbing. */
+.react-flow.fc-rf--pan .react-flow__handle.fc-port,
+.react-flow.fc-rf--pan .react-flow__handle.fc-port-add { pointer-events: none; }
+/* …and every edge surface too. A drag over an edge in pan mode was inserting a bend (the fat line-grab
+   path) or being swallowed by React Flow's edge hit paths (which don't pan) instead of navigating. Make
+   ALL edge paths + the label/bend handles inert so a hand-tool drag falls through to the pane and just
+   pans (needs !important to beat the inline `pointer-events` on the grab/waypoint/label). */
+.react-flow.fc-rf--pan .react-flow__edge path,
+.react-flow.fc-rf--pan .fc-edge-waypoint,
+.react-flow.fc-rf--pan .fc-edge-label { pointer-events: none !important; }
+.react-flow.fc-rf--pan,
+.react-flow.fc-rf--pan .react-flow__pane,
+.react-flow.fc-rf--pan .react-flow__node { cursor: grab !important; }
+.react-flow.fc-rf--pan .react-flow__pane:active,
+.react-flow.fc-rf--pan .react-flow__node:active { cursor: grabbing !important; }
+
 /* The four side "add" handles (centred on each side) START a NEW connection. Hidden at rest; reveal on node
    hover, in connect mode, and across the board while a connection is armed. Dashed to read as "add here". */
 .react-flow .react-flow__handle.fc-port-add {
@@ -168,7 +186,11 @@
   position: absolute;
   inset: 6px;
   border-radius: 50%;
-  background: var(--color-surface-highest);
+  /* Transparent CENTRE (a ring, not a filled disc) so the edge's arrowhead — which anchors at this same
+     port point but paints in the edges layer BELOW the nodes/handles layer — shows THROUGH the dot instead
+     of being hidden by an opaque fill. The head only "seated in the dot" visibly once selected because RF
+     elevates a selected edge above the nodes layer; a see-through dot keeps it visible at rest too. */
+  background: transparent;
   border: 1.5px solid var(--color-primary);
   box-shadow: 0 0 0 2px rgba(8, 12, 24, 0.55);
   transition: background .14s ease, box-shadow .14s ease, transform .12s ease, border-color .14s ease;

@@ -17,8 +17,10 @@ import type { CanvasTemplate } from './templates'
 import type { DocRef } from './refs'
 import * as api from '../api'
 
-/** Canvas interaction mode — drives the toolbar's mode group and the comment layer's click capture. */
-export type CanvasMode = 'select' | 'connect' | 'comment'
+/** Canvas interaction mode — drives the toolbar's mode group and the comment layer's click capture.
+ * `pan` is the sticky hand tool (drag anywhere navigates, never grabs a node); holding Space is the
+ * transient equivalent layered on top of any mode. */
+export type CanvasMode = 'select' | 'connect' | 'comment' | 'pan'
 
 /** 007 — an armed click-to-connect: the source is picked and a cursor-following line is drawing, waiting
  *  for the user to click a target dot/node (land) or press Esc / click empty space (cancel). `fromHandle`

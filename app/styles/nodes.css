@@ -561,8 +561,9 @@
   border: 1px solid transparent;
   border-left: 3px solid var(--kc, var(--color-primary));
   color: var(--color-text-primary);
+  /* More opaque base so the rich inline spec text reads cleanly over the canvas (glass sheen kept beneath) */
   background-image:
-    linear-gradient(rgba(23,31,51,.55), rgba(23,31,51,.55)),
+    linear-gradient(rgba(18,24,42,.9), rgba(18,24,42,.9)),
     linear-gradient(135deg, rgba(192,193,255,.45), rgba(255,255,255,.04) 45%, rgba(128,131,255,.30));
   background-origin: border-box;
   background-clip: padding-box, border-box;
@@ -582,7 +583,14 @@
 .fc-cmp[data-kind="boundary"]  { --kc: var(--color-secondary); }
 .fc-cmp[data-kind="unknown"]   { --kc: var(--color-outline); }
 
-.fc-cmp__h { display: flex; align-items: center; gap: 9px; }
+/* Header band — a kind-tinted, near-solid contrast strip so the name reads clearly over the glass card */
+.fc-cmp__h {
+  display: flex; align-items: center; gap: 9px;
+  margin: -3px -4px 9px; padding: 6px 8px;
+  background: color-mix(in srgb, var(--kc) 18%, rgba(9,13,24,.92));
+  border: 1px solid color-mix(in srgb, var(--kc) 30%, transparent);
+  border-radius: 9px;
+}
 .fc-cmp__ic {
   width: 26px; height: 26px; flex: none;
   display: grid; place-items: center;
@@ -602,6 +610,31 @@
   text-transform: uppercase; color: var(--kc); margin-top: 2px;
 }
 .fc-cmp__role { font-size: 11.5px; color: var(--color-text-primary); line-height: 1.45; margin: 9px 0; overflow: hidden; }
+
+/* Inline spec body — the widget shows its real contract (responsibilities, interface, constraints) on the
+   canvas, scrollable when it overflows. Wheel routing lives in component-node.tsx (a native wheel listener,
+   NOT `nowheel` — which blocked pinch-zoom too): pinch / ⌘+wheel zooms the canvas, a plain wheel scrolls
+   this body, and once it is scrolled to the edge the wheel falls through to canvas zoom — distinct gestures. */
+.fc-cmp__body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 8px 0 6px; padding-right: 4px;
+  font-size: 11px; line-height: 1.5; color: var(--color-text-primary);
+  user-select: none; -webkit-user-select: none;   /* a press-drag moves the node — never starts a text selection */
+}
+.fc-cmp__body > :first-child { margin-top: 0; }
+.fc-cmp__body p { margin: 0 0 6px; }
+.fc-cmp__body strong { color: var(--kc); font-weight: 600; }   /* **Labels** pick up the kind accent */
+.fc-cmp__body ul { margin: 2px 0 7px; padding-left: 15px; }
+.fc-cmp__body li { margin: 1.5px 0; }
+.fc-cmp__body code {
+  font-family: var(--font-jetbrains-mono); font-size: 10px;
+  background: color-mix(in srgb, var(--kc) 12%, transparent);
+  padding: 0 3px; border-radius: 3px; word-break: break-word;
+}
+.fc-cmp__body h1, .fc-cmp__body h2, .fc-cmp__body h3, .fc-cmp__body h4 { font-size: 11.5px; font-weight: 600; margin: 6px 0 3px; }
+/* thin glass scrollbar */
+.fc-cmp__body::-webkit-scrollbar { width: 6px; }
+.fc-cmp__body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--kc) 30%, transparent); border-radius: 999px; }
 .fc-cmp__src {
   align-self: flex-start; margin-top: auto;
   display: inline-flex; align-items: center; gap: 5px;
